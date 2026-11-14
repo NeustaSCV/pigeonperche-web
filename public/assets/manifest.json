@@ -1,0 +1,2119 @@
+{
+ "generated": "2026-11-11",
+ "note": "All assets CC0. Textures: *_diff sRGB, *_nor OpenGL normals, *_arm = AO/Roughness/Metal in R/G/B. Models: plain GLB (no Draco/meshopt/KTX2), +Y up, metres. Tree foliage = alpha-tested (MASK) branch cards baked from the source needle/leaf geometry.",
+ "totalBytes": 97580308,
+ "files": [
+  {
+   "path": "sky/sky_4k.hdr",
+   "kind": "hdri",
+   "format": "Radiance RGBE .hdr (equirectangular)",
+   "sourceId": "table_mountain_1_puresky",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/table_mountain_1_puresky",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/4k/table_mountain_1_puresky_4k.hdr",
+   "licence": "CC0 1.0",
+   "author": "Greg Zaal, Jarod Guest",
+   "resolution": [
+    4096,
+    2048
+   ],
+   "bytes": 19336378,
+   "sun": {
+    "elevationDeg": 12.8,
+    "uv": [
+     0.6375,
+     0.4287
+    ],
+    "phiDeg": 49.5,
+    "directionThree": [
+     0.6334,
+     0.2221,
+     0.7412
+    ],
+    "colourNormalised": [
+     1.0,
+     0.898,
+     0.585
+    ],
+    "note": "direction TO the sun for the default three.js equirect mapping (u=atan2(z,x)/2pi+0.5); peak radiance ~1.2e5 (unclipped)"
+   }
+  },
+  {
+   "path": "sky/sky_1k.hdr",
+   "kind": "hdri",
+   "format": "Radiance RGBE .hdr (equirectangular)",
+   "sourceId": "table_mountain_1_puresky",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/table_mountain_1_puresky",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/table_mountain_1_puresky_1k.hdr",
+   "licence": "CC0 1.0",
+   "author": "Greg Zaal, Jarod Guest",
+   "resolution": [
+    1024,
+    512
+   ],
+   "bytes": 1381374,
+   "sun": {
+    "elevationDeg": 12.8,
+    "uv": [
+     0.6375,
+     0.4287
+    ],
+    "phiDeg": 49.5,
+    "directionThree": [
+     0.6334,
+     0.2221,
+     0.7412
+    ],
+    "colourNormalised": [
+     1.0,
+     0.898,
+     0.585
+    ],
+    "note": "direction TO the sun for the default three.js equirect mapping (u=atan2(z,x)/2pi+0.5); peak radiance ~1.2e5 (unclipped)"
+   }
+  },
+  {
+   "path": "tex/grass_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "forrest_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forrest_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forrest_ground_01/forrest_ground_01_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 833711,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/grass_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "forrest_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forrest_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forrest_ground_01/forrest_ground_01_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1428763,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/grass_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "forrest_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forrest_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forrest_ground_01/forrest_ground_01_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 296969,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/rock_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "marble_cliff_05",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/marble_cliff_05",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/marble_cliff_05/marble_cliff_05_diff_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 3540217,
+   "realWorldSizeMetres": [
+    20.0,
+    20.0
+   ]
+  },
+  {
+   "path": "tex/rock_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "marble_cliff_05",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/marble_cliff_05",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/marble_cliff_05/marble_cliff_05_nor_gl_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 3524582,
+   "realWorldSizeMetres": [
+    20.0,
+    20.0
+   ]
+  },
+  {
+   "path": "tex/rock_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "marble_cliff_05",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/marble_cliff_05",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/marble_cliff_05/marble_cliff_05_arm_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 2330430,
+   "realWorldSizeMetres": [
+    20.0,
+    20.0
+   ]
+  },
+  {
+   "path": "tex/scree_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "rocks_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocks_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_01/rocks_ground_01_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 748640,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/scree_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "rocks_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocks_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_01/rocks_ground_01_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1394176,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/scree_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "rocks_ground_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocks_ground_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocks_ground_01/rocks_ground_01_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 237032,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/forest_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "forest_leaves_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forest_leaves_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_leaves_02/forest_leaves_02_diffuse_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 437891,
+   "realWorldSizeMetres": [
+    3.0,
+    3.0
+   ]
+  },
+  {
+   "path": "tex/forest_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "forest_leaves_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forest_leaves_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_leaves_02/forest_leaves_02_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 577163,
+   "realWorldSizeMetres": [
+    3.0,
+    3.0
+   ]
+  },
+  {
+   "path": "tex/forest_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "forest_leaves_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/forest_leaves_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/forest_leaves_02/forest_leaves_02_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 313980,
+   "realWorldSizeMetres": [
+    3.0,
+    3.0
+   ]
+  },
+  {
+   "path": "tex/dirt_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "rocky_trail_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocky_trail_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocky_trail_02/rocky_trail_02_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 869368,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/dirt_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "rocky_trail_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocky_trail_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocky_trail_02/rocky_trail_02_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1400149,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/dirt_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "rocky_trail_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rocky_trail_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/rocky_trail_02/rocky_trail_02_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1027407,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/wall_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "castle_wall_slates",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/castle_wall_slates",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_wall_slates/castle_wall_slates_diff_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 2381426,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/wall_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "castle_wall_slates",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/castle_wall_slates",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_wall_slates/castle_wall_slates_nor_gl_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 4054865,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/wall_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "castle_wall_slates",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/castle_wall_slates",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_wall_slates/castle_wall_slates_arm_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 1149678,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/wall_disp.jpg",
+   "kind": "texture",
+   "map": "disp",
+   "mapInfo": "displacement/height (linear, mid-grey = 0)",
+   "sourceId": "castle_wall_slates",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/castle_wall_slates",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/castle_wall_slates/castle_wall_slates_disp_2k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    2048,
+    2048
+   ],
+   "bytes": 568574,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/flag_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "stone_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/stone_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stone_tiles_02/stone_tiles_02_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Charlotte Baglioni",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 817710,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/flag_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "stone_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/stone_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stone_tiles_02/stone_tiles_02_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Charlotte Baglioni",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 873564,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/flag_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "stone_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/stone_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/stone_tiles_02/stone_tiles_02_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Charlotte Baglioni",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 623281,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/bark_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "pine_bark",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/pine_bark",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pine_bark/pine_bark_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 837641,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/bark_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "pine_bark",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/pine_bark",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pine_bark/pine_bark_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1178440,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/bark_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "pine_bark",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/pine_bark",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/pine_bark/pine_bark_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 810100,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/wood_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "weathered_planks",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/weathered_planks",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/weathered_planks/weathered_planks_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dario Barresi, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 599581,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/wood_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "weathered_planks",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/weathered_planks",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/weathered_planks/weathered_planks_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dario Barresi, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 681552,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/wood_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "weathered_planks",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/weathered_planks",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/weathered_planks/weathered_planks_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Dario Barresi, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 528272,
+   "realWorldSizeMetres": [
+    2.0,
+    2.0
+   ]
+  },
+  {
+   "path": "tex/plaster_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "white_plaster_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/white_plaster_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_plaster_02/white_plaster_02_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 527219,
+   "realWorldSizeMetres": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "path": "tex/plaster_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "white_plaster_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/white_plaster_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_plaster_02/white_plaster_02_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 652310,
+   "realWorldSizeMetres": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "path": "tex/plaster_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "white_plaster_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/white_plaster_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/white_plaster_02/white_plaster_02_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 191017,
+   "realWorldSizeMetres": [
+    1.0,
+    1.0
+   ]
+  },
+  {
+   "path": "tex/roof_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "clay_roof_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/clay_roof_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clay_roof_tiles_02/clay_roof_tiles_02_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 903929,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/roof_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "clay_roof_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/clay_roof_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clay_roof_tiles_02/clay_roof_tiles_02_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 990101,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/roof_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "clay_roof_tiles_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/clay_roof_tiles_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/clay_roof_tiles_02/clay_roof_tiles_02_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Amal Kumar",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 564611,
+   "realWorldSizeMetres": [
+    2.5,
+    2.5
+   ]
+  },
+  {
+   "path": "tex/metal_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "worn_corrugated_iron",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/worn_corrugated_iron",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_corrugated_iron/worn_corrugated_iron_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Jenelle van Heerden, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 868207,
+   "realWorldSizeMetres": [
+    1.8,
+    1.8
+   ]
+  },
+  {
+   "path": "tex/metal_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "worn_corrugated_iron",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/worn_corrugated_iron",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_corrugated_iron/worn_corrugated_iron_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Jenelle van Heerden, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1032507,
+   "realWorldSizeMetres": [
+    1.8,
+    1.8
+   ]
+  },
+  {
+   "path": "tex/metal_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "worn_corrugated_iron",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/worn_corrugated_iron",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/worn_corrugated_iron/worn_corrugated_iron_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "Jenelle van Heerden, Dimitrios Savva",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 709754,
+   "realWorldSizeMetres": [
+    1.8,
+    1.8
+   ]
+  },
+  {
+   "path": "tex/fabric_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "hessian_380",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/hessian_380",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_diff_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "colormass, Rico Cilliers",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 944914,
+   "realWorldSizeMetres": [
+    0.27,
+    0.27
+   ]
+  },
+  {
+   "path": "tex/fabric_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "hessian_380",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/hessian_380",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_nor_gl_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "colormass, Rico Cilliers",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1076074,
+   "realWorldSizeMetres": [
+    0.27,
+    0.27
+   ]
+  },
+  {
+   "path": "tex/fabric_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "hessian_380",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/hessian_380",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_380/hessian_380_arm_1k.jpg",
+   "licence": "CC0 1.0",
+   "author": "colormass, Rico Cilliers",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 1115361,
+   "realWorldSizeMetres": [
+    0.27,
+    0.27
+   ]
+  },
+  {
+   "path": "tex/moss_diff.jpg",
+   "kind": "texture",
+   "map": "diff",
+   "mapInfo": "base colour (sRGB)",
+   "sourceId": "Moss002",
+   "source": "ambientCG",
+   "sourceUrl": "https://ambientcg.com/a/Moss002",
+   "downloadUrl": "https://ambientcg.com/get?file=Moss002_1K-JPG.zip",
+   "licence": "CC0 1.0",
+   "author": "Lennart Demes (ambientCG)",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 486367,
+   "note": "re-encoded from Moss002_1K-JPG_Color.jpg"
+  },
+  {
+   "path": "tex/moss_nor.jpg",
+   "kind": "texture",
+   "map": "nor",
+   "mapInfo": "normal map, OpenGL convention (+Y up)",
+   "sourceId": "Moss002",
+   "source": "ambientCG",
+   "sourceUrl": "https://ambientcg.com/a/Moss002",
+   "downloadUrl": "https://ambientcg.com/get?file=Moss002_1K-JPG.zip",
+   "licence": "CC0 1.0",
+   "author": "Lennart Demes (ambientCG)",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 658394,
+   "note": "re-encoded from Moss002_1K-JPG_NormalGL.jpg"
+  },
+  {
+   "path": "tex/moss_arm.jpg",
+   "kind": "texture",
+   "map": "arm",
+   "mapInfo": "ORM packed: R=AO, G=roughness, B=metalness (linear)",
+   "sourceId": "Moss002",
+   "source": "ambientCG",
+   "sourceUrl": "https://ambientcg.com/a/Moss002",
+   "downloadUrl": "https://ambientcg.com/get?file=Moss002_1K-JPG.zip",
+   "licence": "CC0 1.0",
+   "author": "Lennart Demes (ambientCG)",
+   "resolution": [
+    1024,
+    1024
+   ],
+   "bytes": 954236,
+   "note": "packed locally: R=AmbientOcclusion, G=Roughness, B=0 (ambientCG ships no ARM map)"
+  },
+  {
+   "path": "models/rock_a.glb",
+   "kind": "model",
+   "sourceId": "rock_moss_set_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rock_moss_set_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/rock_moss_set_02/rock_moss_set_02.gltf",
+   "licence": "CC0 1.0",
+   "author": "Kless Gyzen",
+   "triangles": 3992,
+   "originalTriangles": 57647,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    8.28,
+    1.36,
+    3.41
+   ],
+   "bboxMin": [
+    -3.81,
+    -0.31,
+    -1.91
+   ],
+   "bboxMax": [
+    4.47,
+    1.05,
+    1.5
+   ],
+   "nodes": [
+    "rock_moss_set_02_rock07",
+    "rock_moss_set_02_rock08",
+    "rock_moss_set_02_rock09",
+    "rock_moss_set_02_rock10",
+    "rock_moss_set_02_rock11",
+    "rock_moss_set_02_rock12",
+    "rock_moss_set_02_rock13"
+   ],
+   "primitives": [
+    {
+     "node": "rock_moss_set_02_rock08",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 554,
+     "vertices": 328
+    },
+    {
+     "node": "rock_moss_set_02_rock09",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 546,
+     "vertices": 327
+    },
+    {
+     "node": "rock_moss_set_02_rock12",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 554,
+     "vertices": 389
+    },
+    {
+     "node": "rock_moss_set_02_rock13",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 550,
+     "vertices": 365
+    },
+    {
+     "node": "rock_moss_set_02_rock10",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 554,
+     "vertices": 338
+    },
+    {
+     "node": "rock_moss_set_02_rock11",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 554,
+     "vertices": 359
+    },
+    {
+     "node": "rock_moss_set_02_rock07",
+     "material": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "triangles": 680,
+     "vertices": 458
+    }
+   ],
+   "materials": [
+    {
+     "name": "rock_moss_set_02",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/rock_moss_set_02_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 273527
+    },
+    {
+     "uri": "textures/rock_moss_set_02_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 194307
+    },
+    {
+     "uri": "textures/rock_moss_set_02_rough_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 146226
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 726640,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/rock_b.glb",
+   "kind": "model",
+   "sourceId": "rock_moss_set_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/rock_moss_set_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/rock_moss_set_01/rock_moss_set_01.gltf",
+   "licence": "CC0 1.0",
+   "author": "Kless Gyzen",
+   "triangles": 3992,
+   "originalTriangles": 63127,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    8,
+    1.75,
+    6.94
+   ],
+   "bboxMin": [
+    -3.91,
+    -0.65,
+    -3.82
+   ],
+   "bboxMax": [
+    4.09,
+    1.1,
+    3.12
+   ],
+   "nodes": [
+    "rock_moss_set_01_rock01",
+    "rock_moss_set_01_rock02",
+    "rock_moss_set_01_rock03",
+    "rock_moss_set_01_rock04",
+    "rock_moss_set_01_rock05",
+    "rock_moss_set_01_rock06"
+   ],
+   "primitives": [
+    {
+     "node": "rock_moss_set_01_rock01",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 696,
+     "vertices": 514
+    },
+    {
+     "node": "rock_moss_set_01_rock02",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 696,
+     "vertices": 593
+    },
+    {
+     "node": "rock_moss_set_01_rock03",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 314,
+     "vertices": 259
+    },
+    {
+     "node": "rock_moss_set_01_rock04",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 670,
+     "vertices": 455
+    },
+    {
+     "node": "rock_moss_set_01_rock05",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 1048,
+     "vertices": 617
+    },
+    {
+     "node": "rock_moss_set_01_rock06",
+     "material": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 568,
+     "vertices": 389
+    }
+   ],
+   "materials": [
+    {
+     "name": "rock_moss_set_01",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/rock_moss_set_01_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 209975
+    },
+    {
+     "uri": "textures/rock_moss_set_01_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 168099
+    },
+    {
+     "uri": "textures/rock_moss_set_01_rough_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 82624
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 580768,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/rock_c.glb",
+   "kind": "model",
+   "sourceId": "boulder_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/boulder_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/boulder_01/boulder_01.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rico Cilliers",
+   "triangles": 4000,
+   "originalTriangles": 66122,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    1.27,
+    1,
+    1.82
+   ],
+   "bboxMin": [
+    -0.75,
+    -0.07,
+    -0.94
+   ],
+   "bboxMax": [
+    0.52,
+    0.93,
+    0.88
+   ],
+   "nodes": [
+    "boulder_01"
+   ],
+   "primitives": [
+    {
+     "node": "boulder_01",
+     "material": "boulder_01",
+     "alphaMode": "OPAQUE",
+     "triangles": 4000,
+     "vertices": 3140
+    }
+   ],
+   "materials": [
+    {
+     "name": "boulder_01",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/boulder_01_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1183552
+    },
+    {
+     "uri": "textures/boulder_01_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 987467
+    },
+    {
+     "uri": "textures/boulder_01_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 659386
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 2956628,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/rock_d.glb",
+   "kind": "model",
+   "sourceId": "namaqualand_boulder_05",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/namaqualand_boulder_05",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/namaqualand_boulder_05/namaqualand_boulder_05.gltf",
+   "licence": "CC0 1.0",
+   "author": "Jenelle van Heerden, Dario Barresi",
+   "triangles": 4000,
+   "originalTriangles": 89618,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    1.36,
+    0.54,
+    0.75
+   ],
+   "bboxMin": [
+    -0.63,
+    -0.01,
+    -0.4
+   ],
+   "bboxMax": [
+    0.73,
+    0.53,
+    0.35
+   ],
+   "nodes": [
+    "namaqualand_boulder_05"
+   ],
+   "primitives": [
+    {
+     "node": "namaqualand_boulder_05",
+     "material": "namaqualand_boulder_05",
+     "alphaMode": "OPAQUE",
+     "triangles": 4000,
+     "vertices": 2335
+    }
+   ],
+   "materials": [
+    {
+     "name": "namaqualand_boulder_05",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/namaqualand_boulder_05_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1099873
+    },
+    {
+     "uri": "textures/namaqualand_boulder_05_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 867775
+    },
+    {
+     "uri": "textures/namaqualand_boulder_05_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 713844
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 2782008,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/conifer.glb",
+   "kind": "model",
+   "sourceId": "fir_tree_01",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/fir_tree_01",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/fir_tree_01/fir_tree_01.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel, Rico Cilliers",
+   "triangles": 29342,
+   "originalTriangles": 2300624,
+   "keptSourceNodes": "^fir_tree_01_b_LOD0$",
+   "bboxSizeMetres": [
+    5.61,
+    14.06,
+    6.11
+   ],
+   "bboxMin": [
+    -2.57,
+    -0.09,
+    -3.15
+   ],
+   "bboxMax": [
+    3.04,
+    13.97,
+    2.96
+   ],
+   "nodes": [
+    "fir_tree_01_b_LOD0"
+   ],
+   "primitives": [
+    {
+     "node": "fir_tree_01_b_LOD0",
+     "material": "fir_tree_01_bark",
+     "alphaMode": "OPAQUE",
+     "triangles": 6034,
+     "vertices": 4058
+    },
+    {
+     "node": "fir_tree_01_b_LOD0",
+     "material": "fir_tree_01_trunk_b",
+     "alphaMode": "OPAQUE",
+     "triangles": 2200,
+     "vertices": 1413
+    },
+    {
+     "node": "fir_tree_01_b_LOD0",
+     "material": "fir_tree_01_twig",
+     "alphaMode": "MASK",
+     "triangles": 20124,
+     "vertices": 40248
+    },
+    {
+     "node": "fir_tree_01_b_LOD0",
+     "material": "fir_tree_01_dead_branches",
+     "alphaMode": "OPAQUE",
+     "triangles": 984,
+     "vertices": 947
+    }
+   ],
+   "materials": [
+    {
+     "name": "fir_tree_01_bark",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    },
+    {
+     "name": "fir_tree_01_twig",
+     "alphaMode": "MASK",
+     "alphaCutoff": 0.4,
+     "doubleSided": true
+    },
+    {
+     "name": "fir_tree_01_dead_branches",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    },
+    {
+     "name": "fir_tree_01_trunk_b",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/fir_tree_01_bark_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1137533
+    },
+    {
+     "uri": "textures/fir_tree_01_bark_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 776567
+    },
+    {
+     "uri": "textures/fir_tree_01_bark_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 789264
+    },
+    {
+     "uri": "textures/fir_tree_01_trunk_b_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 915273
+    },
+    {
+     "uri": "textures/fir_tree_01_trunk_b_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 687662
+    },
+    {
+     "uri": "textures/fir_tree_01_trunk_b_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 732269
+    },
+    {
+     "uri": "fir_tree_01_twig_cards_atlas.png",
+     "mime": "image/png",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1032127
+    }
+   ],
+   "extensionsUsed": [
+    "KHR_texture_transform"
+   ],
+   "foliage": {
+    "method": "baked branch cards",
+    "verts": 40248,
+    "tris": 20124,
+    "cells": 5031,
+    "voxel": 0.1889568,
+    "exemplars": 8,
+    "srcTris": 2207296
+   },
+   "removedFromSource": [
+    "COLOR_0",
+    "COLOR_1",
+    "KHR_materials_ior",
+    "KHR_materials_specular"
+   ],
+   "bytes": 7745392,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/conifer_b.glb",
+   "kind": "model",
+   "sourceId": "pine_sapling_medium",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/pine_sapling_medium",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/pine_sapling_medium/pine_sapling_medium.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel, Rico Cilliers",
+   "triangles": 28576,
+   "originalTriangles": 2662894,
+   "keptSourceNodes": "^pine_sapling_medium_a_LOD0$",
+   "bboxSizeMetres": [
+    5.19,
+    11.51,
+    4.77
+   ],
+   "bboxMin": [
+    -2.63,
+    -0.2,
+    -2.22
+   ],
+   "bboxMax": [
+    2.56,
+    11.31,
+    2.55
+   ],
+   "nodes": [
+    "pine_sapling_medium_a_LOD0"
+   ],
+   "primitives": [
+    {
+     "node": "pine_sapling_medium_a_LOD0",
+     "material": "pine_sapling_medium_bark",
+     "alphaMode": "OPAQUE",
+     "triangles": 6169,
+     "vertices": 3722
+    },
+    {
+     "node": "pine_sapling_medium_a_LOD0",
+     "material": "pine_sapling_medium_twig",
+     "alphaMode": "MASK",
+     "triangles": 21508,
+     "vertices": 43016
+    },
+    {
+     "node": "pine_sapling_medium_a_LOD0",
+     "material": "pine_sapling_medium_dead_branches",
+     "alphaMode": "OPAQUE",
+     "triangles": 899,
+     "vertices": 734
+    }
+   ],
+   "materials": [
+    {
+     "name": "pine_sapling_medium_bark",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    },
+    {
+     "name": "pine_sapling_medium_twig",
+     "alphaMode": "MASK",
+     "alphaCutoff": 0.4,
+     "doubleSided": true
+    },
+    {
+     "name": "pine_sapling_medium_dead_branches",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/pine_sapling_medium_bark_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1016849
+    },
+    {
+     "uri": "textures/pine_sapling_medium_bark_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 725265
+    },
+    {
+     "uri": "textures/pine_sapling_medium_bark_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 801278
+    },
+    {
+     "uri": "pine_sapling_medium_twig_cards_atlas.png",
+     "mime": "image/png",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 919381
+    }
+   ],
+   "extensionsUsed": [
+    "KHR_texture_transform"
+   ],
+   "foliage": {
+    "method": "baked branch cards",
+    "verts": 43016,
+    "tris": 21508,
+    "cells": 5377,
+    "voxel": 0.15,
+    "exemplars": 8,
+    "srcTris": 2648915
+   },
+   "removedFromSource": [
+    "KHR_materials_ior",
+    "KHR_materials_specular"
+   ],
+   "bytes": 5157436,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/broadleaf.glb",
+   "kind": "model",
+   "sourceId": "tree_small_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/tree_small_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/tree_small_02/tree_small_02.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rico Cilliers",
+   "triangles": 16420,
+   "originalTriangles": 2062487,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    2.97,
+    4.59,
+    4.29
+   ],
+   "bboxMin": [
+    -1.32,
+    -0.02,
+    -1.37
+   ],
+   "bboxMax": [
+    1.65,
+    4.56,
+    2.92
+   ],
+   "nodes": [
+    "tree_small_02_LOD0"
+   ],
+   "primitives": [
+    {
+     "node": "tree_small_02_LOD0",
+     "material": "tree_small_02_branches",
+     "alphaMode": "OPAQUE",
+     "triangles": 6380,
+     "vertices": 6281
+    },
+    {
+     "node": "tree_small_02_LOD0",
+     "material": "tree_small_02_leaves",
+     "alphaMode": "MASK",
+     "triangles": 7640,
+     "vertices": 15280
+    },
+    {
+     "node": "tree_small_02_LOD0",
+     "material": "tree_small_02_trunk",
+     "alphaMode": "OPAQUE",
+     "triangles": 2400,
+     "vertices": 1812
+    }
+   ],
+   "materials": [
+    {
+     "name": "tree_small_02_branches",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    },
+    {
+     "name": "tree_small_02_leaves",
+     "alphaMode": "MASK",
+     "alphaCutoff": 0.4,
+     "doubleSided": true
+    },
+    {
+     "name": "tree_small_02_trunk",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/tree_small_02_branch_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 581596
+    },
+    {
+     "uri": "textures/tree_small_02_branch_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 449977
+    },
+    {
+     "uri": "textures/tree_small_02_branch_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 375732
+    },
+    {
+     "uri": "textures/tree_small_02_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1228646
+    },
+    {
+     "uri": "textures/tree_small_02_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 863246
+    },
+    {
+     "uri": "textures/tree_small_02_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 708242
+    },
+    {
+     "uri": "tree_small_02_leaves_cards_atlas.png",
+     "mime": "image/png",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 870204
+    }
+   ],
+   "extensionsUsed": [
+    "KHR_texture_transform"
+   ],
+   "foliage": {
+    "method": "baked branch cards",
+    "verts": 15280,
+    "tris": 7640,
+    "cells": 1910,
+    "voxel": 0.15,
+    "exemplars": 8,
+    "srcTris": 1939380
+   },
+   "removedFromSource": [],
+   "bytes": 5993544,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/deadwood.glb",
+   "kind": "model",
+   "sourceId": "dead_tree_trunk",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/dead_tree_trunk",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/dead_tree_trunk/dead_tree_trunk.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel",
+   "triangles": 5996,
+   "originalTriangles": 101802,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    3.05,
+    0.29,
+    0.28
+   ],
+   "bboxMin": [
+    -1.54,
+    -0.03,
+    -0.17
+   ],
+   "bboxMax": [
+    1.51,
+    0.26,
+    0.11
+   ],
+   "nodes": [
+    "dead_tree_trunk"
+   ],
+   "primitives": [
+    {
+     "node": "dead_tree_trunk",
+     "material": "dead_tree_trunk",
+     "alphaMode": "OPAQUE",
+     "triangles": 5996,
+     "vertices": 3591
+    }
+   ],
+   "materials": [
+    {
+     "name": "dead_tree_trunk",
+     "alphaMode": "OPAQUE",
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/dead_tree_trunk_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 1053075
+    },
+    {
+     "uri": "textures/dead_tree_trunk_diff_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 713480
+    },
+    {
+     "uri": "textures/dead_tree_trunk_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 724384
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 2643584,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/shrub.glb",
+   "kind": "model",
+   "sourceId": "fern_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/fern_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/fern_02/fern_02.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rob Tuytel, Rico Cilliers",
+   "triangles": 3937,
+   "originalTriangles": 6232,
+   "keptSourceNodes": "all",
+   "bboxSizeMetres": [
+    1.97,
+    0.43,
+    1.72
+   ],
+   "bboxMin": [
+    -0.53,
+    -0.03,
+    -0.42
+   ],
+   "bboxMax": [
+    1.44,
+    0.4,
+    1.3
+   ],
+   "nodes": [
+    "fern_02_a",
+    "fern_02_b",
+    "fern_02_c",
+    "fern_02_d"
+   ],
+   "primitives": [
+    {
+     "node": "fern_02_b",
+     "material": "fern_02",
+     "alphaMode": "MASK",
+     "triangles": 1507,
+     "vertices": 1105
+    },
+    {
+     "node": "fern_02_c",
+     "material": "fern_02",
+     "alphaMode": "MASK",
+     "triangles": 1421,
+     "vertices": 1057
+    },
+    {
+     "node": "fern_02_a",
+     "material": "fern_02",
+     "alphaMode": "MASK",
+     "triangles": 494,
+     "vertices": 364
+    },
+    {
+     "node": "fern_02_d",
+     "material": "fern_02",
+     "alphaMode": "MASK",
+     "triangles": 515,
+     "vertices": 380
+    }
+   ],
+   "materials": [
+    {
+     "name": "fern_02",
+     "alphaMode": "MASK",
+     "alphaCutoff": 0.5,
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/fern_02_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 367222
+    },
+    {
+     "uri": "fern_02_diff_alpha.png",
+     "mime": "image/png",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 922800
+    },
+    {
+     "uri": "textures/fern_02_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 280359
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 1691000,
+   "upAxis": "+Y",
+   "units": "metres"
+  },
+  {
+   "path": "models/clump.glb",
+   "kind": "model",
+   "sourceId": "grass_medium_02",
+   "source": "Poly Haven",
+   "sourceUrl": "https://polyhaven.com/a/grass_medium_02",
+   "downloadUrl": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/1k/grass_medium_02/grass_medium_02.gltf",
+   "licence": "CC0 1.0",
+   "author": "Rico Cilliers",
+   "triangles": 1929,
+   "originalTriangles": 1929,
+   "keptSourceNodes": "^grass_medium_02_[ac]$",
+   "bboxSizeMetres": [
+    0.67,
+    0.23,
+    0.25
+   ],
+   "bboxMin": [
+    -0.06,
+    -0.01,
+    -0.16
+   ],
+   "bboxMax": [
+    0.61,
+    0.23,
+    0.09
+   ],
+   "nodes": [
+    "grass_medium_02_a",
+    "grass_medium_02_c"
+   ],
+   "primitives": [
+    {
+     "node": "grass_medium_02_a",
+     "material": "grass_medium_02",
+     "alphaMode": "MASK",
+     "triangles": 714,
+     "vertices": 645
+    },
+    {
+     "node": "grass_medium_02_c",
+     "material": "grass_medium_02",
+     "alphaMode": "MASK",
+     "triangles": 1215,
+     "vertices": 1072
+    }
+   ],
+   "materials": [
+    {
+     "name": "grass_medium_02",
+     "alphaMode": "MASK",
+     "alphaCutoff": 0.5,
+     "doubleSided": true
+    }
+   ],
+   "textures": [
+    {
+     "uri": "textures/grass_medium_02_nor_gl_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 118146
+    },
+    {
+     "uri": "grass_medium_02_diff_alpha.png",
+     "mime": "image/png",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 368605
+    },
+    {
+     "uri": "textures/grass_medium_02_arm_1k.jpg",
+     "mime": "image/jpeg",
+     "size": [
+      1024,
+      1024
+     ],
+     "bytes": 241181
+    }
+   ],
+   "extensionsUsed": [],
+   "foliage": null,
+   "removedFromSource": [],
+   "bytes": 797024,
+   "upAxis": "+Y",
+   "units": "metres"
+  }
+ ]
+}

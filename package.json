@@ -1,0 +1,40 @@
+{
+  "name": "pigeon-perche",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "gen:terrain": "node tools/gen-terrain.mjs",
+    "e2e:mission": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/mission.mjs --shots",
+    "e2e:mission:portrait": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/mission.mjs --portrait --shots",
+    "e2e:install": "PLAYWRIGHT_BROWSERS_PATH=0 playwright install chromium",
+    "e2e:matrix": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/matrix.mjs",
+    "e2e:shot": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/shot.mjs",
+    "e2e:smoke": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/smoke.mjs",
+    "e2e:perf": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/perf.mjs",
+    "e2e:walk": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/walk.mjs",
+    "e2e:rifles": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/rifles.mjs",
+    "e2e:mobile": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/mobile.mjs",
+    "e2e:tutorial": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/tutorial.mjs",
+    "e2e:buildings": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/buildings.mjs",
+    "gen:icons": "PLAYWRIGHT_BROWSERS_PATH=0 node tools/gen-icons.mjs",
+    "e2e:integration": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/integration.mjs",
+    "e2e:physics": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/physics.mjs"
+  },
+  "dependencies": {
+    "postprocessing": "^6.39.6",
+    "three": "^0.187.0",
+    "three-mesh-bvh": "^0.9.18"
+  },
+  "devDependencies": {
+    "@types/three": "^0.187.0",
+    "playwright": "^1.65.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12"
+  }
+}

@@ -1,0 +1,2801 @@
+{
+ "loads": [
+  {
+   "id": "22lr",
+   "maker": "Lapua",
+   "product": "Center-X .22 LR, 40 gr LRN (product no. 420163)",
+   "bulletGr": 40,
+   "bulletG": 2.59,
+   "muzzleVelocityMps": 327,
+   "testBarrelIn": 26,
+   "bcG1": 0.172,
+   "sources": [
+    "https://www.lapua.com/product/22-lr-lapua-center-x-rimfire-ammo/"
+   ],
+   "tables": [
+    {
+     "source": "https://www.lapua.com/product/22-lr-lapua-center-x-rimfire-ammo/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "Center-X .22 LR (420163)",
+      "bulletGr": 40,
+      "bulletG": 2.59,
+      "muzzleVelocityMps": 327,
+      "bcG1": 0.172,
+      "testBarrelIn": 26
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 25,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "note": "Published as 'Weapon sighted in at 25/50/75' rows vs impact at 10/50/100 m. In the 25 m row the 50 m value (-22) is as published.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 327,
+       "energy": 138
+      },
+      {
+       "range": 2.5,
+       "drop": null,
+       "drift": 0,
+       "velocity": 326,
+       "energy": 137
+      },
+      {
+       "range": 10,
+       "drop": -17,
+       "drift": 1,
+       "velocity": 322,
+       "energy": 134
+      },
+      {
+       "range": 50,
+       "drop": -22,
+       "drift": 24,
+       "velocity": 304,
+       "energy": 120
+      },
+      {
+       "range": 100,
+       "drop": -267,
+       "drift": 98,
+       "velocity": 284,
+       "energy": 104
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/22-lr-lapua-center-x-rimfire-ammo/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "Center-X .22 LR (420163)",
+      "bulletGr": 40,
+      "bulletG": 2.59,
+      "muzzleVelocityMps": 327,
+      "bcG1": 0.172,
+      "testBarrelIn": 26
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 50,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "note": "Published as 'Weapon sighted in at 25/50/75' rows vs impact at 10/50/100 m. In the 25 m row the 50 m value (-22) is as published.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 327,
+       "energy": 138
+      },
+      {
+       "range": 2.5,
+       "drop": null,
+       "drift": 0,
+       "velocity": 326,
+       "energy": 137
+      },
+      {
+       "range": 10,
+       "drop": -13,
+       "drift": 1,
+       "velocity": 322,
+       "energy": 134
+      },
+      {
+       "range": 50,
+       "drop": 0,
+       "drift": 24,
+       "velocity": 304,
+       "energy": 120
+      },
+      {
+       "range": 100,
+       "drop": -224,
+       "drift": 98,
+       "velocity": 284,
+       "energy": 104
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/22-lr-lapua-center-x-rimfire-ammo/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "Center-X .22 LR (420163)",
+      "bulletGr": 40,
+      "bulletG": 2.59,
+      "muzzleVelocityMps": 327,
+      "bcG1": 0.172,
+      "testBarrelIn": 26
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 75,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "note": "Published as 'Weapon sighted in at 25/50/75' rows vs impact at 10/50/100 m. In the 25 m row the 50 m value (-22) is as published.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 327,
+       "energy": 138
+      },
+      {
+       "range": 2.5,
+       "drop": null,
+       "drift": 0,
+       "velocity": 326,
+       "energy": 137
+      },
+      {
+       "range": 10,
+       "drop": -2,
+       "drift": 1,
+       "velocity": 322,
+       "energy": 134
+      },
+      {
+       "range": 50,
+       "drop": 51,
+       "drift": 24,
+       "velocity": 304,
+       "energy": 120
+      },
+      {
+       "range": 100,
+       "drop": -122,
+       "drift": 98,
+       "velocity": 284,
+       "energy": 104
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "223",
+   "maker": "Federal Premium",
+   "product": "Gold Medal 223 Rem 77 gr Sierra MatchKing BTHP (GM223M3)",
+   "bulletGr": 77,
+   "bulletG": 4.99,
+   "muzzleVelocityMps": 829,
+   "muzzleVelocityPublished": "2720 fps (catalogue); spec sheet says 2730 +/- 25 fps",
+   "testBarrelIn": 24,
+   "bcG1": 0.372,
+   "bcNote": "0.372 G1 (0.188 G7) is quoted by retailers citing Federal; federalpremium.com itself could not be opened (bot check).",
+   "sources": [
+    "https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+    "https://defence.nioa.com.au/uploads/documents/Federal/Rifle/223_556/GM223M3.pdf",
+    "https://www.federalpremium.com/rifle/gold-medal/gold-medal-sierra-matchking/11-GM223M3.html"
+   ],
+   "tables": [
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM223M3",
+      "bulletGr": 77,
+      "bulletG": 4.99,
+      "muzzleVelocityFps": 2720,
+      "bcG1": 0.372,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Long range bullet trajectory' block; test barrel 24 in. Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2720,
+       "energy": 1265
+      },
+      {
+       "range": 50,
+       "drop": 0.9,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 2.1,
+       "drift": 0.9,
+       "velocity": 2481,
+       "energy": 1053
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": 3.8,
+       "velocity": 2255,
+       "energy": 869
+      },
+      {
+       "range": 300,
+       "drop": -9.0,
+       "drift": 9.0,
+       "velocity": 2041,
+       "energy": 712
+      },
+      {
+       "range": 400,
+       "drop": -26.1,
+       "drift": 16.7,
+       "velocity": 1838,
+       "energy": 578
+      },
+      {
+       "range": 500,
+       "drop": -54.1,
+       "drift": 27.9,
+       "velocity": 1652,
+       "energy": 466
+      }
+     ]
+    },
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM223M3",
+      "bulletGr": 77,
+      "bulletG": 4.99,
+      "muzzleVelocityFps": 2720,
+      "bcG1": 0.372,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 100,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Average bullet trajectory' block (50-300 yd only). Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2720,
+       "energy": 1265
+      },
+      {
+       "range": 50,
+       "drop": -0.1,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 0.9,
+       "velocity": 2481,
+       "energy": 1053
+      },
+      {
+       "range": 200,
+       "drop": -4.2,
+       "drift": 3.8,
+       "velocity": 2255,
+       "energy": 869
+      },
+      {
+       "range": 300,
+       "drop": -15.2,
+       "drift": 9.0,
+       "velocity": 2041,
+       "energy": 712
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "65cm",
+   "maker": "Hornady",
+   "product": "Match 6.5 Creedmoor 140 gr ELD Match (#81500)",
+   "bulletGr": 140,
+   "bulletG": 9.07,
+   "muzzleVelocityMps": 826,
+   "muzzleVelocityPublished": "2710 fps",
+   "testBarrelIn": 24,
+   "bcG1": 0.646,
+   "bcG7": 0.326,
+   "bcNote": "0.646 G1 / 0.326 G7 as widely quoted from Hornady (Hornady states BCs at Mach 2.25); not shown on the product page fetched.",
+   "sources": [
+    "https://www.hornady.com/ammunition/rifle/6-5-creedmoor-140-gr-eld-match",
+    "https://www.lapua.com/product/6-5-creedmoor-open-tip-match-target-cartridge-scenar-l88g-136gr-4316063/",
+    "https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+    "https://defence.nioa.com.au/uploads/documents/Federal/Rifle/6.5mm/GM65CRD1.pdf"
+   ],
+   "tables": [
+    {
+     "source": "https://www.hornady.com/ammunition/rifle/6-5-creedmoor-140-gr-eld-match",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Hornady",
+      "product": "Match 6.5 Creedmoor 140 gr ELD Match #81500",
+      "bulletGr": 140,
+      "bulletG": 9.07,
+      "muzzleVelocityFps": 2710,
+      "bcG1": 0.646,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": null,
+     "atmosphere": "unknown (not stated on page)",
+     "note": "Sight height inferred from the published muzzle trajectory value of -1.5 in. No wind drift published.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": -1.5,
+       "drift": null,
+       "velocity": 2710,
+       "energy": 2283
+      },
+      {
+       "range": 100,
+       "drop": 1.9,
+       "drift": null,
+       "velocity": 2564,
+       "energy": 2043
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": null,
+       "velocity": 2422,
+       "energy": 1823
+      },
+      {
+       "range": 300,
+       "drop": -7.8,
+       "drift": null,
+       "velocity": 2285,
+       "energy": 1622
+      },
+      {
+       "range": 400,
+       "drop": -22.3,
+       "drift": null,
+       "velocity": 2152,
+       "energy": 1439
+      },
+      {
+       "range": 500,
+       "drop": -44.4,
+       "drift": null,
+       "velocity": 2023,
+       "energy": 1273
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/6-5-creedmoor-open-tip-match-target-cartridge-scenar-l88g-136gr-4316063/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "6.5 Creedmoor 136 gr Scenar-L GB546 (4316063)",
+      "bulletGr": 136,
+      "bulletG": 8.8,
+      "muzzleVelocityMps": 835,
+      "bcG1": 0.545,
+      "bcG7": 0.274,
+      "testBarrelIn": 24,
+      "testBarrelMm": 600
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 835,
+       "energy": 3068
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 19,
+       "velocity": 780,
+       "energy": 2674
+      },
+      {
+       "range": 200,
+       "drop": -122,
+       "drift": 76,
+       "velocity": 725,
+       "energy": 2314
+      },
+      {
+       "range": 300,
+       "drop": -430,
+       "drift": 179,
+       "velocity": 673,
+       "energy": 1990
+      },
+      {
+       "range": 600,
+       "drop": -2814,
+       "drift": 807,
+       "velocity": 529,
+       "energy": 1233
+      },
+      {
+       "range": 800,
+       "drop": -6087,
+       "drift": 1564,
+       "velocity": 446,
+       "energy": 877
+      },
+      {
+       "range": 1000,
+       "drop": -11351,
+       "drift": 2671,
+       "velocity": 375,
+       "energy": 618
+      }
+     ],
+     "note": "DIFFERENT LOAD from the headline Hornady 140 ELD-M: use this table only with its own inputs (835 m/s, G1 0.545)."
+    },
+    {
+     "source": "https://www.lapua.com/product/6-5-creedmoor-open-tip-match-target-cartridge-scenar-l88g-136gr-4316063/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "6.5 Creedmoor 136 gr Scenar-L GB546 (4316063)",
+      "bulletGr": 136,
+      "bulletG": 8.8,
+      "muzzleVelocityMps": 835,
+      "bcG1": 0.545,
+      "bcG7": 0.274,
+      "testBarrelIn": 24,
+      "testBarrelMm": 600
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 835,
+       "energy": 3068
+      },
+      {
+       "range": 100,
+       "drop": 143,
+       "drift": 19,
+       "velocity": 780,
+       "energy": 2674
+      },
+      {
+       "range": 200,
+       "drop": 165,
+       "drift": 76,
+       "velocity": 725,
+       "energy": 2314
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 179,
+       "velocity": 673,
+       "energy": 1990
+      },
+      {
+       "range": 600,
+       "drop": -1953,
+       "drift": 807,
+       "velocity": 529,
+       "energy": 1233
+      },
+      {
+       "range": 800,
+       "drop": -4939,
+       "drift": 1564,
+       "velocity": 446,
+       "energy": 877
+      },
+      {
+       "range": 1000,
+       "drop": -9916,
+       "drift": 2671,
+       "velocity": 375,
+       "energy": 618
+      }
+     ],
+     "note": "DIFFERENT LOAD from the headline Hornady 140 ELD-M: use this table only with its own inputs (835 m/s, G1 0.545)."
+    },
+    {
+     "source": "https://www.lapua.com/product/6-5-creedmoor-open-tip-match-target-cartridge-scenar-l88g-136gr-4316063/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": "6.5 Creedmoor 136 gr Scenar-L GB546 (4316063)",
+      "bulletGr": 136,
+      "bulletG": 8.8,
+      "muzzleVelocityMps": 835,
+      "bcG1": 0.545,
+      "bcG7": 0.274,
+      "testBarrelIn": 24,
+      "testBarrelMm": 600
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 600,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 835,
+       "energy": 3068
+      },
+      {
+       "range": 100,
+       "drop": 469,
+       "drift": 19,
+       "velocity": 780,
+       "energy": 2674
+      },
+      {
+       "range": 200,
+       "drop": 816,
+       "drift": 76,
+       "velocity": 725,
+       "energy": 2314
+      },
+      {
+       "range": 300,
+       "drop": 976,
+       "drift": 179,
+       "velocity": 673,
+       "energy": 1990
+      },
+      {
+       "range": 600,
+       "drop": 0,
+       "drift": 807,
+       "velocity": 529,
+       "energy": 1233
+      },
+      {
+       "range": 800,
+       "drop": -2335,
+       "drift": 1564,
+       "velocity": 446,
+       "energy": 877
+      },
+      {
+       "range": 1000,
+       "drop": -6661,
+       "drift": 2671,
+       "velocity": 375,
+       "energy": 618
+      }
+     ],
+     "note": "DIFFERENT LOAD from the headline Hornady 140 ELD-M: use this table only with its own inputs (835 m/s, G1 0.545)."
+    },
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM65CRD1",
+      "bulletGr": 140,
+      "bulletG": 9.07,
+      "muzzleVelocityFps": 2675,
+      "bcG1": 0.535,
+      "bcG1Note": "0.535 from a retailer listing only - unconfirmed",
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Long range bullet trajectory' block; test barrel 24 in. Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2675,
+       "energy": 2224
+      },
+      {
+       "range": 50,
+       "drop": 0.9,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 2.0,
+       "drift": 0.6,
+       "velocity": 2509,
+       "energy": 1957
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": 2.6,
+       "velocity": 2350,
+       "energy": 1716
+      },
+      {
+       "range": 300,
+       "drop": -8.4,
+       "drift": 6.2,
+       "velocity": 2196,
+       "energy": 1499
+      },
+      {
+       "range": 400,
+       "drop": -23.9,
+       "drift": 11.3,
+       "velocity": 2048,
+       "energy": 1303
+      },
+      {
+       "range": 500,
+       "drop": -47.5,
+       "drift": 18.1,
+       "velocity": 1905,
+       "energy": 1128
+      }
+     ]
+    },
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM65CRD1",
+      "bulletGr": 140,
+      "bulletG": 9.07,
+      "muzzleVelocityFps": 2675,
+      "bcG1": 0.535,
+      "bcG1Note": "0.535 from a retailer listing only - unconfirmed",
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 100,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Average bullet trajectory' block (50-300 yd only). Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2675,
+       "energy": 2224
+      },
+      {
+       "range": 50,
+       "drop": -0.1,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 0.6,
+       "velocity": 2509,
+       "energy": 1957
+      },
+      {
+       "range": 200,
+       "drop": -4.0,
+       "drift": 2.6,
+       "velocity": 2350,
+       "energy": 1716
+      },
+      {
+       "range": 300,
+       "drop": -14.4,
+       "drift": 6.2,
+       "velocity": 2196,
+       "energy": 1499
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "308",
+   "maker": "Federal Premium",
+   "product": "Gold Medal 308 Win 175 gr Sierra MatchKing BTHP (GM308M2)",
+   "bulletGr": 175,
+   "bulletG": 11.34,
+   "muzzleVelocityMps": 792,
+   "muzzleVelocityPublished": "2600 fps",
+   "testBarrelIn": 24,
+   "bcG1": 0.505,
+   "sources": [
+    "https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+    "https://www.federalpremium.com/rifle/gold-medal/gold-medal-sierra-matchking/11-GM308M2.html",
+    "https://www.lapua.com/product/308-win-target-cartridge-scenar-l-113g-175gr-4317520/"
+   ],
+   "tables": [
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM308M2",
+      "bulletGr": 175,
+      "bulletG": 11.34,
+      "muzzleVelocityFps": 2600,
+      "bcG1": 0.505,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Long range bullet trajectory' block; test barrel 24 in. Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2600,
+       "energy": 2627
+      },
+      {
+       "range": 50,
+       "drop": 1.0,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 2.2,
+       "drift": 0.6,
+       "velocity": 2427,
+       "energy": 2290
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": 2.9,
+       "velocity": 2262,
+       "energy": 1987
+      },
+      {
+       "range": 300,
+       "drop": -9.1,
+       "drift": 6.9,
+       "velocity": 2102,
+       "energy": 1717
+      },
+      {
+       "range": 400,
+       "drop": -25.8,
+       "drift": 12.5,
+       "velocity": 1949,
+       "energy": 1476
+      },
+      {
+       "range": 500,
+       "drop": -51.8,
+       "drift": 20.3,
+       "velocity": 1803,
+       "energy": 1264
+      }
+     ]
+    },
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM308M2",
+      "bulletGr": 175,
+      "bulletG": 11.34,
+      "muzzleVelocityFps": 2600,
+      "bcG1": 0.505,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 100,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Average bullet trajectory' block (50-300 yd only). Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2600,
+       "energy": 2627
+      },
+      {
+       "range": 50,
+       "drop": -0.1,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 0.6,
+       "velocity": 2427,
+       "energy": 2290
+      },
+      {
+       "range": 200,
+       "drop": -4.4,
+       "drift": 2.9,
+       "velocity": 2262,
+       "energy": 1987
+      },
+      {
+       "range": 300,
+       "drop": -15.7,
+       "drift": 6.9,
+       "velocity": 2102,
+       "energy": 1717
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/308-win-target-cartridge-scenar-l-113g-175gr-4317520/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win 175 gr Scenar-L GB550 (4317520)",
+      "bulletGr": 175,
+      "bulletG": 11.3,
+      "muzzleVelocityMps": 793,
+      "bcG1": 0.49,
+      "bcG7": 0.247,
+      "testBarrelIn": 26,
+      "testBarrelMm": 660
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 793,
+       "energy": 3553
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 19,
+       "velocity": 733,
+       "energy": 3039
+      },
+      {
+       "range": 200,
+       "drop": -143,
+       "drift": 80,
+       "velocity": 675,
+       "energy": 2577
+      },
+      {
+       "range": 300,
+       "drop": -501,
+       "drift": 190,
+       "velocity": 619,
+       "energy": 2166
+      },
+      {
+       "range": 600,
+       "drop": -3332,
+       "drift": 879,
+       "velocity": 468,
+       "energy": 1239
+      },
+      {
+       "range": 800,
+       "drop": -7362,
+       "drift": 1720,
+       "velocity": 384,
+       "energy": 833
+      },
+      {
+       "range": 1000,
+       "drop": -14087,
+       "drift": 2944,
+       "velocity": 323,
+       "energy": 588
+      }
+     ],
+     "note": "Different load from the headline Federal GM308M2: use with its own inputs (793 m/s, G1 0.490)."
+    },
+    {
+     "source": "https://www.lapua.com/product/308-win-target-cartridge-scenar-l-113g-175gr-4317520/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win 175 gr Scenar-L GB550 (4317520)",
+      "bulletGr": 175,
+      "bulletG": 11.3,
+      "muzzleVelocityMps": 793,
+      "bcG1": 0.49,
+      "bcG7": 0.247,
+      "testBarrelIn": 26,
+      "testBarrelMm": 660
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 793,
+       "energy": 3553
+      },
+      {
+       "range": 100,
+       "drop": 167,
+       "drift": 19,
+       "velocity": 733,
+       "energy": 3039
+      },
+      {
+       "range": 200,
+       "drop": 191,
+       "drift": 80,
+       "velocity": 675,
+       "energy": 2577
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 190,
+       "velocity": 619,
+       "energy": 2166
+      },
+      {
+       "range": 600,
+       "drop": -2329,
+       "drift": 879,
+       "velocity": 468,
+       "energy": 1239
+      },
+      {
+       "range": 800,
+       "drop": -6025,
+       "drift": 1720,
+       "velocity": 384,
+       "energy": 833
+      },
+      {
+       "range": 1000,
+       "drop": -12415,
+       "drift": 2944,
+       "velocity": 323,
+       "energy": 588
+      }
+     ],
+     "note": "Different load from the headline Federal GM308M2: use with its own inputs (793 m/s, G1 0.490)."
+    },
+    {
+     "source": "https://www.lapua.com/product/308-win-target-cartridge-scenar-l-113g-175gr-4317520/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win 175 gr Scenar-L GB550 (4317520)",
+      "bulletGr": 175,
+      "bulletG": 11.3,
+      "muzzleVelocityMps": 793,
+      "bcG1": 0.49,
+      "bcG7": 0.247,
+      "testBarrelIn": 26,
+      "testBarrelMm": 660
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 600,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 793,
+       "energy": 3553
+      },
+      {
+       "range": 100,
+       "drop": 555,
+       "drift": 19,
+       "velocity": 733,
+       "energy": 3039
+      },
+      {
+       "range": 200,
+       "drop": 968,
+       "drift": 80,
+       "velocity": 675,
+       "energy": 2577
+      },
+      {
+       "range": 300,
+       "drop": 1165,
+       "drift": 190,
+       "velocity": 619,
+       "energy": 2166
+      },
+      {
+       "range": 600,
+       "drop": 0,
+       "drift": 879,
+       "velocity": 468,
+       "energy": 1239
+      },
+      {
+       "range": 800,
+       "drop": -2919,
+       "drift": 1720,
+       "velocity": 384,
+       "energy": 833
+      },
+      {
+       "range": 1000,
+       "drop": -8532,
+       "drift": 2944,
+       "velocity": 323,
+       "energy": 588
+      }
+     ],
+     "note": "Different load from the headline Federal GM308M2: use with its own inputs (793 m/s, G1 0.490)."
+    }
+   ]
+  },
+  {
+   "id": "300wm",
+   "maker": "Federal Premium",
+   "product": "Gold Medal 300 Win Magnum 190 gr Sierra MatchKing BTHP (GM300WM)",
+   "bulletGr": 190,
+   "bulletG": 12.31,
+   "muzzleVelocityMps": 884,
+   "muzzleVelocityPublished": "2900 fps",
+   "testBarrelIn": 24,
+   "bcG1": 0.533,
+   "sources": [
+    "https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+    "https://www.federalpremium.com/rifle/gold-medal/gold-medal-sierra-matchking/11-GM300WM.html",
+    "https://www.lapua.com/product/300-win-mag-target-cartridge-scenar-12g-185gr-4317308/"
+   ],
+   "tables": [
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM300WM",
+      "bulletGr": 190,
+      "bulletG": 12.31,
+      "muzzleVelocityFps": 2900,
+      "bcG1": 0.533,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Long range bullet trajectory' block; test barrel 24 in. Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2900,
+       "energy": 3548
+      },
+      {
+       "range": 50,
+       "drop": 0.6,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 1.6,
+       "drift": 0.6,
+       "velocity": 2725,
+       "energy": 3133
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": 2.4,
+       "velocity": 2557,
+       "energy": 2758
+      },
+      {
+       "range": 300,
+       "drop": -6.9,
+       "drift": 5.5,
+       "velocity": 2395,
+       "energy": 2420
+      },
+      {
+       "range": 400,
+       "drop": -19.9,
+       "drift": 10.1,
+       "velocity": 2239,
+       "energy": 2115
+      },
+      {
+       "range": 500,
+       "drop": -39.8,
+       "drift": 16.4,
+       "velocity": 2089,
+       "energy": 1841
+      }
+     ]
+    },
+    {
+     "source": "Federal Premium LE catalogue 2026 (LE323), Duty Rifle ballistics pp.13-14 - https://le.vistaoutdoor.com/downloads/catalogs/LE323-2026-LE-Catalog_WEB.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Federal",
+      "product": "Gold Medal Sierra MatchKing GM300WM",
+      "bulletGr": 190,
+      "bulletG": 12.31,
+      "muzzleVelocityFps": 2900,
+      "bcG1": 0.533,
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 100,
+     "sightHeight": 1.5,
+     "crosswind": "not stated in this catalogue (Federal's usual convention is 10 mph; unverified here)",
+     "atmosphere": "59 F, 29.53 inHg, sea level (stated in catalogue)",
+     "note": "'Average bullet trajectory' block (50-300 yd only). Zero-range cell is blank in print, entered as 0.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2900,
+       "energy": 3548
+      },
+      {
+       "range": 50,
+       "drop": -0.2,
+       "drift": null,
+       "velocity": null,
+       "energy": null
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 0.6,
+       "velocity": 2725,
+       "energy": 3133
+      },
+      {
+       "range": 200,
+       "drop": -3.2,
+       "drift": 2.4,
+       "velocity": 2557,
+       "energy": 2758
+      },
+      {
+       "range": 300,
+       "drop": -11.6,
+       "drift": 5.5,
+       "velocity": 2395,
+       "energy": 2420
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/300-win-mag-target-cartridge-scenar-12g-185gr-4317308/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".300 Win Mag 185 gr Scenar GB432 (4317308)",
+      "bulletGr": 185,
+      "bulletG": 12.0,
+      "muzzleVelocityMps": 900,
+      "bcG1": 0.482,
+      "bcG7": 0.242,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 900,
+       "energy": 4860
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 29,
+       "velocity": 837,
+       "energy": 4207
+      },
+      {
+       "range": 200,
+       "drop": -100,
+       "drift": 117,
+       "velocity": 776,
+       "energy": 3618
+      },
+      {
+       "range": 300,
+       "drop": -363,
+       "drift": 269,
+       "velocity": 718,
+       "energy": 3089
+      },
+      {
+       "range": 600,
+       "drop": -2448,
+       "drift": 1229,
+       "velocity": 551,
+       "energy": 1824
+      },
+      {
+       "range": 800,
+       "drop": -5386,
+       "drift": 2447,
+       "velocity": 454,
+       "energy": 1239
+      },
+      {
+       "range": 1000,
+       "drop": -10255,
+       "drift": 4344,
+       "velocity": 370,
+       "energy": 821
+      },
+      {
+       "range": 1200,
+       "drop": -18020,
+       "drift": 6453,
+       "velocity": 315,
+       "energy": 596
+      }
+     ],
+     "note": "Different load from the headline Federal GM300WM: use with its own inputs (900 m/s, G1 0.482). CAUTION: the published 4 m/s drift row (29/117/269/1229/2447/4344 mm) is ~1.5x larger than the same page's imperial row and than a G1 0.482 solution would give; treat the drift row as doubtful."
+    },
+    {
+     "source": "https://www.lapua.com/product/300-win-mag-target-cartridge-scenar-12g-185gr-4317308/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".300 Win Mag 185 gr Scenar GB432 (4317308)",
+      "bulletGr": 185,
+      "bulletG": 12.0,
+      "muzzleVelocityMps": 900,
+      "bcG1": 0.482,
+      "bcG7": 0.242,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 900,
+       "energy": 4860
+      },
+      {
+       "range": 100,
+       "drop": 121,
+       "drift": 29,
+       "velocity": 837,
+       "energy": 4207
+      },
+      {
+       "range": 200,
+       "drop": 142,
+       "drift": 117,
+       "velocity": 776,
+       "energy": 3618
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 269,
+       "velocity": 718,
+       "energy": 3089
+      },
+      {
+       "range": 600,
+       "drop": -1721,
+       "drift": 1229,
+       "velocity": 551,
+       "energy": 1824
+      },
+      {
+       "range": 800,
+       "drop": -4417,
+       "drift": 2447,
+       "velocity": 454,
+       "energy": 1239
+      },
+      {
+       "range": 1000,
+       "drop": -9043,
+       "drift": 4344,
+       "velocity": 370,
+       "energy": 821
+      },
+      {
+       "range": 1200,
+       "drop": -16565,
+       "drift": 6453,
+       "velocity": 315,
+       "energy": 596
+      }
+     ],
+     "note": "Different load from the headline Federal GM300WM: use with its own inputs (900 m/s, G1 0.482). CAUTION: the published 4 m/s drift row (29/117/269/1229/2447/4344 mm) is ~1.5x larger than the same page's imperial row and than a G1 0.482 solution would give; treat the drift row as doubtful."
+    },
+    {
+     "source": "https://www.lapua.com/product/300-win-mag-target-cartridge-scenar-12g-185gr-4317308/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".300 Win Mag 185 gr Scenar GB432 (4317308)",
+      "bulletGr": 185,
+      "bulletG": 12.0,
+      "muzzleVelocityMps": 900,
+      "bcG1": 0.482,
+      "bcG7": 0.242,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 600,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 900,
+       "energy": 4860
+      },
+      {
+       "range": 100,
+       "drop": 408,
+       "drift": 29,
+       "velocity": 837,
+       "energy": 4207
+      },
+      {
+       "range": 200,
+       "drop": 716,
+       "drift": 117,
+       "velocity": 776,
+       "energy": 3618
+      },
+      {
+       "range": 300,
+       "drop": 860,
+       "drift": 269,
+       "velocity": 718,
+       "energy": 3089
+      },
+      {
+       "range": 600,
+       "drop": 0,
+       "drift": 1229,
+       "velocity": 551,
+       "energy": 1824
+      },
+      {
+       "range": 800,
+       "drop": -2122,
+       "drift": 2447,
+       "velocity": 454,
+       "energy": 1239
+      },
+      {
+       "range": 1000,
+       "drop": -6174,
+       "drift": 4344,
+       "velocity": 370,
+       "energy": 821
+      },
+      {
+       "range": 1200,
+       "drop": -13122,
+       "drift": 6453,
+       "velocity": 315,
+       "energy": 596
+      }
+     ],
+     "note": "Different load from the headline Federal GM300WM: use with its own inputs (900 m/s, G1 0.482). CAUTION: the published 4 m/s drift row (29/117/269/1229/2447/4344 mm) is ~1.5x larger than the same page's imperial row and than a G1 0.482 solution would give; treat the drift row as doubtful."
+    }
+   ]
+  },
+  {
+   "id": "338lm",
+   "maker": "Lapua",
+   "product": ".338 Lapua Mag 16.2 g (250 gr) Scenar OTM, GB488 (product no. 4318017)",
+   "bulletGr": 250,
+   "bulletG": 16.2,
+   "muzzleVelocityMps": 905,
+   "muzzleVelocityPublished": "table V0 905 m/s (2970 fps); spec block on same page 890 m/s (2920 fps)",
+   "testBarrelIn": 27,
+   "bcG1": 0.648,
+   "bcG7": 0.322,
+   "bcBandsG1_2011brochure": {
+    ">830 m/s": 0.646,
+    "830-600": 0.632,
+    "600-380": 0.588,
+    "380-300": 0.613,
+    "<300": 0.708,
+    "G7 (>380 m/s)": 0.32
+   },
+   "sources": [
+    "https://www.lapua.com/product/338-lapua-mag-tactical-target-cartridge-scenar-162g-250gr-4318017/",
+    "https://defence.nioa.com.au/uploads/documents/Lapua/lapuaspecialpurpose2011eng.pdf"
+   ],
+   "tables": [
+    {
+     "source": "https://www.lapua.com/product/338-lapua-mag-tactical-target-cartridge-scenar-162g-250gr-4318017/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".338 Lapua Mag 250 gr Scenar GB488 (4318017)",
+      "bulletGr": 250,
+      "bulletG": 16.2,
+      "muzzleVelocityMps": 905,
+      "bcG1": 0.648,
+      "bcG7": 0.322,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 905,
+       "energy": 6634
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 12,
+       "velocity": 856,
+       "energy": 5937
+      },
+      {
+       "range": 200,
+       "drop": -93,
+       "drift": 48,
+       "velocity": 808,
+       "energy": 5294
+      },
+      {
+       "range": 300,
+       "drop": -336,
+       "drift": 112,
+       "velocity": 762,
+       "energy": 4703
+      },
+      {
+       "range": 600,
+       "drop": -2164,
+       "drift": 495,
+       "velocity": 631,
+       "energy": 3225
+      },
+      {
+       "range": 800,
+       "drop": -4570,
+       "drift": 944,
+       "velocity": 551,
+       "energy": 2457
+      },
+      {
+       "range": 1000,
+       "drop": -8274,
+       "drift": 1489,
+       "velocity": 477,
+       "energy": 1840
+      },
+      {
+       "range": 1200,
+       "drop": -13721,
+       "drift": 2489,
+       "velocity": 409,
+       "energy": 1353
+      },
+      {
+       "range": 1500,
+       "drop": -26585,
+       "drift": 4392,
+       "velocity": 328,
+       "energy": 874
+      }
+     ],
+     "note": "Table starts at V0 = 905 m/s although the spec block of the same page says 'Muzzle velocity 890 m/s (2920 fps)'."
+    },
+    {
+     "source": "https://www.lapua.com/product/338-lapua-mag-tactical-target-cartridge-scenar-162g-250gr-4318017/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".338 Lapua Mag 250 gr Scenar GB488 (4318017)",
+      "bulletGr": 250,
+      "bulletG": 16.2,
+      "muzzleVelocityMps": 905,
+      "bcG1": 0.648,
+      "bcG7": 0.322,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 905,
+       "energy": 6634
+      },
+      {
+       "range": 100,
+       "drop": 112,
+       "drift": 12,
+       "velocity": 856,
+       "energy": 5937
+      },
+      {
+       "range": 200,
+       "drop": 131,
+       "drift": 48,
+       "velocity": 808,
+       "energy": 5294
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 112,
+       "velocity": 762,
+       "energy": 4703
+      },
+      {
+       "range": 600,
+       "drop": -1493,
+       "drift": 495,
+       "velocity": 631,
+       "energy": 3225
+      },
+      {
+       "range": 800,
+       "drop": -3674,
+       "drift": 944,
+       "velocity": 551,
+       "energy": 2457
+      },
+      {
+       "range": 1000,
+       "drop": -7155,
+       "drift": 1489,
+       "velocity": 477,
+       "energy": 1840
+      },
+      {
+       "range": 1200,
+       "drop": -12377,
+       "drift": 2489,
+       "velocity": 409,
+       "energy": 1353
+      },
+      {
+       "range": 1500,
+       "drop": -24904,
+       "drift": 4392,
+       "velocity": 328,
+       "energy": 874
+      }
+     ],
+     "note": "Table starts at V0 = 905 m/s although the spec block of the same page says 'Muzzle velocity 890 m/s (2920 fps)'."
+    },
+    {
+     "source": "https://www.lapua.com/product/338-lapua-mag-tactical-target-cartridge-scenar-162g-250gr-4318017/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".338 Lapua Mag 250 gr Scenar GB488 (4318017)",
+      "bulletGr": 250,
+      "bulletG": 16.2,
+      "muzzleVelocityMps": 905,
+      "bcG1": 0.648,
+      "bcG7": 0.322,
+      "testBarrelIn": 27,
+      "testBarrelMm": 680
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 600,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 905,
+       "energy": 6634
+      },
+      {
+       "range": 100,
+       "drop": 361,
+       "drift": 12,
+       "velocity": 856,
+       "energy": 5937
+      },
+      {
+       "range": 200,
+       "drop": 628,
+       "drift": 48,
+       "velocity": 808,
+       "energy": 5294
+      },
+      {
+       "range": 300,
+       "drop": 746,
+       "drift": 112,
+       "velocity": 762,
+       "energy": 4703
+      },
+      {
+       "range": 600,
+       "drop": 0,
+       "drift": 495,
+       "velocity": 631,
+       "energy": 3225
+      },
+      {
+       "range": 800,
+       "drop": -1684,
+       "drift": 944,
+       "velocity": 551,
+       "energy": 2457
+      },
+      {
+       "range": 1000,
+       "drop": -4667,
+       "drift": 1489,
+       "velocity": 477,
+       "energy": 1840
+      },
+      {
+       "range": 1200,
+       "drop": -9390,
+       "drift": 2489,
+       "velocity": 409,
+       "energy": 1353
+      },
+      {
+       "range": 1500,
+       "drop": -21168,
+       "drift": 4392,
+       "velocity": 328,
+       "energy": 874
+      }
+     ],
+     "note": "Table starts at V0 = 905 m/s although the spec block of the same page says 'Muzzle velocity 890 m/s (2920 fps)'."
+    }
+   ]
+  },
+  {
+   "id": "308sub",
+   "maker": "Lapua",
+   "product": ".308 Win Subsonic 13.0 g (200 gr) FMJBT, B416 (product no. 4317340)",
+   "bulletGr": 200,
+   "bulletG": 13.0,
+   "muzzleVelocityMps": 325,
+   "testBarrelIn": 16,
+   "bcG1": 0.518,
+   "bcG7": 0.235,
+   "sources": [
+    "https://www.lapua.com/product/308-win-subsonic-fmjbt-tactical-cartridge-13g-200gr-4317340/",
+    "https://defence.nioa.com.au/uploads/documents/Lapua/lapuaspecialpurpose2011eng.pdf"
+   ],
+   "tables": [
+    {
+     "source": "https://www.lapua.com/product/308-win-subsonic-fmjbt-tactical-cartridge-13g-200gr-4317340/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win Subsonic 200 gr FMJBT B416 (4317340)",
+      "bulletGr": 200,
+      "bulletG": 13.0,
+      "muzzleVelocityMps": 325,
+      "bcG1": 0.518,
+      "bcG7": 0.235,
+      "testBarrelIn": 16,
+      "testBarrelMm": 410
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 325,
+       "energy": 687
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 33,
+       "velocity": 309,
+       "energy": 620
+      },
+      {
+       "range": 200,
+       "drop": -988,
+       "drift": 127,
+       "velocity": 296,
+       "energy": 568
+      },
+      {
+       "range": 300,
+       "drop": -3097,
+       "drift": 277,
+       "velocity": 284,
+       "energy": 524
+      }
+     ]
+    },
+    {
+     "source": "https://www.lapua.com/product/308-win-subsonic-fmjbt-tactical-cartridge-13g-200gr-4317340/",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win Subsonic 200 gr FMJBT B416 (4317340)",
+      "bulletGr": 200,
+      "bulletG": 13.0,
+      "muzzleVelocityMps": 325,
+      "bcG1": 0.518,
+      "bcG7": 0.235,
+      "testBarrelIn": 16,
+      "testBarrelMm": 410
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 325,
+       "energy": 687
+      },
+      {
+       "range": 100,
+       "drop": 1033,
+       "drift": 33,
+       "velocity": 309,
+       "energy": 620
+      },
+      {
+       "range": 200,
+       "drop": 1077,
+       "drift": 127,
+       "velocity": 296,
+       "energy": 568
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 277,
+       "velocity": 284,
+       "energy": 524
+      }
+     ]
+    },
+    {
+     "source": "Lapua Special Purpose brochure 2011 - https://defence.nioa.com.au/uploads/documents/Lapua/lapuaspecialpurpose2011eng.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win Subsonic 200 gr FMJBT B416 (4317340)",
+      "bulletGr": 200,
+      "bulletG": 13.0,
+      "muzzleVelocityMps": 320,
+      "bcG1": "0.515 above 300 m/s, 0.413 below 300 m/s",
+      "bcG7": 0.211,
+      "testBarrelIn": 16,
+      "testBarrelMm": 410
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 100,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 320,
+       "energy": 666
+      },
+      {
+       "range": 100,
+       "drop": 0,
+       "drift": 29,
+       "velocity": 305,
+       "energy": 605
+      },
+      {
+       "range": 200,
+       "drop": -1011,
+       "drift": 113,
+       "velocity": 292,
+       "energy": 555
+      },
+      {
+       "range": 300,
+       "drop": -3169,
+       "drift": 250,
+       "velocity": 281,
+       "energy": 512
+      }
+     ],
+     "note": "Older (2011) published table for the same B416 cartridge, with different MV (320 m/s) and velocity-banded BC. Max barrel length 450 mm, twist 1:250 mm or faster."
+    },
+    {
+     "source": "Lapua Special Purpose brochure 2011 - https://defence.nioa.com.au/uploads/documents/Lapua/lapuaspecialpurpose2011eng.pdf",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Lapua",
+      "product": ".308 Win Subsonic 200 gr FMJBT B416 (4317340)",
+      "bulletGr": 200,
+      "bulletG": 13.0,
+      "muzzleVelocityMps": 320,
+      "bcG1": "0.515 above 300 m/s, 0.413 below 300 m/s",
+      "bcG7": 0.211,
+      "testBarrelIn": 16,
+      "testBarrelMm": 410
+     },
+     "units": {
+      "range": "m",
+      "drop": "mm",
+      "drift": "mm",
+      "velocity": "mps",
+      "energy": "J"
+     },
+     "zeroRange": 300,
+     "sightHeight": 40,
+     "crosswind": "4 m/s",
+     "atmosphere": "unknown (not stated by Lapua)",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": 0,
+       "velocity": 320,
+       "energy": 666
+      },
+      {
+       "range": 100,
+       "drop": 1056,
+       "drift": 29,
+       "velocity": 305,
+       "energy": 605
+      },
+      {
+       "range": 200,
+       "drop": 1101,
+       "drift": 113,
+       "velocity": 292,
+       "energy": 555
+      },
+      {
+       "range": 300,
+       "drop": 0,
+       "drift": 250,
+       "velocity": 281,
+       "energy": 512
+      }
+     ],
+     "note": "Older (2011) published table for the same B416 cartridge, with different MV (320 m/s) and velocity-banded BC. Max barrel length 450 mm, twist 1:250 mm or faster."
+    }
+   ]
+  },
+  {
+   "id": "65prc",
+   "maker": "Hornady",
+   "product": "Match 6.5 PRC 147 gr ELD Match (item 81620)",
+   "bulletGr": 147,
+   "muzzleVelocityMps": 887,
+   "muzzleVelocityPublished": "2910 fps, 24 in test barrel",
+   "testBarrelIn": 24,
+   "bcG1": 0.697,
+   "bcG7": 0.351,
+   "dragModel": "G7",
+   "bcNote": "0.697 G1 / 0.351 G7 at Mach 2.25 (0.662/0.332 at Mach 2.0, 0.637/0.321 at Mach 1.75) - hornady.com/bc",
+   "sources": [
+    "https://www.hornady.com/ammunition/rifle/6.5-prc-147-gr-eld-match",
+    "https://www.hornady.com/bc"
+   ],
+   "tables": [
+    {
+     "source": "https://www.hornady.com/ammunition/rifle/6.5-prc-147-gr-eld-match",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Hornady",
+      "product": "Match 6.5 PRC 147 gr ELD Match",
+      "bulletGr": 147,
+      "muzzleVelocityFps": 2910,
+      "bcG1": 0.697,
+      "bcG7": 0.351,
+      "dragModel": "G7",
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "none published",
+     "atmosphere": "unknown (not stated on page)",
+     "note": "Velocity / energy / trajectory block of the product page, read 2026-11. Sight height 1.5 in inferred from the muzzle trajectory cell (-1.5); 200 yd zero inferred from the 0 cell. Hornady does not say which drag model produced the table; it is replayed here with the G7 BC Hornady publishes at Mach 2.25.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2910,
+       "energy": 2764
+      },
+      {
+       "range": 100,
+       "drop": 1.5,
+       "drift": null,
+       "velocity": 2775,
+       "energy": 2514
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": null,
+       "velocity": 2645,
+       "energy": 2283
+      },
+      {
+       "range": 300,
+       "drop": -6.5,
+       "drift": null,
+       "velocity": 2518,
+       "energy": 2069
+      },
+      {
+       "range": 400,
+       "drop": -18.4,
+       "drift": null,
+       "velocity": 2395,
+       "energy": 1871
+      },
+      {
+       "range": 500,
+       "drop": -36.5,
+       "drift": null,
+       "velocity": 2275,
+       "energy": 1689
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "7prc",
+   "maker": "Hornady",
+   "product": "Match 7mm PRC 180 gr ELD Match (item 80711)",
+   "bulletGr": 180,
+   "muzzleVelocityMps": 907,
+   "muzzleVelocityPublished": "2975 fps, 24 in test barrel",
+   "testBarrelIn": 24,
+   "bcG1": 0.796,
+   "bcG7": 0.401,
+   "dragModel": "G7",
+   "bcNote": "hornady.com/bc gives 0.777 G1 / 0.391 G7 (1:8.75 twist) and 0.816 / 0.411 (1:7.5 twist) at Mach 2.25; the mid value 0.401 is used for a 1:8 barrel.",
+   "sources": [
+    "https://www.hornady.com/ammunition/rifle/7mm-prc-180-gr-eld-match",
+    "https://www.hornady.com/bc"
+   ],
+   "tables": [
+    {
+     "source": "https://www.hornady.com/ammunition/rifle/7mm-prc-180-gr-eld-match",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Hornady",
+      "product": "Match 7mm PRC 180 gr ELD Match",
+      "bulletGr": 180,
+      "muzzleVelocityFps": 2975,
+      "bcG1": 0.796,
+      "bcG7": 0.401,
+      "dragModel": "G7",
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "none published",
+     "atmosphere": "unknown (not stated on page)",
+     "note": "Velocity / energy / trajectory block of the product page, read 2026-11. Sight height 1.5 in inferred from the muzzle trajectory cell (-1.5); 200 yd zero inferred from the 0 cell. Hornady does not say which drag model produced the table; it is replayed here with the G7 BC Hornady publishes at Mach 2.25.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2975,
+       "energy": 3439
+      },
+      {
+       "range": 100,
+       "drop": 1.4,
+       "drift": null,
+       "velocity": 2855,
+       "energy": 3168
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": null,
+       "velocity": 2739,
+       "energy": 2915
+      },
+      {
+       "range": 300,
+       "drop": -6.0,
+       "drift": null,
+       "velocity": 2626,
+       "energy": 2679
+      },
+      {
+       "range": 400,
+       "drop": -17.1,
+       "drift": null,
+       "velocity": 2516,
+       "energy": 2459
+      },
+      {
+       "range": 500,
+       "drop": -33.7,
+       "drift": null,
+       "velocity": 2408,
+       "energy": 2253
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "300prc",
+   "maker": "Hornady",
+   "product": "Match 300 PRC 225 gr ELD Match (item 82162)",
+   "bulletGr": 225,
+   "muzzleVelocityMps": 856,
+   "muzzleVelocityPublished": "2810 fps, 24 in test barrel",
+   "testBarrelIn": 24,
+   "bcG1": 0.777,
+   "bcG7": 0.391,
+   "dragModel": "G7",
+   "bcNote": "0.777 G1 / 0.391 G7 (1:10 twist) at Mach 2.25; 0.798 / 0.402 in a 1:7 twist - hornady.com/bc",
+   "sources": [
+    "https://www.hornady.com/ammunition/rifle/300-prc-225-gr-eld-match",
+    "https://www.hornady.com/bc"
+   ],
+   "tables": [
+    {
+     "source": "https://www.hornady.com/ammunition/rifle/300-prc-225-gr-eld-match",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Hornady",
+      "product": "Match 300 PRC 225 gr ELD Match",
+      "bulletGr": 225,
+      "muzzleVelocityFps": 2810,
+      "bcG1": 0.777,
+      "bcG7": 0.391,
+      "dragModel": "G7",
+      "testBarrelIn": 24
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.5,
+     "crosswind": "none published",
+     "atmosphere": "unknown (not stated on page)",
+     "note": "Velocity / energy / trajectory block of the product page, read 2026-11. Sight height 1.5 in inferred from the muzzle trajectory cell (-1.5); 200 yd zero inferred from the 0 cell. Hornady does not say which drag model produced the table; it is replayed here with the G7 BC Hornady publishes at Mach 2.25.",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2810,
+       "energy": 3945
+      },
+      {
+       "range": 100,
+       "drop": 1.7,
+       "drift": null,
+       "velocity": 2692,
+       "energy": 3620
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": null,
+       "velocity": 2577,
+       "energy": 3318
+      },
+      {
+       "range": 300,
+       "drop": -6.9,
+       "drift": null,
+       "velocity": 2465,
+       "energy": 3036
+      },
+      {
+       "range": 400,
+       "drop": -19.5,
+       "drift": null,
+       "velocity": 2356,
+       "energy": 2773
+      },
+      {
+       "range": 500,
+       "drop": -39.4,
+       "drift": null,
+       "velocity": 2250,
+       "energy": 2528
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "50bmg",
+   "maker": "Hornady",
+   "product": "Match 50 BMG 750 gr (item 8270)",
+   "bulletGr": 750,
+   "muzzleVelocityMps": 858,
+   "muzzleVelocityPublished": "2815 fps, 36 in test barrel",
+   "testBarrelIn": 36,
+   "bcG1": 1.05,
+   "bcNote": "Item 8270 was the 750 gr A-MAX Match (G1 1.050, quoted by retailers citing Hornady); the page now shows the same item number and the same 2815 fps with the 750 gr A-Tip Match, whose BC Hornady does not publish. The table below is the current page (A-Tip) replayed with the A-MAX G1 BC: a consistency check on the load used in the game, not a strict validation.",
+   "sources": [
+    "https://www.hornady.com/ammunition/rifle/50-bmg-750-gr-a-max-match"
+   ],
+   "tables": [
+    {
+     "source": "https://www.hornady.com/ammunition/rifle/50-bmg-750-gr-a-max-match",
+     "kind": "manufacturer",
+     "load": {
+      "maker": "Hornady",
+      "product": "Match 50 BMG 750 gr",
+      "bulletGr": 750,
+      "muzzleVelocityFps": 2815,
+      "bcG1": 1.05,
+      "testBarrelIn": 36
+     },
+     "units": {
+      "range": "yd",
+      "drop": "in",
+      "drift": "in",
+      "velocity": "fps",
+      "energy": "ft-lb"
+     },
+     "zeroRange": 200,
+     "sightHeight": 1.8,
+     "crosswind": "none published",
+     "atmosphere": "unknown (not stated on page)",
+     "note": "Sight height 1.8 in inferred from the muzzle trajectory cell (-1.8).",
+     "rows": [
+      {
+       "range": 0,
+       "drop": null,
+       "drift": null,
+       "velocity": 2815,
+       "energy": 13196
+      },
+      {
+       "range": 100,
+       "drop": 1.4,
+       "drift": null,
+       "velocity": 2727,
+       "energy": 12386
+      },
+      {
+       "range": 200,
+       "drop": 0,
+       "drift": null,
+       "velocity": 2641,
+       "energy": 11619
+      },
+      {
+       "range": 300,
+       "drop": -6.4,
+       "drift": null,
+       "velocity": 2557,
+       "energy": 10889
+      },
+      {
+       "range": 400,
+       "drop": -18.2,
+       "drift": null,
+       "velocity": 2474,
+       "energy": 10196
+      },
+      {
+       "range": 500,
+       "drop": -35.6,
+       "drift": null,
+       "velocity": 2393,
+       "energy": 9538
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "rifles": [
+  {
+   "model": "CZ 457 Varmint",
+   "caliber": ".22 LR",
+   "magazine": 5,
+   "barrelMm": 525,
+   "twist": "1:16",
+   "weightKg": 3.3,
+   "soldInFrance": true,
+   "source": "https://en.wikipedia.org/wiki/CZ_457",
+   "note": "3.3 kg = walnut Varmint per Wikipedia; synthetic ~2.9 kg. French listing ~780 EUR: https://www.armurerie-lavaux.com/carabines-de-tir/carabines-22lr/carabine-cz-cal.22-lr/"
+  },
+  {
+   "model": "Tikka T3x TAC A1",
+   "caliber": ".223 Rem",
+   "magazine": 10,
+   "barrelMm": 600,
+   "twist": "1:8",
+   "weightKg": 5.1,
+   "soldInFrance": null,
+   "source": "https://alfatactical.cz/images_obsah/obrazky-na-karte-zbozi/tikka_t3x_tac_a1.pdf",
+   "note": "Sako spec sheet: .223 offered with 8\" (or 12\") twist, 20\"/24\" barrels only (510 mm 4.9 kg / 600 mm 5.1 kg). Model is sold in France (.308, 6.5 CM, .260 at Lavaux/Auxerre) but no French listing for the .223 chambering was found - unverified."
+  },
+  {
+   "model": "Tikka T3x TAC A1",
+   "caliber": "6.5 Creedmoor",
+   "magazine": 10,
+   "barrelMm": 600,
+   "twist": "1:8",
+   "weightKg": 5.1,
+   "soldInFrance": true,
+   "source": "https://alfatactical.cz/images_obsah/obrazky-na-karte-zbozi/tikka_t3x_tac_a1.pdf",
+   "note": "French listings: https://www.armurerie-lavaux.com/carabines-de-tir/carabine-tir-longue-distance/carabine-tikka-t3x-tac-a1/ (61 cm barrel, 10-rd magazine, ~3100-3900 EUR)."
+  },
+  {
+   "model": "Ruger Precision Rifle (model 18028, 20 in)",
+   "caliber": ".308 Win",
+   "magazine": 10,
+   "barrelMm": 508,
+   "twist": "1:10",
+   "weightKg": 4.45,
+   "soldInFrance": true,
+   "source": "https://www.armurerie-auxerre.com/carabine-ruger-precision-rifle-20-smoked-bronze-cerakote-308-win.html",
+   "note": "Weight published as 9.8 lb by US retailers (4.45 kg is my conversion). 5R rifling, 1:10 RH. A 24 in (610 mm) Gen 2/Tactical variant is also sold in France."
+  },
+  {
+   "model": "Sako TRG 42",
+   "caliber": ".300 Win Mag",
+   "magazine": 7,
+   "barrelMm": 690,
+   "twist": "1:11",
+   "weightKg": 5.3,
+   "soldInFrance": true,
+   "source": "https://www.eurooptic.com/content/pdf/TRG.pdf",
+   "note": "Sako technical data sheet (2010): 690 mm, 11\" twist for .300 WM (some retailers list 1:10), 7-round magazine (5 in .338 LM), 5.3 kg fixed stock. TRG 42 A1 is heavier. Sako is distributed in France but no French retail listing for the TRG 42 .300 WM was found in this search - availability not directly verified."
+  },
+  {
+   "model": "PGM Mini-Hecate 2 (PGM 338), Commando 69 barrel",
+   "caliber": ".338 Lapua Magnum",
+   "magazine": 5,
+   "barrelMm": 690,
+   "twist": null,
+   "weightKg": 7.4,
+   "soldInFrance": true,
+   "source": "https://www.pgmprecision.com/en/sniper-rifles/mini-hecate-2-2/",
+   "note": "Current manufacturer page: single-stack 5-round magazine, 69 cm barrel, 7.4 kg empty; twist not published there. The original PGM 338 / Mini-Hecate is usually quoted (Wikipedia) at 6.6 kg without scope with a 10-round magazine. PGM Precision is a French manufacturer and sells sport-shooting versions."
+  },
+  {
+   "model": "Savage 110 Elite Precision",
+   "caliber": "6mm Creedmoor",
+   "magazine": 10,
+   "barrelMm": 660,
+   "twist": "1:7.5",
+   "weightKg": 5.7,
+   "source": "https://savagearms.com/firearms/productsheet/110-elite-precision ; https://www.gun-tests.com/rifles/savage-model-110-elite-precision-57558-6mm-creedmoor/",
+   "note": "12.6 lb, 44 in overall. Twist printed as 1:7.5 by Gun Tests and retailers (one review says 1:7)."
+  },
+  {
+   "model": "Bergara B-14 HMR",
+   "caliber": "6.5 PRC",
+   "magazine": 3,
+   "barrelMm": 610,
+   "twist": "1:8",
+   "weightKg": 4.4,
+   "source": "https://solware.co.uk/bergara-b14-hmr ; https://www.brownells.com/guns/rifles/bolt-action-rifles/b-14-hmr-hunting--match-6.5-prc-rifle/",
+   "note": "9.7 lb, 44 in. Bergara's own B-14 HMR page (bergara.online/us/rifles/b14/hmr-rifle/): '5-round AICS detachable magazine is standard with our HMR rifle (3 round mag: 6.5 PRC)' - 3 used in the game. Some retailer titles say 5."
+  },
+  {
+   "model": "Seekins Precision Havak PH2",
+   "caliber": "7mm PRC",
+   "magazine": 3,
+   "barrelMm": 660,
+   "twist": "1:8",
+   "weightKg": 3.27,
+   "source": "https://www.opticsplanet.com/seekins-precision-havak-ph2-bolt-action-rifle-7mm-prc-26-in-barrel-frrmpg.html",
+   "note": "26 in fluted stainless barrel, 7.2 lb. Overall length not found: estimated in weapons.ts."
+  },
+  {
+   "model": "Barrett MRAD",
+   "caliber": ".300 PRC",
+   "magazine": 10,
+   "barrelMm": 660,
+   "twist": "1:8",
+   "weightKg": 6.27,
+   "source": "https://www.kygunco.com/product/barrett-18500-mrad-300-prc-26-fluted-fde ; Bass Pro listing (13.83 lb)",
+   "note": "49.4 in overall. Rail cant not verified (30 MOA assumed for the turret budget)."
+  },
+  {
+   "model": "Accuracy International AXSR",
+   "caliber": ".338 Lapua Magnum",
+   "magazine": 10,
+   "barrelMm": 686,
+   "twist": "1:9.35",
+   "weightKg": 7.39,
+   "source": "https://www.accuracyinternational.com/axsr-sport ; AI retail price list 2024 (30 MOA action rail)",
+   "note": "1265 mm overall (1050 folded)."
+  },
+  {
+   "model": "Tubb Adaptive Target Rifle (ATR)",
+   "caliber": ".33 XC",
+   "magazine": null,
+   "barrelMm": 838,
+   "twist": "1:9",
+   "weightKg": null,
+   "source": "https://www.davidtubb.com/image/data/davidtubb/articles/Adaptive_Target_Rifle_specifications.pdf",
+   "note": "Sold without barrel: 7.2 lb bare. 33 in 1:9 Schneider barrel is the one of Tubb's published 33XC loads. Complete weight (9.5 kg), overall length and magazine capacity (5) in weapons.ts are ESTIMATES."
+  },
+  {
+   "model": "Desert Tech HTI",
+   "caliber": ".375 CheyTac",
+   "magazine": 5,
+   "barrelMm": 737,
+   "twist": "1:10.5",
+   "weightKg": 9.03,
+   "source": "https://www.deltamike.co.nz/product/desert-tech-hti-375-cheytac-fde/",
+   "note": "Bullpup, 44 3/8 in (1127 mm), 19.9 lb. Twist: 1:10.5 on most vendor listings, 1:11.5 on an older spec sheet. Factory CheyTac velocity is for a 29.5 in 1:9.5 barrel."
+  },
+  {
+   "model": "CheyTac M200 Intervention",
+   "caliber": ".408 CheyTac",
+   "magazine": 7,
+   "barrelMm": 749,
+   "twist": "1:10",
+   "weightKg": 14.0,
+   "source": "https://cheytac.com/wp-content/uploads/2026/03/MIL-Catalog-2026.pdf",
+   "note": "56 in (1422 mm), 31 lb without optic, 40 MOA base standard, 50 and 60 MOA optional, integrated bipod."
+  },
+  {
+   "model": "Barrett Model 99",
+   "caliber": ".416 Barrett",
+   "magazine": 1,
+   "barrelMm": 813,
+   "twist": "1:12",
+   "weightKg": 11.3,
+   "source": "https://www.barrett.net/model-99",
+   "note": "Single-shot bullpup, 50 in (1270 mm), 25 lb. Published ammunition velocity is from a 36 in barrel."
+  },
+  {
+   "model": "Steyr HS .50 M1",
+   "caliber": ".50 BMG",
+   "magazine": 5,
+   "barrelMm": 889,
+   "twist": "1:15",
+   "weightKg": 13.0,
+   "source": "retailer listings of Steyr Arms 61.055.1 (e.g. https://www.kygunco.com/product/steyr-arms-61-055-1-hs-50-m1-50-bmg-33)",
+   "note": "Retailers disagree on the long barrel: 33 in or 35 in; 35 in used. Steyr Arms USA (steyr-arms.us/firearms/tactical-rifles/hs-50-m1/) prints barrel 35.4 in / 900 mm, overall 57.5 in / 1460 mm, 30.4 lb / 13.8 kg, 5 rounds: overall length in weapons.ts is that 1460 mm; barrel and weight kept at the retailer values."
+  }
+ ],
+ "notes": "UNITS: every table keeps its published units (see 'units'); Lapua drops and drifts are in MILLIMETRES (not cm), Federal/Hornady in inches/yards. Nothing in 'rows' was converted or interpolated; a 0 in a drop cell at the zero range is the published zero (blank in Federal's print). The top-level muzzleVelocityMps of Federal/Hornady loads IS a conversion from published fps (2720->829, 2710->826, 2600->792, 2900->884); the published value is in muzzleVelocityPublished and in each table's 'load'. Each table carries a 'load' object with ITS OWN inputs: several ids contain a second, different cartridge (Lapua) because the headline maker's table stops at 500 yd - never test the headline MV/BC against a table whose 'load' differs. REACH: 22lr 100 m; 223 500 yd only (no published 1000 table found for a 77 gr .223 load - null); 65cm Hornady 500 yd, Federal 500 yd, Lapua 136 gr 1000 m; 308 Federal 500 yd, Lapua 175 gr 1000 m; 300wm Federal 500 yd, Lapua 185 gr 1200 m; 338lm 1500 m; 308sub 300 m. SOURCES NOT REACHED: federalpremium.com and cci-ammunition.com sit behind a bot check and were not read; Federal data come from Federal's 2026 LE catalogue PDF and Federal spec sheets, so CCI Standard Velocity could not be documented (Lapua Center-X used instead). Federal's catalogue rows on p.14 carry no load numbers; they were matched to p.13 by row order within each product block (GM308M2 row cross-checked against a Federal web snippet). WIND: Lapua = 4 m/s (13 fps) full crosswind. Federal's LE catalogue does not print the wind speed; values are consistent with a 10 mph crosswind (Federal's usual convention) but that is my inference. Hornady publishes no drift. SIGHT HEIGHT: Lapua 40 mm, Federal 1.5 in, Hornady 1.5 in (inferred from -1.5 in at muzzle). ATMOSPHERE: Federal 59 F / 29.53 inHg / sea level (Army Standard Metro-like, not ICAO); Lapua and Hornady not stated. BC CAVEATS: Lapua says its rimfire BC (0.172) is computed by Quick Target Unlimited from V0 to V75 and applies to all its .22 LR bullets; Lapua centerfire tables are widely understood to be Doppler-radar based (QuickTarget/Lapua Ballistics, custom drag), so a single-G1 point-mass run will not match them exactly at long range - the 2011 Lapua brochure gives velocity-banded G1 values (338 Scenar GB488: 0.646/0.632/0.588/0.613/0.708; B416: 0.515 above 300 m/s, 0.413 below; 185 gr Scenar GB432: 0.485/0.472/0.439/0.457/0.657, G7 0.242). Sierra likewise publishes velocity-banded BCs for the MatchKings Federal loads; Federal's single numbers (0.372 / 0.505 / 0.533) are averages. Hornady quotes ELD-M BCs at Mach 2.25. DOUBTFUL: (1) Lapua .338 page lists MV 890 m/s in the spec block but 905 m/s in the table. (2) Lapua .300 WM 185 gr metric drift row looks inconsistent with its own imperial row (39 in at 600 yd vs 1229 mm at 600 m). (3) Lapua imperial tables contain misprints (.338: missing cells in the 300/600 yd rows; .300 WM energy 1947 ft-lb at 800 yd) - only metric tables were transcribed. (4) GM65CRD1 BC 0.535 and GM223M3 BC 0.372 are retailer-quoted. (5) GM223M3 MV: 2720 fps in catalogue vs 2730 +/- 25 in the 2020 spec sheet. (6) Rifle 'soldInFrance': null = could not verify for that chambering.",
+ "published": {
+  "note": "Published reference figures that are not trajectory tables. Quoted as printed; nothing computed.",
+  "litzSpinCoriolis": {
+   "source": "Bryan Litz, 'Gyroscopic (spin) Drift and Coriolis Effect', Applied Ballistics LLC (2021 reprint) - https://appliedballisticsllc.com/wp-content/uploads/2021/06/Gyroscopic-Drift-and-Coriolis-Effect.pdf",
+   "rangeYd": 1000,
+   "spinDriftTypicalIn": [
+    8,
+    9
+   ],
+   "spinDriftMaxIn": [
+    10,
+    12
+   ],
+   "coriolisHorizontalIn": [
+    2.5,
+    3.0
+   ],
+   "coriolisVerticalIn": [
+    2.5,
+    3.0
+   ],
+   "latitudeDeg": 45,
+   "quotes": "'typically 8-9 inches at 1000 yards for small arms trajectories'; 'You can count on no more than 10 to 12 inches at 1000 yards'; 'about 2.5-3.0 inches to the right at 1000 yards' near 45 N; vertical '+2.5 to 3.0 inches (shooting east), or -2.5 to 3.0 inches when shooting west'; 'Firing due North or South results in zero vertical deflection'."
+  },
+  "formulas": {
+   "miller": "Don Miller, 'A New Rule for Estimating Rifling Twist', Precision Shooting, March 2005: Sg = 30 m / (t^2 d^3 l (1 + l^2)), velocity factor (v/2800)^(1/3), air density factor.",
+   "litzSpinDrift": "Bryan Litz, Applied Ballistics for Long Range Shooting: SD [in] = 1.25 (Sg + 1.2) tof^1.83.",
+   "litzAeroJump": "Bryan Litz, Applied Ballistics for Long Range Shooting: vertical deflection [MOA per mph of crosswind] = 0.01 Sg - 0.0024 L + 0.032, L = bullet length in calibres.",
+   "g7Table": "Standard G7 drag function (BRL), as tabulated in McCoy, Modern Exterior Ballistics, and in open-source solvers (py-ballisticcalc drag_tables.py TableG7, 84 points Mach 0 to 5)."
+  },
+  "ammunition": [
+   {
+    "id": "6cm",
+    "product": "Berger Match Grade Target 6mm Creedmoor 109 gr LRHT (20030)",
+    "fps": 2950,
+    "energyFtLb": 2107,
+    "bcG1": 0.568,
+    "bcG7": 0.292,
+    "bulletOalIn": 1.277,
+    "source": "Berger Catalog 2026 (bergerbullets.com/wp-content/uploads/2026/03/English-Berger-Catalog-2026.pdf); bullet 24485 dimensions: bergerbullets.com/pdf/Quick-Reference-Sheets.pdf"
+   },
+   {
+    "id": "338lm300",
+    "product": "Berger Match Grade Tactical 338 Lapua Magnum 300 gr Hybrid OTM Tactical (81110)",
+    "fps": 2725,
+    "energyFtLb": 4947,
+    "bcG1": 0.822,
+    "bcG7": 0.421,
+    "bulletOalIn": 1.819,
+    "source": "Berger Catalog 2026; bullet 33109: Berger Quick Reference Sheets"
+   },
+   {
+    "id": "33xc",
+    "product": "33XC, 300 gr Berger, 120 gr H50BMG, 33 in Schneider barrel 1:9",
+    "fps": 3160,
+    "source": "David Tubb, '33XC 37XC 41XC writeup' (5.15.23), davidtubb.com"
+   },
+   {
+    "id": "375ct",
+    "product": "CheyTac .375 CheyTac 350 gr Balanced Flight",
+    "fps": 2950,
+    "bcG1": 0.988,
+    "barrelIn": 29.5,
+    "twist": "1:9.5",
+    "bulletOalIn": 2.083,
+    "source": "CheyTac USA Military & LEO Catalog 2026 (cheytac.com/wp-content/uploads/2026/03/MIL-Catalog-2026.pdf); bullet length: JBM Ballistics bullet length list (archived), Chey Tac 0.375 350 gr Solid (Litz)"
+   },
+   {
+    "id": "408ct",
+    "product": "CheyTac .408 CheyTac 419 gr Balanced Flight",
+    "fps": 2750,
+    "bcG1": 0.949,
+    "barrelIn": 29.5,
+    "twist": "1:10",
+    "bulletOalIn": 2.173,
+    "source": "CheyTac USA Military & LEO Catalog 2026 ('.949 Average BC (G1) over 3,500 yards'); bullet length: JBM list, Chey Tac 0.408 419 gr Solid (Litz)"
+   },
+   {
+    "id": "416b",
+    "product": "Barrett .416 Barrett, Hornady 500 gr A-Tip Match",
+    "fps": 2850,
+    "bcG1": 0.976,
+    "bcG7": 0.492,
+    "barrelIn": 36,
+    "twist": "1:12 recommended",
+    "source": "https://barrett.net/products/accessories/ammunition/416barrett/ ; Hornady BC page lists 0.976/0.493 at Mach 2.25. Bullet length NOT published (estimated in weapons.ts)."
+   },
+   {
+    "id": "50bmg",
+    "product": "Hornady Match 50 BMG 750 gr A-MAX (8270)",
+    "fps": 2815,
+    "bcG1": 1.05,
+    "barrelIn": 36,
+    "bulletOalIn": 2.54,
+    "source": "hornady.com (velocity, 36 in test barrel); G1 1.050 quoted by retailers citing Hornady; bullet length: JBM list"
+   }
+  ],
+  "ko2m2018": {
+   "source": "Precision Rifle Blog, 'What The Pros Use: King of 2 Miles Edition' (2018-07-05) - https://precisionrifleblog.com/2018/07/05/what-the-pros-use-king-2-miles-edition/",
+   "top10Cartridges": {
+    "375 CheyTac (incl. Improved)": 5,
+    "416 Barrett": 3,
+    "375 Libert": 1,
+    "375 Warner": 1
+   },
+   "winner": "Robert Brantley, .416 Barrett, 500 gr Cutting Edge Lazer at 3100 fps, 39 in 1:10 barrel",
+   "scopes": "Nightforce ATACR 5-25x56 (2nd, 3rd), Bushnell XRS II 4.5-30x (1st), Leupold Mark 5HD 5-25x56 (4th), Burris XTR II 5-25x50 (5th); Charlie TARAC prism on the 3rd and 4th place rifles"
+  }
+ }
+}

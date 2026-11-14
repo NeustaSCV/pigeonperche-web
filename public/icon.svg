@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0b0c0b"/>
+  <!-- montagne et ruine -->
+  <path d="M0 400 L120 300 L190 340 L256 250 L330 330 L400 290 L512 390 V512 H0 Z" fill="#191b18"/>
+  <path d="M226 252 V206 H238 V218 H250 V206 H262 V218 H274 V200 H286 V252 Z" fill="#2a2d28"/>
+  <!-- réticule -->
+  <g fill="none" stroke="#e7b565" stroke-width="7" stroke-linecap="round">
+    <circle cx="256" cy="256" r="150"/>
+    <path d="M256 76 V196 M256 316 V436 M76 256 H196 M316 256 H436"/>
+  </g>
+  <g fill="#e7b565">
+    <circle cx="256" cy="256" r="7"/>
+    <circle cx="226" cy="256" r="4"/><circle cx="286" cy="256" r="4"/>
+    <circle cx="256" cy="286" r="4"/><circle cx="256" cy="226" r="4"/>
+  </g>
+</svg>

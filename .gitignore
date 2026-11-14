@@ -1,0 +1,17 @@
+node_modules
+dist
+.npm-cache
+.tmp
+e2e/out
+
+# hors du dépôt web
+native/
+.snapshots/
+.DS_Store
+# photos d'armes sous droits d'auteur, référence de modélisation seulement
+tools/weapons-ref/
+# notes d'un autre projet livrées avec la banque de bâtiments
+src/buildings/bank/README.md
+src/buildings/bank/LIVRAISON.md
+# document de conception périmé
+PLAN.md

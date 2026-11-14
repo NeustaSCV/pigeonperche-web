@@ -1,0 +1,30 @@
+// Fumée : menu, commandes, briefing, quelques pas, carnet. Usage : node e2e/smoke.mjs [--level <id>]
+import { chromium } from 'playwright';
+import { LQ, assertLevel } from './levellib.mjs';
+const b = await chromium.launch({ headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
+const p = await b.newPage({ viewport: { width: 1440, height: 900 } });
+const errs = [];
+p.on('pageerror', (e) => errs.push(String(e).slice(0, 300)));
+p.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 300)); });
+await p.goto((process.env.HR_URL || 'http://127.0.0.1:5173/') + '?' + LQ);
+await p.waitForFunction(() => window.hr && window.hr.ready, null, { timeout: 120000 });
+await p.waitForTimeout(1500);
+await assertLevel(p);
+await p.click('text=Commandes'); await p.waitForTimeout(400); await p.click('text=Retour'); await p.waitForTimeout(300);
+await p.click('text=Commencer'); await p.waitForTimeout(900);
+const s1 = await p.evaluate(() => window.hr.game.state);
+await p.click('text=Continuer'); await p.waitForTimeout(800);
+const s2 = await p.evaluate(() => window.hr.game.state);
+// quelques pas, accroupi, carnet, râtelier
+await p.keyboard.down('KeyW'); await p.waitForTimeout(700); await p.keyboard.up('KeyW');
+await p.keyboard.press('KeyC'); await p.waitForTimeout(400);
+await p.keyboard.press('Tab'); await p.waitForTimeout(500);
+const s3 = await p.evaluate(() => window.hr.game.state);
+await p.screenshot({ path: 'e2e/out/carnet.png' });
+await p.keyboard.press('Tab'); await p.waitForTimeout(300);
+const s3b = await p.evaluate(() => window.hr.game.state);
+await p.keyboard.press('KeyX'); await p.waitForTimeout(900);
+const s4 = await p.evaluate(() => ({ st: window.hr.game.state, stance: window.hr.game.player.stance, z: window.hr.game.player.pos.z.toFixed(2), audio: window.hr.game.audio.started, q: window.hr.game.engine.q.name }));
+const menu = await p.evaluate(() => ({ niveau: window.hr.level.id, choix: [...document.querySelectorAll('[data-id=segLevel] button')].map((b) => b.dataset.k + (b.disabled ? ' (à venir)' : '') + (b.classList.contains('sel') ? ' *' : '')) }));
+console.log(JSON.stringify({ menu, s1, s2, s3, s3b, s4, errs }));
+await b.close();
