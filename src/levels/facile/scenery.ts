@@ -197,7 +197,7 @@ export class Vale {
     kitMeshes(engine, k, tex, col, this.group);
 
     // ================= rivière (ruban), fanions =================
-    buildWater(engine, this.group, { level: 0, lake: null, river: { points: terrain.meta.river, width: RIVER_WIDTH } });
+    buildWater(engine, this.group, { level: 0, lake: null, river: { points: terrain.meta.river, width: RIVER_WIDTH, drape: (x, z) => terrain.meshHeightAt(x, z) } });
     const P1 = SITES.plate1, P2 = SITES.plate2, B = SITES.balloon;
     const deckTop = BASE_Y + DECK.floor;
     const Hsp = LOTS.hopital;

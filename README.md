@@ -249,7 +249,7 @@ Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier,
 - **Mission standard automatisée** : le tireur automatique prend parfois un tir de plus sur une cible mobile (véhicule), selon l'instant où le coup part.
 - **Personnage** : silhouette simple, sans animation de visage.
 - **Ciel** : une seule photographie de ciel, éclaircie par niveau.
-- **Rivières des cartes facile et standard** : vues exactement de dessus, elles apparaissent par plaques.
+- **Rivière de la carte facile** : vue de très haut et à la verticale, elle apparaît encore par plaques ; depuis le site de tir et à la lunette, elle est continue.
 - **Titre** : la lettre P manuscrite se lit un peu comme un R.
 
 ## Licences

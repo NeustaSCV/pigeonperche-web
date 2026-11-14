@@ -296,7 +296,7 @@ export class Valley {
     };
 
     // lac (grand quad) et rivière (ruban)
-    this.water = buildWater(engine, this.group, { level: LAKE_LEVEL, lake: { x: 1750, z: -980, w: 2600, d: 1700 }, river: { points: terrain.meta.river, width: RIVER_WIDTH } });
+    this.water = buildWater(engine, this.group, { level: LAKE_LEVEL, lake: { x: 1750, z: -980, w: 2600, d: 1700 }, river: { points: terrain.meta.river, width: RIVER_WIDTH, drape: (x, z) => terrain.meshHeightAt(x, z) } });
     const fl = polar(100, 104);
     buildFlags(engine, wind, this.group, [
       [fl.x + 2.5, H(fl.x + 2.5, fl.z + 1), fl.z + 1, 2.6, 0xc8412f],
