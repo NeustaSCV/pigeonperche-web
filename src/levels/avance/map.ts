@@ -164,6 +164,58 @@ export const ROAD: [number, number][] = [
 ];
 export const ROAD_WIDTH = 7;
 
+/**
+ * La rivière de la plaine (x, z, niveau de l'eau) : elle coule d'ouest en est dans l'axe de la vallée, au nord de
+ * tout ce qui se tire — 150 m derrière la tour de refroidissement, dont la station de pompage est sur sa rive sud.
+ * Elle entre et sort de la carte par une cluse dans les collines. Pays sec : lit encaissé de 3 à 6 m, berges de galets.
+ */
+export const RIVER: [number, number, number][] = [
+  [-5120, -2750, 582.8], [-4300, -2700, 582.7], [-3500, -2740, 582.6], [-2700, -2630, 582.5], [-2000, -2720, 582.4], [-1400, -2610, 582.3],
+  [-800, -2700, 582.2], [-200, -2630, 582.1], [300, -2715, 582.05], [700, -2645, 582.0], [900, -2655, 581.95], [1150, -2700, 581.9],
+  [1700, -2620, 581.8], [2400, -2720, 581.7], [3200, -2640, 581.6], [4100, -2740, 581.5], [5120, -2690, 581.4],
+];
+export const RIVER_WIDTH = 22;
+/** Station de pompage de la centrale, sur la rive sud, et pied de la tour où arrivent ses deux conduites. */
+export const INTAKE = { x: CENTRALE.x + 22, z: -2630, tx: CENTRALE.x + 14, tz: CENTRALE.z - 30 };
+
+/**
+ * Voies secondaires : chaque bâtiment est relié à la route de la plaine (la halte du passage à niveau est dessus).
+ * Tracées dans le relief et la carte de matières par le générateur (lib.carveWays) ; `to` nomme le bâtiment desservi.
+ *  - rue de la Compagnie : de la route, à l'ouest de la halte, au parvis du siège, dans l'axe de sa façade ;
+ *  - route de l'aciérie : plein nord, jusqu'à la grande porte sud de la halle de coulée ;
+ *  - route de la centrale : branchée sur celle de l'aciérie, elle traverse la zone des hangars, contourne par l'est
+ *    la plaque des 2 500 m et arrive à la brèche est de la tour ;
+ *  - route de la rive nord : la prolonge, passe la rivière sur un pont de béton et finit aux fermes de la rive nord ;
+ *  - route de la mine : monte le talus en écharpe vers l'ouest, un lacet, et revient par la courbe de niveau jusqu'au
+ *    carreau, derrière les bains-douches ;
+ *  - chemin du château d'eau : chemin de terre, deux lacets dans le talus, arrive au portail (côté ouest).
+ */
+export const WAYS: {
+  name: string; kind: 'route' | 'chemin' | 'allee'; width: number; pts: [number, number][]; to?: string; maxSlope?: number;
+  bridges?: { x: number; z: number; deck: number; length: number; kind?: 'pierre' | 'bois' | 'beton'; width?: number }[];
+}[] = [
+  { name: 'rue de la Compagnie', kind: 'route', width: 6, to: 'siege', pts: [[-770, -1500.5], [-812, -1700], [-886, -1913], [-927.8, -2004]] },
+  { name: 'route de l’aciérie', kind: 'route', width: 8, to: 'fourneau', pts: [[255, -1501], [253, -1620], [251, -1745]] },
+  {
+    name: 'route de la centrale', kind: 'route', width: 7, to: 'centrale',
+    pts: [[253, -1620], [330, -1650], [470, -1760], [640, -1960], [820, -2160], [950, -2300], [985, -2400], [960, -2462], [897, -2483.5]],
+  },
+  {
+    name: 'route de la rive nord', kind: 'route', width: 6,
+    pts: [[985, -2400], [1012, -2520], [1016, -2620], [1012, -2676], [1010, -2740], [1020, -2820], [1000, -2930]],
+    bridges: [{ x: 1012, z: -2676, deck: 585.6, length: 38, kind: 'beton', width: 8 }],
+  },
+  {
+    name: 'route de la mine', kind: 'route', width: 6.5, to: 'mine',
+    pts: [[-1200, -1500.2], [-1200, -1250], [-1195, -1000], [-1190, -760], [-1250, -625], [-1390, -540], [-1570, -445], [-1630, -420], [-1670, -438], [-1692, -418], [-1672, -382], [-1630, -362], [-1550, -360], [-1470, -362], [-1310, -358], [-1250, -335], [-1223, -319]],
+  },
+  {
+    name: 'chemin du château d’eau', kind: 'chemin', width: 4, to: 'chateau',
+    maxSlope: 0.13,
+    pts: [[1000, -1503.5], [1000, -1250], [1000, -940], [1080, -780], [1180, -680], [1200, -620], [1160, -540], [940, -420], [880, -360], [800, -320], [700, -340], [660, -310], [680, -260], [720, -240], [760, -260], [840, -220], [920, -202], [966, -199]],
+  },
+];
+
 /** Butte témoin à l'est : sommet plat à hauteur du plateau, c'est elle qui porte la plaque du mile. */
 export const BUTTE = { ...targetXZ('mile'), top: ALT.mile };
 
@@ -221,8 +273,10 @@ export const SCULPT: { x: number; z: number; h: number; r0: number; r1: number }
 export const SITE = {
   start: { x: 0, z: 17, yaw: 0 },
   rack: { x: 9, z: 25 },
-  /** rayon de la zone praticable autour de l'origine */
+  /** rayon du cœur du site (dalles, mirador, abri) autour de l'origine */
   radius: 37,
+  /** rayon du terrain libre : jusqu'au rebord de la corniche au nord, à l'est et à l'ouest ; clôture au sud, sur l'isthme */
+  roam: 64,
   /** station de pompage : local de béton (centre, demi-dimensions) */
   pump: { x: -15, z: 13, hx: 3.4, hz: 2.4, h: 3.1 },
   /** pylône du relais et manche à air */

@@ -179,6 +179,23 @@ export interface BuildingSpot {
   hide?: string[];
 }
 
+/** Voie secondaire d'une carte, telle que déclarée dans map.ts (`WAYS`) et lue par le générateur de relief. */
+export interface WaySpec {
+  name: string;
+  /** 'route' : rue, route industrielle (pente ≤ 10 %) ; 'chemin' : chemin de terre (≤ 14 %) ; 'allee' : allée gravillonnée */
+  kind: 'route' | 'chemin' | 'allee';
+  /** largeur de la chaussée (m) */
+  width: number;
+  /** points de passage (x, z), du raccord au réseau jusqu'à l'entrée desservie ; lissés par le générateur */
+  pts: [number, number][];
+  /** nom du bâtiment desservi (`BuildingSpot.name`) : l'arrivée est mise à l'altitude de son sol */
+  to?: string;
+  /** pente maximale (m/m) si elle diffère de celle de la nature de la voie */
+  maxSlope?: number;
+  /** ponts : centre, altitude du tablier, portée ; 'pierre' (défaut), 'bois' ou 'beton' */
+  bridges?: { x: number; z: number; deck: number; length: number; kind?: 'pierre' | 'bois' | 'beton'; width?: number }[];
+}
+
 /** Point d'intérêt d'un bâtiment posé, dans le monde : où accrocher une cible ou poster une sentinelle. */
 export interface BuildingPoint {
   /** 'window', 'door', 'breach', 'opening' : ouvertures ; 'roof', 'gallery' : planchers en hauteur ; 'ground' ; 'summit' */
@@ -349,6 +366,12 @@ export interface LevelData {
   dopeLimit: number;
   physics: LevelPhysics;
   buildings: BuildingSpot[];
+  /**
+   * Voies secondaires (rue, route industrielle, chemin de terre, allée) qui relient chaque bâtiment au réseau de la
+   * carte. Facultatif : sans ce champ, la carte n'a que sa route principale. Elles sont tracées dans le relief et
+   * dans la carte de matières par le générateur (`lib.carveWays`), qui les écrit dans meta.json (`ways`).
+   */
+  ways?: WaySpec[];
   /** site de tir : altitude du sol, point de départ (yaw en radians, 0 = nord), râtelier */
   site: { baseY: number; start: { x: number; z: number; yaw: number }; rack: { x: number; z: number } };
   posts: Record<string, PostDef>;
@@ -391,6 +414,12 @@ export interface LevelData {
 export interface SiteNav {
   /** le point (x, z) est-il dans la zone praticable ? */
   allowed(x: number, z: number): boolean;
+  /**
+   * Pourquoi le point (x, z), hors de la zone, n'est pas praticable : 'pente' (rebord, talus trop raide), 'cloture'
+   * (limite du site, matérialisée), ou null (mur, limite propre au site). Facultatif : sert au message discret
+   * affiché quand le joueur insiste contre la limite, et aux tests (e2e/walk.mjs).
+   */
+  limit?(x: number, z: number): 'pente' | 'cloture' | null;
   /** nature du sol nu en (x, z), hors surfaces de marche des collisions */
   surfaceAt(x: number, z: number): Surface;
   /**

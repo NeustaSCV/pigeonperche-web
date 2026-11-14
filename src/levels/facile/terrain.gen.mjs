@@ -109,6 +109,12 @@ export default function generate(lib, log) {
   // la rivière après les replats : elle garde son lit au pied du bourg et du moulin
   lib.carveRiver(T, riverD, riverBed, W.RIVER_WIDTH);
   const roadD = lib.carveRoad(T, road, { width: W.ROAD_WIDTH, skip: (k) => riverD[k] < W.RIVER_WIDTH / 2 + 3 || inLot(wx(k % N), wx(Math.floor(k / N)), 1) });
+  // voies secondaires (rue de l'hôpital, chemins du moulin et du château d'eau, allée du château) : après la route et
+  // les lots ; elles s'arrêtent au bord des lots et laissent le lit de la rivière sous leurs ponts
+  const groundY = (name) => buildings[W.BUILDINGS.findIndex((b) => b.name === name)].groundY;
+  const net = lib.carveWays(T, W.WAYS.map((w) => ({ ...w, endY: w.to ? groundY(w.to) : undefined })), {
+    skip: (k) => riverD[k] < W.RIVER_WIDTH / 2 + 3 || inLot(wx(k % N), wx(Math.floor(k / N)), 1),
+  });
   // lignes vers les cibles accrochées aux bâtiments : hauteur comptée depuis le sol du bâtiment (altitude absolue)
   const groundOf = (name) => buildings[W.BUILDINGS.findIndex((b) => b.name === name)].groundY;
   const lines = W.SIGHTLINES.map((l) => (l.lot ? { post: l.post, x: l.x, z: l.z, y: groundOf(l.lot) + l.y, abs: true } : l));
@@ -119,6 +125,7 @@ export default function generate(lib, log) {
   const splat = lib.paint(T, {
     rockNoise: n4, forestNoise: n3, rockAlt: [900, 1000], forestLow: [900, 1000], treeLine: [1900, 2000], clearRadius: [50, 80],
     riverD, riverWidth: W.RIVER_WIDTH, roadD, roadWidth: W.ROAD_WIDTH,
+    wayEdge: net.edge, wayDirt: net.dirt, wayGravel: net.gravel,
     sites: W.SITES, skipSite: (name) => name === 'guet', siteCore: (name) => (name === 'quarry' ? 0.85 : name === 'track' ? 0.25 : 0.5),
     // bois sur les hauteurs seulement : la vallée et le plateau restent ouverts (prés et champs)
     forestExtra: (x, z) => clearing(x, z) * (0.1 + 0.9 * ss(W.VALLEY_Y + 24, W.VALLEY_Y + 46, T.sampleH(x, z)) * ss(420, 700, Math.hypot(x, z))),
@@ -136,7 +143,7 @@ export default function generate(lib, log) {
       const k = idx(i, j);
       const r = Math.hypot(x, z);
       if (r < 62 || r > 1460 || inLot(x, z, 8)) continue;
-      if (riverD[k] < W.RIVER_WIDTH / 2 + 5 || roadD[k] < 9) continue;
+      if (riverD[k] < W.RIVER_WIDTH / 2 + 5 || roadD[k] < 9 || net.edge[k] < 5) continue;
       const h = H[k];
       const sx = (H[k + 1] - H[k - 1]) / (2 * T.CELL), sz = (H[k + N] - H[k - N]) / (2 * T.CELL);
       if (Math.hypot(sx, sz) > 0.55) continue;
@@ -180,5 +187,5 @@ export default function generate(lib, log) {
   const foreign = cut.filter((c) => !W.SIGHTLINES.some((l) => l.lot && Math.round(l.x) === c.x && Math.round(l.z) === c.z && W.LOTS[l.lot].x === W.BUILDINGS.find((b) => b.id === c.building).x));
   if (foreign.length) log('! lignes de visée coupées par un bâtiment : ' + JSON.stringify(foreign));
 
-  return { T, splat, meta: { siteHeights, road: lib.roundLine(road), river: lib.roundLine(river), buildings }, sites: W.SITES, sightlines: lines, posts: W.POSTS, baseY: W.BASE_Y };
+  return { T, splat, meta: { siteHeights, road: lib.roundLine(road), river: lib.roundLine(river), riverWidth: W.RIVER_WIDTH, buildings, ways: net.ways }, sites: W.SITES, sightlines: lines, posts: W.POSTS, baseY: W.BASE_Y };
 }

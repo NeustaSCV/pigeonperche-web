@@ -78,6 +78,35 @@ export const BUILDINGS: { id: string; carte?: string; name: string; x: number; z
 const lot = (name: string): { x: number; z: number; yaw: number } => BUILDINGS.find((b) => b.name === name)!;
 export const LOTS = { moulin: lot('moulin'), eglise: lot('eglise'), hopital: lot('hopital'), chateauEau: lot('chateauEau'), chateau: lot('chateau') };
 
+/**
+ * Voies secondaires : chaque bâtiment est relié à la route du bourg (l'église y est déjà : la route longe la grille
+ * de son cimetière). Tracées dans le relief et la carte de matières par le générateur (lib.carveWays) ; `to` nomme
+ * le bâtiment desservi, dont le sol fixe l'altitude d'arrivée.
+ *  - rue de l'hôpital : de la route à la porte des urgences, plein nord ;
+ *  - chemin du moulin : quitte la rue du bourg, descend les prés, passe la rivière sur un pont de bois en amont
+ *    du moulin et entre dans sa cour par l'ouest (porte du logis) ;
+ *  - chemin du château d'eau : pont de pierre à l'ouest, puis le coteau en écharpe (un lacet) jusqu'au portail sud ;
+ *  - allée du château : droite, dans l'axe du perron, depuis la rue du bourg.
+ */
+export const WAYS: {
+  name: string; kind: 'route' | 'chemin' | 'allee'; width: number; pts: [number, number][]; to?: string; maxSlope?: number;
+  bridges?: { x: number; z: number; deck: number; length: number; kind?: 'pierre' | 'bois' | 'beton'; width?: number }[];
+}[] = [
+  { name: 'rue de l’hôpital', kind: 'route', width: 4.5, to: 'hopital', pts: [[-80, -551.3], [-80, -575], [-80, -600]] },
+  {
+    name: 'chemin du moulin', kind: 'chemin', width: 3, to: 'moulin',
+    pts: [[62, -484], [20, -452], [-50, -392], [-120, -322], [-158, -284], [-166, -260], [-160, -236], [-146, -218], [-133, -209]],
+    bridges: [{ x: -166, z: -260, deck: 15.4, length: 15, kind: 'bois' }],
+  },
+  {
+    name: 'chemin du château d’eau', kind: 'chemin', width: 3.2, to: 'chateauEau',
+    maxSlope: 0.12,
+    pts: [[-640, -572], [-668, -500], [-705, -430], [-725, -376], [-735, -330], [-775, -265], [-840, -190], [-890, -120], [-900, -60], [-860, -30], [-770, 6], [-705, 34], [-640, 60], [-570, 58], [-505, 25], [-462, -28], [-440, -70], [-432, -94.5]],
+    bridges: [{ x: -725, z: -376, deck: 16.9, length: 18, kind: 'pierre' }],
+  },
+  { name: 'allée du château', kind: 'allee', width: 4.5, to: 'chateau', pts: [[291, -366.5], [303, -398], [380, -539.5], [459.1, -684.3]] },
+];
+
 export const SITES = {
   guet: { x: 0, z: 0, h: BASE_Y, r0: 25.5, r1: 38 },
   // distances comptées depuis le pas de tir (14, −18)
@@ -160,6 +189,8 @@ export const FARM = {
   /** au même endroit de la cour que sur la carte standard : les scénarios tactiles communs y marchent */
   rack: { x: 3.5, z: 19.2 },
   well: { x: 3, z: -3.5 },
+  /** rayon du terrain libre hors les murs : rebord du coteau au nord, à l'est et à l'ouest ; clôture de pâture au sud */
+  roam: 58,
   /** zones dallées ou battues (x, z, rayon) : pas d'herbe */
   paved: [[3.5, 18, 5.4], [3, -3.5, 2.0], [-10.8, -0.6, 1.8]] as [number, number, number][],
 };

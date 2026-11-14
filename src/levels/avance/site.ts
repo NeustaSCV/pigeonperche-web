@@ -7,6 +7,7 @@ import { GeoBuilder } from '../../core/builder';
 import { buildFlags } from '../../world/flags';
 import { Kit, kitMeshes, loadKitTextures, rgb } from '../../world/kit';
 import { Masonry } from '../../world/masonry';
+import { buildRoamFence, makeRoam, type Roam } from '../../world/roam';
 import type { LevelHost, SiteNav } from '../types';
 import { MIRADOR, POSTS, RIM_HEIGHT, SITE, STAIR } from './map';
 
@@ -169,6 +170,9 @@ export async function buildSite(h: LevelHost): Promise<SiteBuild> {
   // --- abri du râtelier (bois) ---
   const wb = new GeoBuilder();
   masonry.rackShelter(wb, col, SITE.rack);
+  // terrain libre jusqu'au rebord ; clôture en travers de l'isthme, au sud, là où le plateau continue
+  roam = makeRoam(h.terrain, H0, { radius: SITE.roam }, (x, z) => Math.hypot(x, z) < SITE.radius - 3.2, SITE.start);
+  buildRoamFence(wb, h.terrain, col, roam);
   const wood = new Mesh(wb.build(), masonry.woodMat);
   wood.castShadow = wood.receiveShadow = true;
   masonry.group.add(wood);
@@ -185,13 +189,21 @@ export async function buildSite(h: LevelHost): Promise<SiteBuild> {
 // ---------------------------------------------------------------------------------------------
 // Ce que le joueur sait du site.
 // ---------------------------------------------------------------------------------------------
-/** Zone praticable : le bout de l'éperon, jusqu'au bord des dalles. */
+let roam: Roam | null = null;
+/**
+ * Zone praticable : tout le bout de l'éperon jusqu'au rebord de la corniche (là où la pente casse), et le plateau
+ * jusqu'à la clôture de l'isthme. Le cœur du site (dalles comprises) reste praticable quoi qu'en dise le relief.
+ */
 function allowed(x: number, z: number): boolean {
-  return Math.hypot(x, z) < SITE.radius - 3.2;
+  const core = Math.hypot(x, z) < SITE.radius - 3.2;
+  if (roam === null) return core;
+  // (le cœur lui-même s'arrête à l'à-pic)
+  return roam.allowed(x, z) || (core && !roam.cliff(x, z));
 }
 
 export const nav: SiteNav = {
   allowed,
+  limit: (x, z) => roam?.limit(x, z) ?? null,
   surfaceAt(x: number, z: number): Surface {
     return SITE.paved.some(([px, pz, pr]) => Math.hypot(x - px, z - pz) < pr * 0.85) ? 'stone' : 'gravel';
   },

@@ -1,12 +1,15 @@
 // Décor lointain du niveau « avancé » : conduite forcée de la station de pompage, ligne à haute tension de la vallée,
-// hameaux et hangars de la plaine, meules, cairn de la butte, fanions des cibles. Les grands bâtiments (aciérie,
+// hameaux et hangars de la plaine, meules, cairn de la butte, fanions des cibles, rivière de la plaine (ruban d'eau,
+// pont de la route de la rive nord, prise d'eau de la centrale). Les grands bâtiments (aciérie,
 // centrale, château d'eau, mine, siège, halte) viennent de la banque : data.buildings.
 import { Group, Vector3 } from 'three';
 import { hash01, mulberry32 } from '../../core/noise';
 import { buildFlags } from '../../world/flags';
 import { Kit, gable, house, kitMeshes, loadKitTextures, rgb } from '../../world/kit';
+import { buildWater } from '../../world/water';
+import { buildWayBridges, nearWay } from '../../world/ways';
 import type { LevelHost } from '../types';
-import { BUILDINGS, DECKS, MOVER, SITES, TARGETS, polar, targetXZ } from './map';
+import { BUILDINGS, DECKS, INTAKE, MOVER, RIVER_WIDTH, SITES, TARGETS, polar, targetXZ } from './map';
 
 const UP = new Vector3(0, 1, 0);
 const v3 = (x: number, y: number, z: number): Vector3 => new Vector3(x, y, z);
@@ -23,7 +26,10 @@ export class Plain {
     const rnd = mulberry32(4410);
     const H = (x: number, z: number): number => terrain.heightAt(x, z);
     const road = terrain.meta.road;
-    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim);
+    // route de la plaine et voies secondaires : rien ne se pose sur la chaussée ; ni dans le lit de la rivière
+    const river = terrain.meta.river;
+    const nearRiver = (x: number, z: number, lim: number): boolean => river.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim + RIVER_WIDTH / 2 + 14);
+    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim) || nearWay(terrain.meta.ways, x, z, lim) || nearRiver(x, z, lim);
     const nearSite = (x: number, z: number, pad: number): boolean => Object.values(SITES).some((s) => Math.hypot(x - s.x, z - s.z) < s.r0 + pad);
 
     // ================= conduite forcée : de la station de pompage au château d'eau =================
@@ -36,6 +42,7 @@ export class Plain {
     }
     rgb(k.plaster, 0x9c9a92);
     k.plaster.box(36.5, H(36.5, 15) + 0.5, 15, 2.6, 1.8, 2.6, 2.4);
+    col.segs.push({ ax: 36.5, az: 15, bx: 36.51, bz: 15, r: 1.5, y0: H(36.5, 15) - 2, y1: H(36.5, 15) + 1.4 });
     for (let i = 0; i < pipe.length - 1; i++) {
       const [ax, az] = pipe[i], [bx, bz] = pipe[i + 1];
       const a = v3(ax, H(ax, az) + 0.75, az), b = v3(bx, H(bx, bz) + 0.75, bz);
@@ -45,6 +52,8 @@ export class Plain {
       const up = new Vector3().crossVectors(d, side).normalize();
       rgb(k.metal, i % 7 === 3 ? 0x7d4a36 : 0x4b6d63, 0.9 + hash01(i, 7) * 0.2);
       k.metal.obox(a.clone().add(b).multiplyScalar(0.5), side, up, d, 0.42, 0.42, len / 2 + 0.05, 1.2);
+      // près du site, la conduite arrête le joueur (on marche maintenant jusqu'au rebord)
+      if (Math.hypot(ax, az) < 80) col.segs.push({ ax, az, bx, bz, r: 0.45, y0: Math.min(a.y, b.y) - 2, y1: Math.max(a.y, b.y) + 0.8, box: true });
       // massif d'ancrage en béton à chaque jonction
       rgb(k.plaster, 0x9c9a92);
       k.plaster.box(bx, H(bx, bz) + 0.1, bz, 1.5, 1.3, 1.2, 2.4, Math.atan2(d.x, d.z));
@@ -53,7 +62,8 @@ export class Plain {
     // ================= ligne à haute tension le long de la vallée =================
     rgb(k.metal, 0x8f9498);
     for (let i = 0; i < 15; i++) {
-      const x = -4200 + i * 600, z = -2720 - 30 * Math.sin(i * 1.3);
+      // la ligne longe la rive nord de la rivière, 150 m en retrait
+      const x = -4200 + i * 600, z = -2860 - 30 * Math.sin(i * 1.3);
       if (nearSite(x, z, 60)) continue;
       const y = H(x, z), PH = 34;
       for (const [dx, dz] of [[-3, -3], [3, -3], [3, 3], [-3, 3]]) {
@@ -119,6 +129,47 @@ export class Plain {
       k.fabric.cyl(x, y - 0.1, z, 0.8, 0.8, 1.3, 10, 1.2, true);
     }
 
+    // ================= rivière : pont de la rive nord, fermes au bout de la route, prise d'eau de la centrale =================
+    buildWayBridges(k, terrain);
+    const north = (terrain.meta.ways ?? []).find((w) => w.bridges?.length);
+    if (north) {
+      const e = north.line[north.line.length - 1];
+      for (const [dx, dz, w, rot] of [[-22, -6, 13, 0.2], [20, -16, 11, 1.5], [-14, 26, 10, 1.7], [26, 18, 12, 0.1]]) tryHouse(e[0] + dx, e[1] + dz, w, 6.5, 3.6 + rnd() * 2.4, rot);
+    }
+    // station de pompage sur la rive sud : local de béton, deux conduites jusqu'au pied de la tour, crépine dans l'eau
+    {
+      const I = INTAKE;
+      const iy = H(I.x, I.z);
+      rgb(k.plaster, 0x9c9a92);
+      k.plaster.box(I.x, iy + 2.1, I.z, 9, 4.6, 6, 2.4, 0.12);
+      rgb(k.metal, 0x596066);
+      k.metal.box(I.x, iy + 4.5, I.z, 9.6, 0.16, 6.6, 1.2, 0.12);
+      const d = v3(I.tx - I.x, 0, I.tz - I.z), len = d.length();
+      d.divideScalar(len);
+      const side = new Vector3().crossVectors(UP, d).normalize();
+      const N2 = Math.ceil(len / 12);
+      for (const q of [-1.1, 1.1]) {
+        for (let i = 0; i < N2; i++) {
+          const a = v3(I.x, 0, I.z).addScaledVector(d, (len * i) / N2).addScaledVector(side, q), b = v3(I.x, 0, I.z).addScaledVector(d, (len * (i + 1)) / N2).addScaledVector(side, q);
+          a.y = H(a.x, a.z) + 0.7;
+          b.y = H(b.x, b.z) + 0.7;
+          const dd = b.clone().sub(a), l = dd.length();
+          dd.divideScalar(l);
+          const up = new Vector3().crossVectors(dd, side).normalize();
+          rgb(k.metal, 0x4b6d63, 0.9 + hash01(i, 11) * 0.2);
+          k.metal.obox(a.clone().add(b).multiplyScalar(0.5), side, up, dd, 0.45, 0.45, l / 2 + 0.05, 1.2);
+        }
+        // conduite d'aspiration : du local à l'eau
+        const w0 = v3(I.x, iy + 0.9, I.z).addScaledVector(side, q), w1 = v3(I.x, 0, I.z).addScaledVector(d, -24).addScaledVector(side, q);
+        w1.y = terrain.waterSurfaceAt(w1.x, w1.z) > -1e8 ? terrain.waterSurfaceAt(w1.x, w1.z) - 0.4 : H(w1.x, w1.z);
+        const dd = w1.clone().sub(w0), l = dd.length();
+        dd.divideScalar(l);
+        k.metal.obox(w0.clone().add(w1).multiplyScalar(0.5), side, new Vector3().crossVectors(dd, side).normalize(), dd, 0.45, 0.45, l / 2, 1.2);
+      }
+      rgb(k.plaster, 0x9c9a92);
+      for (let i = 1; i < N2; i++) { const a = v3(I.x, 0, I.z).addScaledVector(d, (len * i) / N2); k.plaster.box(a.x, H(a.x, a.z) + 0.1, a.z, 3.4, 1.2, 1.2, 2.4, Math.atan2(d.x, d.z) + Math.PI / 2); }
+    }
+
     // ================= cairn et borne de la butte, panneau de la cible mobile =================
     const mile = targetXZ('mile');
     rgb(k.stone, 0xb5ad9c);
@@ -126,6 +177,14 @@ export class Plain {
     k.stone.box(mile.x - 8, H(mile.x - 8, mile.z - 5) + 0.5, mile.z - 5, 0.5, 1.4, 0.5, 2.6, 0.4);
 
     kitMeshes(engine, k, tex, col, this.group);
+
+    // ================= rivière : ruban drapé sur le maillage du relief (elle est à 2 600 m, mailles de 40 m) =================
+    const water = buildWater(engine, this.group, { level: 0, lake: null, river: { points: river, width: RIVER_WIDTH, drape: (x, z) => terrain.meshHeightAt(x, z) } });
+    // vue du rebord sous 7°, l'eau ne renvoyait que le ciel voilé de l'horizon (un ruban blanc, comme une route) :
+    // reflet atténué, eau verte et un peu trouble des rivières de pays calcaire
+    water.color.set(0x2a565c);
+    water.envMapIntensity = 0.5;
+    water.roughness = 0.2;
 
     // ================= fanions : le vent près de chaque cible au sol =================
     const flag = (id: string, off: number, hgt: number, color: number): number[] => {

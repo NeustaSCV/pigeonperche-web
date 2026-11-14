@@ -20,6 +20,9 @@ import type { Engine } from '../core/engine';
 import type { PaletteSpec, TerrainSpec } from '../levels/types';
 import { WIND_GLSL, type Wind } from './wind';
 
+/** nombre de secteurs du maillage polaire du relief */
+const MESH_SECT = 512;
+
 export interface TerrainMeta {
   res: number;
   size: number;
@@ -30,6 +33,34 @@ export interface TerrainMeta {
   river: [number, number, number][];
   /** bâtiments terrassés par le générateur (lib.flattenBuildings) : altitude du y = 0 de chacun */
   buildings?: { id: string; carte?: string; x: number; z: number; yaw: number; groundY: number }[];
+  /** largeur du lit de `river` (m) : avec elle, une balle qui tombe dans la rivière fait une gerbe */
+  riverWidth?: number;
+  /** voies secondaires tracées par le générateur (lib.carveWays) : axe (x, z, altitude) tous les 4 m, ponts */
+  ways?: WayMeta[];
+}
+
+export interface WayBridge {
+  x: number;
+  z: number;
+  deck: number;
+  length: number;
+  width: number;
+  /** direction du tablier (unitaire, x et z) */
+  dir: [number, number];
+  kind?: 'pierre' | 'bois' | 'beton';
+}
+export interface WayMeta {
+  name: string;
+  kind: 'route' | 'chemin' | 'allee';
+  width: number;
+  /** nom du bâtiment desservi */
+  to?: string;
+  line: [number, number, number][];
+  bridges?: WayBridge[];
+  length: number;
+  maxSlope: number;
+  cut: number;
+  fill: number;
 }
 
 /**
@@ -145,6 +176,87 @@ export class Terrain {
     const i = Math.min(N - 1, Math.max(0, Math.round((x / S + 0.5) * (N - 1))));
     const j = Math.min(N - 1, Math.max(0, Math.round((z / S + 0.5) * (N - 1))));
     return this.splat[(j * N + i) * 4 + ch] / 255;
+  }
+
+  /** altitude au-dessus de laquelle aucun cours d'eau ne coule (rejet rapide de `waterSurfaceAt`) */
+  riverTop = -Infinity;
+  private riverBox: [number, number, number, number] | null = null;
+
+  /**
+   * Altitude de la surface de la rivière (meta.river, large de meta.riverWidth) au point (x, z) ; −∞ hors de son lit
+   * ou si le relief n'en déclare pas la largeur. Sert aux gerbes : le lac, lui, est à `spec.waterLevel`.
+   */
+  waterSurfaceAt(x: number, z: number): number {
+    const rv = this.meta.river, w = this.meta.riverWidth;
+    if (!w || !rv || rv.length < 2) return -Infinity;
+    if (!this.riverBox) {
+      let x0 = 1e9, x1 = -1e9, z0 = 1e9, z1 = -1e9, top = -1e9;
+      for (const p of rv) { x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); z0 = Math.min(z0, p[1]); z1 = Math.max(z1, p[1]); top = Math.max(top, p[2]); }
+      this.riverBox = [x0 - w, x1 + w, z0 - w, z1 + w];
+      this.riverTop = top + 0.3;
+    }
+    const b = this.riverBox;
+    if (x < b[0] || x > b[1] || z < b[2] || z > b[3]) return -Infinity;
+    let best = 1e18, y = 0;
+    for (let i = 0; i < rv.length - 1; i++) {
+      const ax = rv[i][0], az = rv[i][1], dx = rv[i + 1][0] - ax, dz = rv[i + 1][1] - az;
+      let t = ((x - ax) * dx + (z - az) * dz) / (dx * dx + dz * dz || 1);
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const qx = ax + dx * t - x, qz = az + dz * t - z;
+      const d2 = qx * qx + qz * qz;
+      if (d2 < best) { best = d2; y = rv[i][2] + (rv[i + 1][2] - rv[i][2]) * t; }
+    }
+    const half = w / 2 + 2.5;
+    return best < half * half ? y + 0.25 : -Infinity;
+  }
+
+  private radii: number[] | null = null;
+  /** Rayons des anneaux du maillage dessiné (croissance géométrique), partagés par `buildMesh` et `meshHeightAt`. */
+  private meshRadii(): number[] {
+    if (this.radii) return this.radii;
+    const radii: number[] = [0];
+    let r = 0.6;
+    const RMAX = this.S * 0.5 * 1.45;
+    while (r < RMAX) {
+      radii.push(r);
+      r = r * 1.017 + 0.3;
+    }
+    radii.push(RMAX);
+    return (this.radii = radii);
+  }
+
+  /**
+   * Altitude du maillage DESSINÉ au point (x, z) : loin du site ses mailles font 10 à 45 m et s'écartent de la carte
+   * de hauteur (`heightAt`) de plusieurs mètres. À utiliser pour poser sur le sol ce qui doit rester visible de loin
+   * (ruban d'eau d'une rivière lointaine) ; les collisions et les balles, elles, lisent `heightAt`.
+   */
+  meshHeightAt(x: number, z: number): number {
+    const radii = this.meshRadii();
+    const r = Math.hypot(x, z);
+    if (r < radii[1] || r >= radii[radii.length - 1]) return this.heightAt(x, z);
+    let lo = 0, hi = radii.length - 1;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (radii[m] <= r) lo = m; else hi = m; }
+    const SECT = MESH_SECT;
+    let a = Math.atan2(x, -z) / (Math.PI * 2);
+    if (a < 0) a += 1;
+    const c = Math.min(SECT - 1, Math.floor(a * SECT));
+    const P = (k: number, cc: number): [number, number, number] => {
+      const an = (cc / SECT) * Math.PI * 2;
+      const px = Math.sin(an) * radii[k], pz = -Math.cos(an) * radii[k];
+      return [px, this.heightAt(px, pz), pz];
+    };
+    const A = P(lo, c), B = P(lo, c + 1), C = P(hi, c), D = P(hi, c + 1);
+    const bary = (p: [number, number, number], q: [number, number, number], s: [number, number, number]): [number, number, number] => {
+      const det = (q[2] - s[2]) * (p[0] - s[0]) + (s[0] - q[0]) * (p[2] - s[2]);
+      const u = ((q[2] - s[2]) * (x - s[0]) + (s[0] - q[0]) * (z - s[2])) / det;
+      const v = ((s[2] - p[2]) * (x - s[0]) + (p[0] - s[0]) * (z - s[2])) / det;
+      return [u, v, 1 - u - v];
+    };
+    // les deux triangles de la maille, comme dans buildMesh : (A, B, C) et (B, D, C)
+    let w = bary(A, B, C);
+    if (w[0] >= -1e-4 && w[1] >= -1e-4 && w[2] >= -1e-4) return A[1] * w[0] + B[1] * w[1] + C[1] * w[2];
+    w = bary(B, D, C);
+    return B[1] * w[0] + D[1] * w[1] + C[1] * w[2];
   }
 
   /** Premier point du segment a→b sous le terrain (marche par pas), ou null. */
@@ -394,16 +506,8 @@ export class Terrain {
   private buildMesh(): void {
     this.buildShadowProxy();
     // anneaux à croissance géométrique
-    const S = this.S;
-    const radii: number[] = [0];
-    let r = 0.6;
-    const RMAX = S * 0.5 * 1.45;
-    while (r < RMAX) {
-      radii.push(r);
-      r = r * 1.017 + 0.3;
-    }
-    radii.push(RMAX);
-    const SECT = 512;
+    const radii = this.meshRadii();
+    const SECT = MESH_SECT;
     const WEDGES = 16;
     const bands = [0, 0, 0, 0];
     // limites radiales des bandes (indices d'anneaux)

@@ -1,6 +1,7 @@
 // Site de tir du niveau « standard » : la ruine (enceinte, tour à étage, escalier, puits, poutres calcinées, abri du
 // râtelier) et ce que le joueur a besoin d'en savoir (zone praticable, nature du sol, passages vers les postes).
 import { Mesh, Quaternion, Vector3 } from 'three';
+import { buildRoamFence, makeRoam, type Roam } from '../../world/roam';
 import type { Surface } from '../../audio/types';
 import { GeoBuilder } from '../../core/builder';
 import { mulberry32 } from '../../core/noise';
@@ -92,6 +93,9 @@ export async function buildRuin(h: LevelHost): Promise<Masonry> {
   }
   void q; void e;
   ruin.rackShelter(wb, col, RUIN.rack);
+  // terrain libre hors les murs, jusqu'à la rupture de pente du sommet (clôture seulement si un replat dépassait le rayon)
+  roam = makeRoam(h.terrain, H0, { radius: RUIN.roam }, core, RUIN.start);
+  buildRoamFence(wb, h.terrain, col, roam);
   const woodMesh = new Mesh(wb.build(), ruin.woodMat);
   const charMesh = new Mesh(cb.build(), ruin.charMat);
   for (const m of [woodMesh, charMesh]) {
@@ -115,8 +119,9 @@ function insidePoly(x: number, z: number): boolean {
   }
   return inside;
 }
-/** Zone praticable : l'enceinte, le couloir du rebord d'éboulis, le seuil des brèches est et ouest. */
-function allowed(x: number, z: number): boolean {
+let roam: Roam | null = null;
+/** Le cœur du site : l'enceinte, le couloir du rebord d'éboulis, le seuil des brèches est et ouest. */
+function core(x: number, z: number): boolean {
   if (insidePoly(x, z)) return true;
   const dx = LEDGE_B.x - LEDGE_A.x, dz = LEDGE_B.z - LEDGE_A.z;
   let t = ((x - LEDGE_A.x) * dx + (z - LEDGE_A.z) * dz) / (dx * dx + dz * dz);
@@ -125,9 +130,16 @@ function allowed(x: number, z: number): boolean {
   for (const k of ['est', 'ouest'] as const) if (Math.hypot(x - POSTS[k].x, z - POSTS[k].z) < 1.7) return true;
   return false;
 }
+/** Zone praticable : le cœur, et hors les murs tout le replat du sommet jusqu'à la rupture de pente. */
+function allowed(x: number, z: number): boolean {
+  if (roam === null) return core(x, z);
+  // (le cœur lui-même s'arrête à l'à-pic : on ne descend pas dans le vide au bout d'un poste)
+  return roam.allowed(x, z) || (core(x, z) && !roam.cliff(x, z));
+}
 
 export const nav: SiteNav = {
   allowed,
+  limit: (x, z) => roam?.limit(x, z) ?? null,
   surfaceAt(x: number, z: number): Surface {
     const r = Math.hypot(x, z);
     return RUIN.paved.some(([px, pz, pr]) => Math.hypot(x - px, z - pz) < pr * 0.85) ? 'stone' : r > 31 ? 'gravel' : 'grass';

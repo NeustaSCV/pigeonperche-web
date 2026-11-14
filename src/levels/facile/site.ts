@@ -2,6 +2,7 @@
 // plate-forme de guet en bois (escalier droit), pas de tir à l'angle nord-est, deux portillons vers les talus,
 // puits, abri du râtelier. Et ce que le joueur a besoin d'en savoir (zone praticable, sol, passages vers les postes).
 import { Mesh, Vector3 } from 'three';
+import { buildRoamFence, makeRoam, type Roam } from '../../world/roam';
 import type { Surface } from '../../audio/types';
 import { GeoBuilder } from '../../core/builder';
 import type { LevelHost, SiteNav } from '../types';
@@ -102,6 +103,9 @@ export async function buildFarm(h: LevelHost): Promise<Masonry> {
   });
   // abri du râtelier, banc et piquets du pas de tir
   farm.rackShelter(wb, col, FARM.rack);
+  // terrain libre hors les murs, jusqu'au rebord du coteau ; clôture de pâture au sud, sur le plateau
+  roam = makeRoam(h.terrain, H0, { radius: FARM.roam }, core, FARM.start);
+  buildRoamFence(wb, h.terrain, col, roam);
   wb.box(11.6, H0 + 0.42, -16.6, 0.4, 0.06, 1.7, 1.1);
   for (const dz of [-0.7, 0.7]) wb.box(11.6, H0 + 0.2, -16.6 + dz, 0.34, 0.4, 0.08, 1.1);
   col.segs.push({ ax: 11.6, az: -17.4, bx: 11.6, bz: -15.8, r: 0.22, y0: H0 - 1, y1: H0 + 0.5, box: true });
@@ -124,15 +128,23 @@ export async function buildFarm(h: LevelHost): Promise<Masonry> {
 // ---------------------------------------------------------------------------------------------
 const inYard = (x: number, z: number): boolean => x > YARD.x0 && x < YARD.x1 && z > YARD.z0 && z < YARD.z1;
 
-/** Zone praticable : la cour, le pas de tir de l'angle nord-est et les deux talus hors les murs. */
-function allowed(x: number, z: number): boolean {
+let roam: Roam | null = null;
+/** Le cœur du site : la cour, le pas de tir de l'angle nord-est et les deux talus hors les murs. */
+function core(x: number, z: number): boolean {
   if (inYard(x, z)) return true;
   for (const [x0, x1, z0, z1] of OUTSIDE) if (x > x0 && x < x1 && z > z0 && z < z1) return true;
   return false;
 }
+function allowed(x: number, z: number): boolean {
+  // hors les murs : tout le terrain que le relief porte, jusqu'au rebord du coteau ou à la clôture
+  if (roam === null) return core(x, z);
+  // (le cœur lui-même s'arrête à l'à-pic : on ne descend pas dans le vide au bout d'un poste)
+  return roam.allowed(x, z) || (core(x, z) && !roam.cliff(x, z));
+}
 
 export const nav: SiteNav = {
   allowed,
+  limit: (x, z) => roam?.limit(x, z) ?? null,
   surfaceAt(x: number, z: number): Surface {
     return FARM.paved.some(([px, pz, pr]) => Math.hypot(x - px, z - pz) < pr * 0.85) ? 'stone' : 'grass';
   },

@@ -14,7 +14,7 @@ Aucune effusion de sang : les cibles sont des plaques, des ballons, des silhouet
 - [Sur téléphone](#sur-téléphone)
 - [Carabines et calibres](#carabines-et-calibres)
 - [Balistique](#balistique)
-- [Bâtiments](#bâtiments)
+- [Bâtiments, routes et rivières](#bâtiments-routes-et-rivières)
 - [Tests](#tests)
 - [Organisation du code](#organisation-du-code)
 - [Limites connues](#limites-connues)
@@ -127,6 +127,8 @@ Les touches sont lues par position physique : ZQSD sur un clavier français, WAS
 | Pause | Échap |
 | Passer le tutoriel | P |
 
+On marche librement sur tout le site de tir, jusqu'à une limite visible : rebord de falaise, pente trop raide, mur ou clôture.
+
 Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours.
 
 ## Sur téléphone
@@ -181,9 +183,11 @@ Les données de munition (masse, vitesse, coefficient balistique, pas de rayure)
 
 Limites du modèle : les calibres .375 CheyTac, .408 CheyTac et .50 BMG volent en G1 faute de coefficient G7 publié, donc un peu trop bien dans le transsonique. Au-delà de 500 yards, les nouvelles charges ne sont validées que par cohérence physique, faute de tables publiées.
 
-## Bâtiments
+## Bâtiments, routes et rivières
 
 Les bâtiments du décor (église, moulin, hôpital, château d'eau, sanatorium, aciérie, mine, tour de refroidissement, siège de la Compagnie, halte du passage à niveau…) viennent d'une banque de modèles générés par code, dans `src/buildings/bank/`. L'adaptateur `src/buildings/` les fusionne en deux maillages, fournit une version lointaine et enregistre leurs collisions : les murs arrêtent les balles, les fenêtres et les brèches les laissent passer.
+
+Chaque bâtiment est relié au réseau de sa carte par une route, un chemin ou une allée inscrits dans le relief, avec un pont à chaque franchissement de rivière. Sur la carte avancée, une rivière traverse la plaine près de la centrale thermique, qui y puise par une station de pompage.
 
 ## Tests
 
@@ -199,13 +203,15 @@ npm run e2e:smoke        # menu, briefing, jeu, carnet, pause
 npm run e2e:mission      # un tireur automatique joue toute la mission
 npm run e2e:mission:portrait
 npm run e2e:matrix       # chaque cible est visible d'au moins un poste
-npm run e2e:walk         # parcours à pied vers chaque poste et retour
+npm run e2e:walk         # parcours à pied vers chaque poste, et marche droit vers le bord dans huit directions
 npm run e2e:mobile       # commandes tactiles en portrait
 npm run e2e:tutorial     # les 16 étapes du tutoriel
 npm run e2e:rifles       # cotes et coût des 17 modèles d'armes
 npm run e2e:physics      # tir réel contre solution calculée, effets avancés
 npm run e2e:buildings    # banc d'essai des bâtiments
 npm run e2e:perf         # temps par image des vues de référence
+PLAYWRIGHT_BROWSERS_PATH=0 node e2e/zone.mjs     # zone de marche : aucune limite invisible
+PLAYWRIGHT_BROWSERS_PATH=0 node e2e/routes.mjs   # captures des voies d'accès et des cours d'eau
 ```
 
 Les scripts lancent leur propre serveur ; la variable `HR_URL` les dirige vers un serveur déjà lancé (par exemple `HR_URL=http://127.0.0.1:4173/` avec `npm run preview`). Les captures vont dans `e2e/out/`.
@@ -243,6 +249,7 @@ Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier,
 - **Mission standard automatisée** : le tireur automatique prend parfois un tir de plus sur une cible mobile (véhicule), selon l'instant où le coup part.
 - **Personnage** : silhouette simple, sans animation de visage.
 - **Ciel** : une seule photographie de ciel, éclaircie par niveau.
+- **Rivières des cartes facile et standard** : vues exactement de dessus, elles apparaissent par plaques.
 - **Titre** : la lettre P manuscrite se lit un peu comme un R.
 
 ## Licences

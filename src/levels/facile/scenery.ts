@@ -10,6 +10,7 @@ import { buildFlags } from '../../world/flags';
 import { Kit, gable, house, kitMeshes, loadKitTextures, rgb } from '../../world/kit';
 import type { Terrain } from '../../world/terrain';
 import { buildWater } from '../../world/water';
+import { buildWayBridges, nearWay } from '../../world/ways';
 import type { Wind } from '../../world/wind';
 import { lotDistance } from '../building-lots';
 import { BASE_Y, BUILDINGS, DECK, HOOKS, LOTS, RIVER_WIDTH, SITES, TRACK, lotPoint } from './map';
@@ -47,7 +48,8 @@ export class Vale {
     const rnd = mulberry32(4117);
     const H = (x: number, z: number): number => terrain.heightAt(x, z);
     const road = terrain.meta.road;
-    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim);
+    // route du bourg et voies secondaires (chemins, rue, allée) : rien ne se pose sur la chaussée
+    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim) || nearWay(terrain.meta.ways, x, z, lim);
 
     // points visés dans les bâtiments (en plan) : aucune maison du décor ne doit se glisser devant
     const hookXZ = (key: keyof typeof HOOKS): [number, number] => {
@@ -80,6 +82,11 @@ export class Vale {
     house(k, terrain, 5, 32, 15, 6.6, 3.5, 0, 1);
     placed.push([-25, 30, 7]);
     house(k, terrain, -25, 30, 9.5, 7.2, 5.6, 1.35, 2);
+    // on marche maintenant hors les murs : la longère, la grange et l'appentis arrêtent le joueur
+    for (const [hx, hz, w, d, rot] of [[5, 32, 15, 6.6, 0], [-25, 30, 9.5, 7.2, 1.35], [18, 30.6, 4.4, 3.6, 0]]) {
+      const ux = Math.cos(rot), uz = -Math.sin(rot), l = Math.max(0.01, w / 2 - d / 2);
+      col.segs.push({ ax: hx - ux * l, az: hz - uz * l, bx: hx + ux * l, bz: hz + uz * l, r: d / 2 + 0.25, y0: BASE_Y - 4, y1: BASE_Y + 3, box: true });
+    }
     // appentis à bois contre la longère
     rgb(k.wood, 0x6b5a45);
     for (const dx of [-1.6, 1.6]) k.wood.box(18 + dx, H(18, 30) + 1.0, 29.6, 0.14, 2.2, 0.14, 1.5);
@@ -183,6 +190,9 @@ export class Vale {
       if (terrain.normalAt(x, z, new Vector3(), 2).y < 0.97) continue;
       k.fabric.cyl(x, y - 0.1, z, 0.75, 0.75, 1.25, 10, 1.2, true);
     }
+
+    // ================= ponts des chemins (bois au moulin, pierre vers le château d'eau) =================
+    buildWayBridges(k, terrain);
 
     kitMeshes(engine, k, tex, col, this.group);
 

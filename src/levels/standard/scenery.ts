@@ -8,6 +8,7 @@ import { buildFlags } from '../../world/flags';
 import { Kit, gable, house, kitMeshes, loadKitTextures, rgb, tent } from '../../world/kit';
 import type { Terrain } from '../../world/terrain';
 import { buildWater } from '../../world/water';
+import { nearWay } from '../../world/ways';
 import type { Wind } from '../../world/wind';
 import { lotDistance } from '../building-lots';
 import { BELL, BRIDGE, BUILDINGS, LAKE_LEVEL, RIVER_WIDTH, SITES, polar } from './map';
@@ -49,7 +50,9 @@ export class Valley {
     const rnd = mulberry32(2025);
     const H = (x: number, z: number): number => terrain.heightAt(x, z);
     const road = terrain.meta.road;
-    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim);
+    // la route, et les voies secondaires (ruelle, chemins) avec une marge moindre : les maisons les bordent
+    const ways = terrain.meta.ways;
+    const nearRoad = (x: number, z: number, lim: number): boolean => road.some((p) => Math.hypot(p[0] - x, p[1] - z) < lim) || nearWay(ways, x, z, lim - 6);
     /** dans le lot d'un bâtiment de la vallée, ou à moins de `margin` mètres */
     const inLot = (x: number, z: number, margin: number): boolean => BUILDINGS.some((b) => lotDistance(b, x, z) < margin);
 
@@ -93,7 +96,7 @@ export class Valley {
       if (H(x, z) < 12 || terrain.splatAt(x, z, 0) > 0.3) continue;
       // (les tirages sont faits avant le test du lot : la suite du décor ne dépend pas des bâtiments posés)
       const fw = 9 + rnd() * 4, fh = 3.6 + rnd() * 2.6, fs = seed++;
-      if (inLot(x, z, 12)) continue;
+      if (inLot(x, z, 12) || nearWay(ways, x, z, 10)) continue;
       placed.push([x, z, 8]);
       house(k, terrain, x, z, fw, 6.5, fh, Math.atan2(-dz, dx), fs);
     }

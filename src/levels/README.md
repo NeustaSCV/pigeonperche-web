@@ -66,7 +66,7 @@ node tools/gen-terrain.mjs <id>          # ou : npm run gen:terrain -- <id>
 écrit `public/terrain/<id>/{height.bin, splat.bin, meta.json}`. `terrain.gen.mjs` exporte `size`, `res` (les mêmes que
 `data.terrain`) et `default function generate(lib, log)` qui renvoie `{ T, splat, meta: { siteHeights, road, river },
 sites, sightlines, posts, baseY }`. `lib` = `tools/terrain-lib.mjs` : `createGrid`, bruits, `catmull`, `erode`,
-`carveLake`, `carveRiver`, `flattenSites`, `carveRoad`, `carveSightlines`, `paint`, `roundLine`. Sans route ni rivière :
+`carveLake`, `carveRiver`, `flattenSites`, `carveRoad`, `carveWays`, `carveSightlines`, `paint`, `roundLine`. Sans route ni rivière :
 `road: []`, `river: []`.
 
 Taille : 6 144 m / 1 024 points pour `standard` (cibles à 1 251 m ; `cameraFar` 14 000, `shadowFar` 2 600, `haze` 1,
@@ -76,10 +76,12 @@ dessiné jusqu'à 0,72 × le côté et le dôme du ciel est à 9 000 m : ne pas 
 `haze` < 1 si la brume masque les cibles. 2 048 points coûtent 16 Mo par fichier : à éviter sur téléphone.
 Budget : 60 i/s en 1440p sur M2, jamais sous 45 (`npm run e2e:perf`).
 
-Le relief de `standard` est figé : `shasum -a 256 public/terrain/standard/height.bin` doit donner `d4ecf510…ff4c4e5e`
-(refait le 2026-11-14 pour terrasser ses quatre bâtiments ; avant : `6752bb98…c221352c`. 2 494 cellules sur 1 048 576
+Le relief de `standard` est figé : `shasum -a 256 public/terrain/standard/height.bin` doit commencer par
+`c17ec1beb40e847e` (refait une seconde fois le 2026-11-14 pour ses voies secondaires : 408 cellules changées, de
+0,94 m au plus, toutes à moins de 20 m d'une voie ; voir « Voies, cours d'eau, terrain libre »). État précédent :
+`d4ecf510…ff4c4e5e` (refait le 2026-11-14 pour terrasser ses quatre bâtiments ; avant : `6752bb98…c221352c`. 2 494 cellules sur 1 048 576
 ont changé, de 6,4 m au plus, toutes à moins de 112 m du centre d'un lot ; partout ailleurs le relief est identique
-au bit près, et la route, la rivière et les altitudes des sites de `meta.json` n'ont pas bougé).
+au bit près, et la route, la rivière et les altitudes des sites de `meta.json` n'ont pas bougé.)
 
 ## Lignes de visée
 
@@ -312,3 +314,90 @@ cour, 30 rochers au lieu de 300.
   droite plafonnée à 1,5 s : le tireur automatique ne dépend plus de l'instant du tir pour la toucher à 1 250 m.
 - Points d'intérêt : le « toit à 33 m » du siège de la Compagnie est annoté (masqué par son parapet pour un tireur
   plus haut) ; la dalle de l'édicule, visible de partout, passe en tête.
+
+## Voies, cours d'eau, terrain libre (2026-11-14)
+
+Tout est rétrocompatible : champs facultatifs, défaut = comportement d'avant (une carte sans `WAYS` se régénère à
+l'identique, au bit près).
+
+### Voies secondaires (`WAYS` dans `map.ts`, `data.ways`)
+
+Chaque bâtiment doit être relié au réseau de la carte. Le socle ne traçait qu'une route (`ROAD`, `lib.carveRoad`) ;
+les autres voies se déclarent maintenant dans `map.ts` :
+
+```ts
+export const WAYS = [
+  { name: 'chemin du moulin', kind: 'chemin', width: 3, to: 'moulin',       // to : BuildingSpot.name (ou id)
+    pts: [[62, -484], …, [-133, -209]],                                      // du raccord au réseau à l'entrée desservie
+    maxSlope?: 0.12,                                                         // si différente de celle de la nature
+    bridges?: [{ x, z, deck, length, kind?: 'pierre' | 'bois' | 'beton', width? }] },
+];
+```
+
+| nature | emploi | pente max | raccord au relief | matière |
+| --- | --- | --- | --- | --- |
+| `route` | rue, route industrielle | 10 % | 12 m | terre battue |
+| `chemin` | chemin de terre (moulin, château d'eau, sanatorium) | 14 % | 7 m | terre battue, un peu moins marquée |
+| `allee` | allée d'un château | 10 % | 8 m | gravier (canal des éboulis) |
+
+- **Générateur**, après la route, les sites et `flattenBuildings`, avant `carveSightlines` et `paint` :
+
+  ```js
+  const net = lib.carveWays(T, W.WAYS.map((w) => ({ ...w, endY: w.to ? solDe(w.to) : undefined })), {
+    skip: (k) => riverD[k] < RW / 2 + 3 || dansUnLot(k),          // ni dans le lit de la rivière, ni dans un lot
+  });
+  const splat = lib.paint(T, { …, wayEdge: net.edge, wayDirt: net.dirt, wayGravel: net.gravel });
+  return { …, meta: { …, riverWidth: W.RIVER_WIDTH, ways: net.ways } };
+  ```
+
+  Pour chaque voie : tracé lissé et rééchantillonné tous les 4 m, profil en long tenu aux deux bouts (le réseau au
+  départ, le sol du bâtiment à l'arrivée), adouci puis ramené sous la pente maximale (déblai et remblai), tablier
+  imposé aux ponts ; plate-forme nivelée, ni arbres ni haie à moins de 2,5 m, chaussée peinte dans la carte de
+  matières (jamais plus étroite qu'une maille : sinon elle se lit en pointillé). Aucune géométrie ajoutée, aucun appel
+  de dessin. Une voie branchée sur une autre vient après elle dans la liste.
+- `tools/gen-terrain.mjs` affiche pour chaque voie longueur, pente maximale (sur 12 m), plus grand déblai et remblai,
+  et le nombre de cellules changées par rapport au relief en place (`--diff <dossier>` pour une autre référence).
+  Un déblai de plus de 5 m dit que le tracé coupe une bosse : le reprendre (lacet plus large, courbe de niveau).
+- **Décor** : `nearWay(terrain.meta.ways, x, z, marge)` (`src/world/ways.ts`) écarte maisons, hangars et meules de la
+  chaussée ; `buildWayBridges(kit, terrain)` pose les ponts dans le Kit du décor (pas d'appel de dessin de plus).
+- `meta.json` : `ways: [{ name, kind, width, to?, line: [[x, z, y]…], bridges?, length, maxSlope, cut, fill }]`.
+
+### Cours d'eau
+
+- `meta.riverWidth` (écrit par le générateur) : avec lui, une balle qui tombe dans le lit de `meta.river` fait une
+  gerbe (`terrain.waterSurfaceAt`), comme dans un lac (`terrain.waterLevel`). Les trois cartes le déclarent.
+- `buildWater(…, { river: { points, width, drape: (x, z) => terrain.meshHeightAt(x, z) } })` : ruban **drapé**. Loin
+  du site le maillage dessiné du relief a des mailles de 10 à 45 m, plus larges que le lit : sans `drape`, l'eau
+  n'apparaît que par plaques. Avec, le ruban est découpé tous les 6 m et posé sur le maillage là où il dépasse le
+  niveau de l'eau. `avance` l'utilise (rivière à 2 600 m) ; `facile` et `standard` gardent le ruban d'origine.
+- Une rivière vue de haut et de loin doit avoir des abords en pente douce : derrière une berge plus raide que l'angle
+  de vue (7° depuis le Rebord, soit 12 %), l'eau est cachée. `avance` taille un lit majeur à 7 %.
+
+### Terrain libre autour du site (`src/world/roam.ts`, `SiteNav.limit`)
+
+Le joueur n'est plus arrêté par une limite invisible en terrain dégagé. Chaque site garde son **cœur** dessiné à la
+main (cour, dalles, brèches, postes) et y ajoute le **terrain libre** :
+
+```ts
+roam = makeRoam(h.terrain, baseY, { radius: 64, maxSlope?: 0.45, drop?: 9 }, core, depart);
+buildRoamFence(boisDuSite, h.terrain, h.col, roam);            // clôture, seulement là où rien de naturel n'arrête
+const allowed = (x, z) => roam.allowed(x, z) || (core(x, z) && !roam.cliff(x, z));
+export const nav: SiteNav = { allowed, limit: (x, z) => roam?.limit(x, z) ?? null, … };
+```
+
+- praticable : à moins de `radius` de l'origine, pente ≤ `maxSlope` (le rebord d'une corniche, d'un coteau : on
+  s'arrête là où la pente casse, sans glisser ni tomber), au plus `drop` mètres sous le site, et **joignable à pied**
+  depuis le cœur (un replat isolé derrière le ressaut d'un cône de vue ne l'est pas) ;
+- les murs, rochers et troncs restent des collisions (`h.col.segs`) : ce sont eux qui arrêtent, pas la zone. Tout
+  décor solide proche du site doit y entrer (les maisons de `world/kit.ts` n'ont pas de collision de marche :
+  `facile` ajoute celles de la ferme, `avance` la conduite forcée) ;
+- là où le cercle traverse un terrain encore praticable (plateau derrière le site), `buildRoamFence` pose une clôture
+  (piquets, trois fils, collision) dans le maillage de bois du site — aucun appel de dessin de plus ;
+- `SiteNav.limit(x, z)` dit pourquoi un point est interdit (`'pente'`, `'cloture'`) : le jeu affiche un message
+  discret quand on insiste plus d'une demi-seconde contre la limite (au plus toutes les huit secondes).
+- Tests : `e2e/walk.mjs` (partie 1 bis : huit caps depuis le départ et chaque poste, arrêt sur obstacle ou rebord,
+  pas de chute) ; `node e2e/zone.mjs --level <id> [--bord <cap>]` dessine la zone et la nature de sa limite
+  (`e2e/out/routes/<id>-zone.png`), et échoue s'il reste plus de 1 % de limite invisible.
+  Totaux : `facile` 21/21, `standard` 89/89, `avance` 17/17.
+- `node e2e/routes.mjs --level <id>` : captures de chaque bâtiment avec sa voie (vue plongeante, arrivée, lunette),
+  des cours d'eau et des ponts, dans `e2e/out/routes/`.

@@ -32,6 +32,7 @@ const data: LevelData = {
   dopeLimit: M.DOPE_LIMIT,
   physics: M.PHYSICS,
   buildings: M.BUILDINGS,
+  ways: M.WAYS,
   site: { baseY: M.SUMMIT_HEIGHT, start: M.RUIN.start, rack: M.RUIN.rack },
   posts: M.POSTS,
   sightlines: M.SIGHTLINES,

@@ -116,6 +116,7 @@ export class Game {
   private rifleNode = new Group();
   private rifleParts: RifleParts | null = null;
   /** tests : caméra imposée (position, point visé, champ) ; null = caméra du jeu */
+  private elapsedBlocked = 0;
   testCam: { pos: [number, number, number]; look: [number, number, number]; fov: number } | null = null;
   /** tests : garde la vue extérieure (tireur visible) même en visée */
   forceThirdPerson = false;
@@ -337,6 +338,12 @@ export class Game {
       this.player = new Player(e, this.terrain, this.col, {
         footstep: (s, i) => this.audio.footstep(s, i),
         cloth: (i) => this.audio.cloth(i),
+        // retour discret, au plus toutes les huit secondes ; rien contre un mur (la limite se voit)
+        blocked: (why) => {
+          if (!why || this.elapsedBlocked > performance.now()) return;
+          this.elapsedBlocked = performance.now() + 8000;
+          this.ui.toast(why === 'pente' ? 'Trop raide' : 'Clôture du site', why === 'pente' ? 'Le bord : on ne descend pas plus bas' : 'On ne s’éloigne pas davantage', 1.8);
+        },
       }, this.clothTex, { baseY: this.data.site.baseY, start: this.data.site.start, posts: this.data.posts }, this.scene.nav);
       e.scene.add(this.player.group);
       this.buildRack();

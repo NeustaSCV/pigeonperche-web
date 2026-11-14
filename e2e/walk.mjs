@@ -6,7 +6,8 @@
 //  - palier et escalier de la tour ; aucune image hors de la zone jouable.
 // Une ligne par cas (OK / COINCÉ avec position et cause), code de sortie 1 si un cas échoue.
 // Usage : node e2e/walk.mjs [--level <id>] [--verbose]
-// La partie 1 (du départ à chaque poste par le guide, point de tir exact, retour par data.testWalk) vaut pour tout
+// La partie 1 (du départ à chaque poste par le guide, point de tir exact, retour par data.testWalk) et la partie
+// 1 bis (terrain libre : huit caps depuis le départ et chaque poste, arrêt sur une limite lisible) valent pour tout
 // niveau ; les parties suivantes éprouvent la géométrie de la ruine du niveau standard et ne sont jouées que sur lui.
 import { chromium } from 'playwright';
 import { LEVEL, LQ, assertLevel } from './levellib.mjs';
@@ -149,6 +150,39 @@ for (const key of Object.keys(LV.posts)) {
   if (!BACK[key]) continue;
   const b = await ev(([pts]) => window.W.path(pts, { maxT: 90 }), [BACK[key]]);
   add(`poste ${key} → départ (trajet de retour)`, b);
+}
+
+// ---- 1 bis. terrain libre : du départ et de chaque poste, droit devant dans huit directions, en courant, 40 s.
+// On doit s'arrêter sur une limite lisible — obstacle des collisions (mur, clôture, rocher), ou rupture de pente
+// (le rebord) — jamais en terrain plat ; ne jamais passer sous le sol ni dévaler la pente ; et pouvoir revenir.
+{
+  const origins = [['départ', START[0], START[1], 0], ...Object.entries(LV.posts).map(([k, p]) => [`poste ${k}`, p.x, p.z, p.y ?? 0])];
+  for (const [name, ox, oz, oy] of origins) {
+    const r = await ev(([ox, oz, oy]) => {
+      const W = window.W, g = window.hr.game, p = g.player, t = g.terrain, H0 = window.hr.level.site.baseY;
+      const slope = (x, z) => Math.hypot(t.heightAt(x + 0.6, z) - t.heightAt(x - 0.6, z), t.heightAt(x, z + 0.6) - t.heightAt(x, z - 0.6)) / 1.2;
+      const out = [], ends = [];
+      for (let d = 0; d < 8; d++) {
+        const yaw = (d * Math.PI) / 4;
+        W.tp(ox, oz, 'stand', oy);
+        const far = [ox + Math.sin(yaw) * 400, oz - Math.cos(yaw) * 400];
+        const bad = W.push(far, 40, ['KeyW', 'ShiftLeft']);
+        if (bad) { out.push(`cap ${d * 45}° : ${bad}`); continue; }
+        const y = p.pos.y - H0, r = Math.hypot(p.pos.x, p.pos.z);
+        if (y < -5) out.push(`cap ${d * 45}° : descendu à ${y.toFixed(1)} m sous le site en ${W.pos()}`);
+        // pourquoi s'est-on arrêté ? (un pas de plus dans l'axe)
+        const cause = W.cause(Math.atan2(far[0] - p.pos.x, -(far[1] - p.pos.z)));
+        const nx = p.pos.x + Math.sin(yaw) * 0.6, nz = p.pos.z - Math.cos(yaw) * 0.6;
+        let near = false;
+        for (let q = 0; q < 8 && !near; q++) for (const rr of [0, 0.8, 1.6]) if (slope(nx + Math.cos(q * 0.785) * rr, nz + Math.sin(q * 0.785) * rr) > 0.42) { near = true; break; }
+        const kind = cause.includes('collision') ? 'obstacle' : cause.includes('marche trop haute') ? 'ressaut' : cause.includes('limite') ? (near || p.limitAt?.(nx, nz) === 'pente' ? 'rebord' : 'INVISIBLE') : 'glisse';
+        if (kind === 'INVISIBLE') out.push(`cap ${d * 45}° : arrêté en terrain plat en ${W.pos()} (${cause})`);
+        ends.push(`${d * 45}° ${kind} à ${r.toFixed(0)} m`);
+      }
+      return { ok: out.length === 0, why: out.join(' ; '), ends };
+    }, [ox, oz, oy]);
+    add(`terrain libre depuis ${name} : huit caps, arrêt sur obstacle ou rebord, pas de chute`, r, r.ends?.join(', '));
+  }
 }
 
 if (LEVEL === 'standard') {

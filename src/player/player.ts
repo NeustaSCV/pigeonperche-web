@@ -22,6 +22,8 @@ export interface SiteSpec {
 export interface PlayerEvents {
   footstep(surface: Surface, intensity: number): void;
   cloth(intensity: number): void;
+  /** le joueur insiste contre la limite de la zone praticable (pente trop raide, clôture du site…) */
+  blocked?(why: 'pente' | 'cloture' | null): void;
 }
 
 export class Player {
@@ -47,6 +49,7 @@ export class Player {
   private camPos = new Vector3();
   private camInit = false;
   private stepAcc = 0;
+  private pushT = 0;
   private tmp = new Vector3();
   private tmp2 = new Vector3();
   private hit = new Vector3();
@@ -125,6 +128,11 @@ export class Player {
       this.col.resolve(p, rad, this.pos.y, h);
       // limites du sommet, appliquées au déplacement réellement effectué (après collisions) : on glisse le long du bord
       const allowed = (x: number, z: number): boolean => this.nav.allowed(x, z);
+      // on insiste contre la limite (plus d'une demi-seconde) : le jeu dit pourquoi, une fois
+      if (!allowed(p.x, p.z) && allowed(this.pos.x, this.pos.z)) {
+        this.pushT += dt;
+        if (this.pushT > 0.5 && this.pushT - dt <= 0.5) this.ev.blocked?.(this.nav.limit?.(p.x, p.z) ?? null);
+      } else this.pushT = 0;
       if (!allowed(p.x, p.z)) {
         if (!allowed(this.pos.x, this.pos.z)) {
           // déjà hors zone (téléportation, reprise) : on ne reste pas coincé, tout pas qui ramène vers la cour est accepté
@@ -275,6 +283,10 @@ export class Player {
       if (d < bd) { bd = d; best = k; }
     }
     return best;
+  }
+  /** nature de la limite en un point hors zone (tests automatisés) */
+  limitAt(x: number, z: number): 'pente' | 'cloture' | null {
+    return this.nav.limit?.(x, z) ?? null;
   }
   /** zone jouable (tests automatisés) */
   isAllowed(x: number, z: number): boolean {

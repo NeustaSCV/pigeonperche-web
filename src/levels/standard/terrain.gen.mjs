@@ -2,6 +2,8 @@
 // Lancé par : node tools/gen-terrain.mjs standard   → public/terrain/standard/{height.bin, splat.bin, meta.json}
 // Toute retouche change le relief : il doit rester identique au bit près tant que la carte n'est pas refaite exprès.
 // Refait le 2026-11-14 : terrassement des quatre bâtiments de la vallée (W.BUILDINGS) ; rien d'autre n'a bougé.
+// Refait une seconde fois le 2026-11-14 : voies secondaires vers ces bâtiments (W.WAYS) ; seules les cellules à moins
+// de 20 m d'une voie ont changé.
 import * as W from './map.ts';
 
 export const size = W.TERRAIN_SIZE;
@@ -131,6 +133,12 @@ export default function generate(lib, log) {
     keep: (k) => ss(W.RIVER_WIDTH / 2 + 2, W.RIVER_WIDTH / 2 + 12, riverD[k]) * ss(W.ROAD_WIDTH / 2 + 2, W.ROAD_WIDTH / 2 + 12, roadD[k]),
   });
   for (const b of buildings) log(`bâtiment ${b.id} : sol à ${b.groundY} m`);
+  // voies secondaires (ruelle de l'église, chemins du moulin, du château d'eau et du sanatorium) : après la route et
+  // les lots ; elles s'arrêtent au bord des lots et ne touchent ni au lit de la rivière ni au lac
+  const inLot = (x, z) => W.BUILDINGS.some((b) => lib.lotDistance(b, x, z) < 1);
+  const net = lib.carveWays(T, W.WAYS.map((w) => ({ ...w, endY: w.to ? buildings.find((b) => b.id === w.to).groundY : undefined })), {
+    skip: (k) => riverD[k] < W.RIVER_WIDTH / 2 + 3 || !(lakeQ[k] > 1.0) || inLot(wx(k % N), wx(Math.floor(k / N))),
+  });
   lib.carveSightlines(T, W.SIGHTLINES, W.POSTS, W.SUMMIT_HEIGHT);
   const cut = lib.checkBuildingSightlines(T, buildings, W.SIGHTLINES, W.POSTS, W.SUMMIT_HEIGHT);
   if (cut.length) throw new Error('un bâtiment coupe une ligne de visée : ' + JSON.stringify(cut));
@@ -139,6 +147,7 @@ export default function generate(lib, log) {
   const lotClear = lib.buildingClearing(W.BUILDINGS);
   const splat = lib.paint(T, {
     rockNoise: n4, forestNoise: n3, riverD, riverWidth: W.RIVER_WIDTH, lakeQ, roadD, roadWidth: W.ROAD_WIDTH,
+    wayEdge: net.edge, wayDirt: net.dirt, wayGravel: net.gravel,
     sites: W.SITES, skipSite: (name) => name === 'summit', siteCore: (name) => (name === 'village' ? 0.55 : name === 'camp' ? 0.75 : 0.5),
     // couloir dégagé sur l'éperon (plaques, ballon) ; pas d'arbres dans les lots des bâtiments
     forestExtra: (x, z) => {
@@ -148,5 +157,5 @@ export default function generate(lib, log) {
     },
   });
 
-  return { T, splat, meta: { siteHeights, road: lib.roundLine(road), river: lib.roundLine(river), buildings }, sites: W.SITES, sightlines: W.SIGHTLINES, posts: W.POSTS, baseY: W.SUMMIT_HEIGHT };
+  return { T, splat, meta: { siteHeights, road: lib.roundLine(road), river: lib.roundLine(river), riverWidth: W.RIVER_WIDTH, buildings, ways: net.ways }, sites: W.SITES, sightlines: W.SIGHTLINES, posts: W.POSTS, baseY: W.SUMMIT_HEIGHT };
 }

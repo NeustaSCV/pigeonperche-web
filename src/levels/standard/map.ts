@@ -165,6 +165,8 @@ export const RUIN = {
   start: { x: -2, z: 14, yaw: 0 },
   rack: { x: 3.5, z: 19.2 },
   well: { x: -1.5, z: 1.5 },
+  /** rayon du terrain libre hors les murs : le replat du sommet, que la pente ferme de tous côtés */
+  roam: 50,
   /** zones dallées (x, z, rayon) : pas d'herbe */
   paved: [[18, -11, 6.5], [3.5, 18, 5.5], [12.4, -9, 2.2], [-1.5, 1.5, 2.2]] as [number, number, number][],
 };
@@ -266,6 +268,23 @@ export const BUILDINGS: { id: string; carte?: string; name?: string; x: number; 
   { id: 'moulin', x: -140, z: -818, yaw: -1.337, groundY: 15.2 },
   { id: 'chateau-eau', x: -325, z: -1115, yaw: 0.28 },
   { id: 'sanatorium', carte: 'galeries', x: 270, z: -1232, yaw: -0.21 },
+];
+/**
+ * Voies secondaires : chaque bâtiment est relié à la route de la vallée. Tracées dans le relief et la carte de
+ * matières par le générateur (lib.carveWays) ; `to` nomme le bâtiment desservi (son `id`, faute de `name`).
+ *  - ruelle de l'église : de la route à la grille du cimetière, le long du muret ouest de la place (à l'écart des étals) ;
+ *  - chemin du moulin : quitte la route à l'ouest du village et descend vers la cour, côté logis ;
+ *  - chemin du château d'eau : monte du carrefour de l'ouest au portail sud, en écharpe ;
+ *  - chemin du sanatorium : le chemin forestier de la fiche, de la route du nord-est à l'entrée est du parc.
+ */
+export const WAYS: {
+  name: string; kind: 'route' | 'chemin' | 'allee'; width: number; pts: [number, number][]; to?: string; maxSlope?: number;
+  bridges?: { x: number; z: number; deck: number; length: number; kind?: 'pierre' | 'bois' | 'beton'; width?: number }[];
+}[] = [
+  { name: 'ruelle de l’église', kind: 'route', width: 3.5, to: 'eglise', pts: [[6, -918.4], [7.8, -937], [7.8, -974], [12, -986], [17, -992.5]] },
+  { name: 'chemin du moulin', kind: 'chemin', width: 3, to: 'moulin', pts: [[-232, -888.8], [-204, -868], [-178, -853], [-160.5, -847]] },
+  { name: 'chemin du château d’eau', kind: 'chemin', width: 3.2, to: 'chateau-eau', pts: [[-300, -854.8], [-322, -900], [-340, -960], [-350, -1010], [-343, -1055], [-328, -1080], [-320.6, -1091.5]] },
+  { name: 'chemin du sanatorium', kind: 'chemin', width: 3.5, to: 'sanatorium', pts: [[434, -1101], [412, -1148], [376, -1192], [344, -1214], [317, -1218.5]] },
 ];
 /** Cloche du village : chambre des cloches de l'église (repère local −12,5 ; 13,3 ; 13,5 du modèle, lacet nul). */
 export const BELL = { x: 24 - 12.5, y: 24 + 13.3, z: -1018 + 13.5 };

@@ -116,6 +116,8 @@ export class Shots {
   private tag = { tag: 'stone' as SurfaceTag };
 
   private water: number;
+  private riverAt: (x: number, z: number) => number = () => -Infinity;
+  private riverTop = -Infinity;
   /** environnement balistique du niveau ; `undefined` = aucun effet avancé (voir `ballisticEnv`) */
   readonly benv: BallisticEnv | undefined;
   private ld = new Vector3();
@@ -125,6 +127,12 @@ export class Shots {
   constructor(private terrain: Terrain, private col: Colliders, private wind: Wind, private ctx: TargetCtx, readonly env: ShotsEnv) {
     // sans plan d'eau : niveau repoussé sous tout relief, aucune gerbe
     this.water = env.waterLevel ?? -1e9;
+    // rivière du relief (meta.river + meta.riverWidth) : surface au point (x, z), −∞ hors du lit
+    if (typeof terrain.waterSurfaceAt === 'function') {
+      this.riverAt = (x, z) => terrain.waterSurfaceAt(x, z);
+      terrain.waterSurfaceAt(0, 0);
+      this.riverTop = terrain.riverTop;
+    }
     this.benv = ballisticEnv(env.physics);
   }
 
@@ -214,12 +222,21 @@ export class Shots {
         if (tt < bestT) {
           bestT = tt;
           target = null;
-          kind = tp.y < this.water + 0.05 ? 'water' : this.terrain.splatAt(tp.x, tp.z, 0) > 0.5 ? 'rock' : 'dirt';
+          // lac (niveau de la carte) ou lit d'une rivière (surface au point d'impact)
+          const wet = tp.y < this.water + 0.05 || tp.y < this.riverAt(tp.x, tp.z) + 0.05;
+          kind = wet ? 'water' : this.terrain.splatAt(tp.x, tp.z, 0) > 0.5 ? 'rock' : 'dirt';
         }
       }
     } else if (s.y < this.water && this.terrain.heightAt(s.x, s.z) < this.water - 0.2) {
       const tt = (this.a.y - this.water) / Math.max(1e-6, this.a.y - this.b.y);
       if (tt >= 0 && tt < bestT) { bestT = tt; target = null; kind = 'water'; }
+    } else if (s.y < this.riverTop) {
+      // rivière : la balle passe sous la surface de l'eau avant de toucher le fond
+      const wy = this.riverAt(s.x, s.z);
+      if (s.y < wy && this.terrain.heightAt(s.x, s.z) < wy - 0.2) {
+        const tt = (this.a.y - wy) / Math.max(1e-6, this.a.y - this.b.y);
+        if (tt >= 0 && tt < bestT) { bestT = tt; target = null; kind = 'water'; }
+      }
     }
     if (bestT <= 1) {
       const p = new Vector3().lerpVectors(this.a, this.b, bestT);
