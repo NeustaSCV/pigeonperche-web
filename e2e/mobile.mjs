@@ -133,7 +133,7 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
   // ---------------------------------------------------------------- menu, commandes, briefing
   console.log('\n— écrans —');
   await screenOk(page, 'menu', NONE);
-  s = await G(page, () => { const h = document.querySelector('#menu h1').getBoundingClientRect(), st = document.querySelector('#menu .m-start').getBoundingClientRect(); return { foot: document.querySelector('#menu .foot').innerText, h: [h.left, h.right, h.height], st: [st.left, st.right, st.top, st.bottom], lines: document.querySelectorAll('#menu h1 span').length, sc: document.getElementById('menu').scrollHeight - document.getElementById('menu').clientHeight }; });
+  s = await G(page, () => { const h = document.querySelector('#menu h1').getBoundingClientRect(), st = document.querySelector('#menu .m-start').getBoundingClientRect(); return { foot: document.querySelector('#menu .foot').innerText, h: [h.left, h.right, h.height], st: [st.left, st.right, st.top, st.bottom], lines: document.querySelectorAll('#menu h1 > span').length, sc: document.getElementById('menu').scrollHeight - document.getElementById('menu').clientHeight }; });
   check('menu : titre sur deux lignes dans la largeur, « Commencer » pleine largeur, tout tient sans défiler', s.lines === 2 && s.h[0] >= 0 && s.h[1] <= W && s.st[1] - s.st[0] > W * 0.8 && s.st[3] < H && s.sc <= 1, JSON.stringify(s));
   check('menu : texte adapté au tactile, plus de mention de l’horizontale', !/horizontale|souris/i.test(s.foot), s.foot);
   await shot(page, 'menu');
