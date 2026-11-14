@@ -1,0 +1,22 @@
+# Pigeon perché sur un serveur : `docker compose up -d --build`, puis http://<serveur>:8080/
+# Le classement est dans le volume nommé « scores » (fichier /data/scores.json) : il survit aux mises à jour de l'image.
+services:
+  pigeon-perche:
+    build: .
+    image: pigeon-perche:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      SCORES_FILE: /data/scores.json
+      # derrière un mandataire inverse (Caddy, nginx, Traefik) : l'adresse du joueur est lue dans X-Forwarded-For
+      # TRUST_PROXY: "1"
+    volumes:
+      - scores:/data
+    # le conteneur n'écrit que dans son volume
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  scores:

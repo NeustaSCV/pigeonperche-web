@@ -11,10 +11,12 @@ Aucune effusion de sang : les cibles sont des plaques, des ballons, des silhouet
 - [Installation](#installation)
 - [Les trois niveaux](#les-trois-niveaux)
 - [Commandes](#commandes)
+- [Scores et classements](#scores-et-classements)
 - [Sur téléphone](#sur-téléphone)
 - [Carabines et calibres](#carabines-et-calibres)
 - [Balistique](#balistique)
 - [Bâtiments, routes et rivières](#bâtiments-routes-et-rivières)
+- [Déploiement](#déploiement)
 - [Tests](#tests)
 - [Organisation du code](#organisation-du-code)
 - [Limites connues](#limites-connues)
@@ -48,7 +50,7 @@ npm run build
 npm run preview
 ```
 
-`npm run build` vérifie les types puis écrit le site dans `dist/`. Ce dossier se dépose tel quel sur n'importe quel hébergement statique : les chemins sont relatifs, aucun serveur applicatif n'est nécessaire. `npm run preview` le sert en local pour contrôle.
+`npm run build` vérifie les types puis écrit le site dans `dist/`. Ce dossier se dépose tel quel sur n'importe quel hébergement statique : les chemins sont relatifs, aucun serveur applicatif n'est nécessaire (le classement est alors propre à chaque navigateur, voir [Scores et classements](#scores-et-classements)). `npm run preview` le sert en local pour contrôle. Pour un classement commun à tous les joueurs, voir [Déploiement](#déploiement).
 
 ### Essayer sur un téléphone
 
@@ -129,7 +131,20 @@ Les touches sont lues par position physique : ZQSD sur un clavier français, WAS
 
 On marche librement sur tout le site de tir, jusqu'à une limite visible : rebord de falaise, pente trop raide, mur ou clôture.
 
+Après trois tirs manqués de suite sur une même cible, un encart « Conseil » rappelle la marche à suivre (mesurer la distance, lire le carnet, reporter l'élévation sur la tourelle, corriger le vent), avec les chiffres de l'arme en main et l'écart mesuré des impacts ; il signale aussi une arme mal adaptée à la distance et propose mieux au râtelier. Il ne met pas le jeu en pause, se ferme par Entrée (ou son bouton, au doigt) et se coupe au menu (« Conseils : Sans »).
+
 Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours.
+
+## Scores et classements
+
+À la fin d'une mission réussie, le jeu affiche les vingt meilleurs scores du niveau joué. Si le score y entre, le joueur inscrit son nom : huit caractères au plus, lettres, chiffres, espace et tiret, en majuscules comme sur une borne d'arcade. Le dernier nom utilisé est proposé d'emblée ; « Passer » termine sans s'inscrire. L'accueil montre les cinq premiers de chaque niveau (sur téléphone : bouton « Scores »).
+
+- **Tri** : score décroissant ; à score égal, le premier inscrit reste devant. Vingt lignes par niveau.
+- **En ligne** : quand le jeu est servi par son serveur (`npm start`, Docker, mais aussi `npm run dev` et `npm run preview`), le classement est commun à tous les joueurs et enregistré dans un fichier du serveur. L'écran l'indique : « en ligne ».
+- **Local à cet appareil** : sur un hébergement statique simple, ou hors ligne, les scores restent dans le navigateur (`localStorage`) : ils ne sont visibles que sur cet appareil et dans ce navigateur, et disparaissent si l'on efface les données du site. Ce classement local se vide depuis l'écran « Commandes » (bouton « Effacer », avec confirmation).
+- **Parties non classées** : une mission échouée ou abandonnée, et les parties d'essai (`?test`, aides forcées par `?d=`, objectifs sautés par `?step=`).
+
+Le serveur vérifie chaque inscription (niveau connu, nom nettoyé, score entre le minimum et le maximum théoriques du niveau, champs cohérents, six inscriptions par minute et par adresse). Il n'y a ni compte ni preuve de partie : ces garde-fous écartent les valeurs absurdes et le remplissage en masse, pas un tricheur décidé qui envoie un score plausible.
 
 ## Sur téléphone
 
@@ -189,10 +204,59 @@ Les bâtiments du décor (église, moulin, hôpital, château d'eau, sanatorium,
 
 Chaque bâtiment est relié au réseau de sa carte par une route, un chemin ou une allée inscrits dans le relief, avec un pont à chaque franchissement de rivière. Sur la carte avancée, une rivière traverse la plaine près de la centrale thermique, qui y puise par une station de pompage.
 
+## Déploiement
+
+Le jeu se déploie avec son petit serveur (`server/server.mjs`, Node seul, sans dépendance) : il sert `dist/` et l'API du classement (`GET` et `POST /api/scores`).
+
+### Avec Docker
+
+```bash
+docker compose up -d --build     # construit l'image et lance le jeu sur le port 8080
+```
+
+ou, sans Compose :
+
+```bash
+docker build -t pigeon-perche .
+docker run -d --name pigeon-perche -p 8080:8080 -v pigeon-scores:/data pigeon-perche
+```
+
+L'image est construite en deux étapes ; l'image finale ne contient que `dist/` et le serveur, tourne sous un utilisateur non privilégié et déclare un contrôle de santé (`/healthz`). Le classement est dans le volume monté sur `/data` : il survit aux redémarrages et aux mises à jour de l'image.
+
+### Sans Docker
+
+```bash
+npm install
+npm run build
+PORT=8080 SCORES_FILE=/var/lib/pigeon-perche/scores.json npm start
+```
+
+### Variables d'environnement
+
+| Variable | Rôle | Valeur par défaut |
+|---|---|---|
+| `PORT` | port d'écoute | `8080` |
+| `HOST` | adresse d'écoute | `0.0.0.0` |
+| `SCORES_FILE` | fichier du classement | `data/scores.json` (dans l'image : `/data/scores.json`) |
+| `DIST_DIR` | dossier servi | `dist` |
+| `TRUST_PROXY` | `1` derrière un mandataire inverse : l'adresse du joueur est lue dans `X-Forwarded-For` | non |
+| `SCORES_PER_MINUTE` | inscriptions permises par adresse et par minute | `6` |
+| `SCORES_API` | `off` : pas d'API, le jeu retombe sur le classement local | activée |
+
+Le serveur parle HTTP : pour le HTTPS, placez-le derrière un mandataire inverse (Caddy, nginx, Traefik) et mettez `TRUST_PROXY=1`, sans quoi tous les joueurs partagent la même limite de débit.
+
+### Le fichier des scores
+
+- **Format** : un fichier JSON, écrit de façon atomique (fichier temporaire puis renommage), relu à chaque requête.
+- **Sauvegarde** : copier le fichier suffit. Avec Docker : `docker compose cp pigeon-perche:/data/scores.json ./scores-sauvegarde.json`.
+- **Remise à zéro** : supprimer le fichier, sans redémarrer (`docker compose exec pigeon-perche rm /data/scores.json`). Il n'y a volontairement aucun bouton public pour cela.
+- **Retirer une ligne** : éditer le fichier à la main ; s'il devient illisible, le serveur le met de côté (`scores.json.illisible-<date>`) et repart d'un classement vide.
+- **En développement** : `npm run dev` et `npm run preview` offrent la même API, avec le même code ; le fichier est `data/scores.json` (dossier ignoré par git), ou celui que désigne `SCORES_FILE`.
+
 ## Tests
 
 ```bash
-npm test                 # 160 tests unitaires (balistique, vol, lots des bâtiments)
+npm test                 # tests unitaires (balistique, vol, lots des bâtiments, classement, conseils)
 npm run build            # vérification des types puis construction
 ```
 
@@ -210,6 +274,8 @@ npm run e2e:rifles       # cotes et coût des 17 modèles d'armes
 npm run e2e:physics      # tir réel contre solution calculée, effets avancés
 npm run e2e:buildings    # banc d'essai des bâtiments
 npm run e2e:perf         # temps par image des vues de référence
+npm run e2e:scores       # classements : API du serveur, repli local, ordinateur et portrait (lance son propre serveur sur dist/)
+npm run e2e:coach        # conseil après tirs manqués
 PLAYWRIGHT_BROWSERS_PATH=0 node e2e/zone.mjs     # zone de marche : aucune limite invisible
 PLAYWRIGHT_BROWSERS_PATH=0 node e2e/routes.mjs   # captures des voies d'accès et des cours d'eau
 ```
@@ -220,6 +286,8 @@ Les scripts lancent leur propre serveur ; la variable `HR_URL` les dirige vers u
 
 ```
 index.html, vite.config.ts     point d'entrée et configuration
+server/        serveur de production : fichiers statiques et API du classement
+Dockerfile, docker-compose.yml  image et lancement sur un serveur
 src/
   core/        moteur de rendu, post-traitement, entrées, chargement des assets
   levels/      un dossier par carte (facile, standard, avance) + le contrat dans README.md
@@ -229,7 +297,8 @@ src/
   config/      fiches des armes
   weapons/     mécanique de la carabine, lunette, modèles 3D
   player/      déplacements et personnage
-  game/        boucle de jeu, tirs, cibles, mission, tutoriel
+  game/        boucle de jeu, tirs, cibles, mission, tutoriel, classements, conseils
+  shared/      cœur du classement, commun au jeu et au serveur
   audio/       moteur sonore entièrement synthétisé
   ui/          interface, commandes tactiles, styles
 public/        relief, textures, modèles, ciel, police du titre, icônes

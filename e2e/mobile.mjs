@@ -547,10 +547,11 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
     const right = los.clone().cross(cam.up).normalize();
     const pr = (p) => { const q = p.clone().project(cam); return [(q.x * 0.5 + 0.5) * v.w, (1 - (q.y * 0.5 + 0.5)) * v.h]; };
     const c0 = pr(P), cl = pr(P.clone().addScaledVector(right, -0.5)), cr = pr(P.clone().addScaledVector(right, 0.5));
-    // réticule : points pleins tous les mils sur la branche horizontale
+    // réticule : encre sur les branches à 1, 2, 3 mrad du centre optique, rien dans les quadrants hauts (la position de
+    // chaque graduation est mesurée par e2e/reticle.mjs)
     const ppm = e.pxPerMil(), rc = g.ui.reticle.canvas, rk = rc.width / v.w, rg = rc.getContext('2d');
     const al = (mx, my) => rg.getImageData(Math.round((v.cx + mx * ppm) * rk), Math.round((v.cy + my * ppm) * rk), 1, 1).data[3];
-    return { zoom, ppm, fov: cam.fov, view: { ...v }, n, w: (x1 - x0 + 1) / k, h: (y1 - y0 + 1) / k, cx: sx / n / k, cy: sy / n / k, proj: Math.hypot(cr[0] - cl[0], cr[1] - cl[1]), c0, dots: [al(1, 0), al(2, 0), al(-3, 0), al(0, -2)], gaps: [al(1.5, 0.4), al(2.5, -0.4)], field: (v.R / ppm) * zoom };
+    return { zoom, ppm, fov: cam.fov, view: { ...v }, n, w: (x1 - x0 + 1) / k, h: (y1 - y0 + 1) / k, cx: sx / n / k, cy: sy / n / k, proj: Math.hypot(cr[0] - cl[0], cr[1] - cl[1]), c0, dots: [al(1, 0), al(2, 0), al(-3, 0), al(0, -2)], gaps: [al(1.5, -1.5), al(-2.5, -2.5)], field: (v.R / ppm) * zoom };
   }, zoom);
   const REF = 0.462 * 2 * Math.tan((55 * Math.PI) / 360) * 1000; // demi-champ en mrad × grossissement, écran de référence
   for (const [label, vp, dsf, q] of [['portrait 375 × 664', { width: 375, height: 664 }, 3, 'dr=0&tuto=0&play&d=standard&fs=0&w=338lm'], ['portrait 430 × 932', { width: 430, height: 932 }, 3, 'dr=0&tuto=0&play&d=standard&fs=0&w=338lm'], ['paysage de référence 1280 × 720 (ordinateur)', { width: 1280, height: 720 }, 1, 'dr=0&test&play&d=standard&w=338lm&q=low&touch=0']]) {
@@ -573,7 +574,7 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
       check(`${label}, ${zoom}× : 1 m à 500 m se projette sur 2 mrad du réticule (matrice de la caméra)`, Math.abs(m.proj / want - 1) < 0.002 && Math.hypot(m.c0[0] - m.view.cx, m.c0[1] - m.view.cy) < 0.3, `${m.proj.toFixed(2)} px pour ${want.toFixed(2)} px (${m.ppm.toFixed(2)} px/mrad), ligne de visée à ${Math.hypot(m.c0[0] - m.view.cx, m.c0[1] - m.view.cy).toFixed(2)} px du centre optique`);
       const tol = 1.6 + want * 0.04;
       check(`${label}, ${zoom}× : sur l'image rendue, le disque de 1 m mesure 2 mrad, centré sur le centre optique`, m.n > 8 && Math.abs(m.w - want) < tol && Math.abs(m.h - want) < tol && Math.hypot(m.cx - m.view.cx, m.cy - m.view.cy) < 1.5, `${m.w.toFixed(1)} × ${m.h.toFixed(1)} px mesurés pour ${want.toFixed(1)} px ; centre mesuré (${m.cx.toFixed(1)} ; ${m.cy.toFixed(1)}), centre optique (${m.view.cx.toFixed(1)} ; ${m.view.cy.toFixed(1)})`);
-      check(`${label}, ${zoom}× : points du réticule à 1, 2, 3 mrad du centre optique ; même champ réel que l'écran de référence`, m.dots.every((a) => a > 120) && m.gaps.every((a) => a < 40) && Math.abs(m.field / REF - 1) < 0.002, `demi-champ ${(m.field / zoom).toFixed(2)} mrad à ${zoom}× (référence ${(REF / zoom).toFixed(2)})`);
+      check(`${label}, ${zoom}× : branches du réticule sur le centre optique (encre à 1, 2, 3 mrad) ; même champ réel que l'écran de référence`, m.dots.every((a) => a > 120) && m.gaps.every((a) => a < 40) && Math.abs(m.field / REF - 1) < 0.002, `demi-champ ${(m.field / zoom).toFixed(2)} mrad à ${zoom}× (référence ${(REF / zoom).toFixed(2)})`);
     }
     check(`${label} : aucune erreur`, errors.length === 0, errors.join(' | '));
     await page.context().close();

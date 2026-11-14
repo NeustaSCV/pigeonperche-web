@@ -3,7 +3,7 @@ import { BackSide, Box3, CylinderGeometry, Group, Matrix4, Mesh, MeshBasicMateri
 import { AudioEngine } from '../audio/engine';
 import type { ImpactKind } from '../audio/types';
 import type { BallisticEnv } from '../ballistics/environment';
-import { firingSolution, solutionTable, splitElevation } from '../ballistics/firing-solution';
+import { firingSolution, solutionTable, splitElevation, type FiringSolution } from '../ballistics/firing-solution';
 import { makeFlight } from '../ballistics/flight';
 import { GAME_AIR, ballisticTable, loadDrag } from '../ballistics/solver';
 import { CLICK_MIL, RETICLE_HOLD_MIL, SIGHT_HEIGHT, WEAPONS, weaponById, type WeaponDef } from '../config/weapons';
@@ -30,6 +30,8 @@ import { lotOf } from '../levels/building-lots';
 import { placeBuildings, type BuildingSet } from '../levels/buildings';
 import type { Level, LevelData, LevelHost, LevelPhysics, LevelScene } from '../levels/types';
 import { Mission, type Difficulty, type Step } from './mission';
+import { ScoreService, type ScoreResult } from './scores';
+import { AIM_WINDOW_MIL, CoachTracker, assessWeapon, buildAdvice, diagnose } from './coach';
 import { Shots, type Bullet, type ImpactReport, type Prediction } from './shots';
 import { Tutorial, type TutoSnap } from './tutorial';
 import type { Target, TargetCtx } from './targets';
@@ -103,6 +105,18 @@ export class Game {
   rifle!: Rifle;
   shots!: Shots;
   mission!: Mission;
+  /** classements : API du serveur si elle répond, navigateur sinon */
+  scores = new ScoreService();
+  /** résultat de la mission terminée, en attente d'inscription */
+  private endResult: ScoreResult | null = null;
+  /** conseil après plusieurs tirs manqués sur la même cible (voir coach.ts) */
+  coach = new CoachTracker();
+  private coachPref: string | null = null;
+  /** dernière distance mesurée au télémètre, et l'objectif pendant lequel elle l'a été */
+  private coachRange: { v: number; step: string } | null = null;
+  /** énergie du dernier impact resté sans effet sur la cible, J */
+  private coachWeakE: number | null = null;
+  private coachSols = new Map<string, FiringSolution | null>();
   targets = new Map<string, Target>();
   state: State = 'menu';
   timeScale = 1;
@@ -206,6 +220,7 @@ export class Game {
     this.testMode = params.has('test');
     this.showFps = params.has('fps');
     this.tutoPref = localStorage.getItem('hr.tuto');
+    try { this.coachPref = localStorage.getItem('hr.coach'); } catch { /* stockage indisponible */ }
     // téléphone : textures à 512 px de côté au plus (la mémoire graphique d'un onglet mobile est très limitée)
     if (this.touch && params.get('tex') !== 'full') setTextureLimit(Number(params.get('tex')) || 512);
     this.engine = new Engine(canvas, quality, this.touch ? (quality === 'low' ? 1.5 : 2) : 2);
@@ -243,13 +258,24 @@ export class Game {
         turret: (k, n) => { if (k === 'elev') this.rifle.clickElev(n); else this.rifle.clickWind(n); this.ui.bookTurrets(this.rifle.elevMil, this.rifle.windMil); },
         continueBrief: () => this.continueBrief(),
         hover: () => this.audio.ui('hover'),
+        setCoach: (on) => { this.coachPref = on ? 'on' : 'off'; try { localStorage.setItem('hr.coach', this.coachPref); } catch { /* stockage indisponible */ } if (!on) this.closeCoach(); },
+        closeCoach: () => this.closeCoach(),
+        submitScore: async (name) => {
+          if (!this.endResult || !this.rankedGame()) return { status: 'refused', message: 'Partie d’essai : score non classé.' };
+          const out = await this.scores.submit(this.data.id, this.endResult, name);
+          if (out.status === 'ok') { this.audio.ui('confirm'); this.showBoards(); }
+          return out;
+        },
+        clearLocalScores: () => { this.scores.clearLocal(); this.showBoards(); },
       },
       {
-        difficulty: this.difficulty, quality, volume: this.volume, touch: this.touch, tutorial: this.tutoPref === null || this.tutoPref === 'on', fullscreen: this.touch && canFullscreen(), homeTip: this.touch && needsHomeScreenTip(params),
+        difficulty: this.difficulty, quality, volume: this.volume, touch: this.touch, tutorial: this.tutoPref === null || this.tutoPref === 'on', coach: this.coachPref !== 'off', fullscreen: this.touch && canFullscreen(), homeTip: this.touch && needsHomeScreenTip(params),
         levels: LEVELS, level: this.data.id, steps: this.data.steps, weapons: this.weapons, hasTutorial: !!this.data.tutorial,
         alertLabel: this.data.alertZone ? this.data.alertLabel : null, alertTexts: this.data.alertTexts, failNote: this.data.failNote,
       },
     );
+    this.showBoards();
+    void this.scores.load().then(() => this.showBoards());
     if (this.touch) {
       this.guards = installGestureGuards();
       this.touchCtl = new TouchControls(uiRoot, this.input);
@@ -260,11 +286,14 @@ export class Game {
     };
     const layout = (): void => this.layout();
     window.addEventListener('resize', layout);
+    if (!this.touch) this.layout();
     if (this.touch) {
       // les barres du navigateur mobile changent la hauteur utile sans toujours émettre « resize »
       window.visualViewport?.addEventListener('resize', layout);
       window.visualViewport?.addEventListener('scroll', layout);
       window.addEventListener('orientationchange', () => { layout(); setTimeout(layout, 300); });
+      // clavier refermé après la saisie du nom : la mise en page est recalée
+      document.addEventListener('focusout', () => setTimeout(layout, 250));
       this.layout();
       // application installée (ou navigateur qui l'accepte hors plein écran) : portrait verrouillé d'emblée
       if (phone() && !this.testMode) void lockPortrait();
@@ -382,7 +411,19 @@ export class Game {
    * portrait ou paysage sur tablette. Un téléphone tenu à l'horizontale affiche l'écran de rotation, jeu en pause.
    */
   private layout(): void {
-    if (!this.touch) { this.engine.resize(); return; }
+    if (!this.touch) {
+      this.engine.resize();
+      // bord gauche du champ de la lunette : le conseil affiché en visée s'y adosse, en version courte si la place manque
+      const fieldL = this.engine.view.cx - this.engine.view.R;
+      document.documentElement.style.setProperty('--field-l', fieldL.toFixed(0) + 'px');
+      document.documentElement.classList.toggle('tightscope', fieldL - 44 < 300);
+      document.documentElement.classList.toggle('noscopecoach', fieldL - 44 < 180);
+      return;
+    }
+    // saisie du nom : le clavier à l'écran réduit la hauteur utile ; on ne change pas de mise en page (ni d'écran de
+    // rotation) tant qu'il est ouvert, et on laisse le navigateur amener le champ en vue
+    const ae = document.activeElement;
+    if (ae instanceof HTMLInputElement && ae.type === 'text') return;
     const w = window.innerWidth, h = window.innerHeight;
     const portrait = h >= w;
     const turn = !portrait && !isTablet(w, h);
@@ -462,20 +503,52 @@ export class Game {
     this.mission = new Mission(this.targets, this.data.steps, this.data.alertZone);
     this.mission.difficulty = this.difficulty;
     this.mission.onStepDone = (step, s) => {
+      this.coach.clear();
+      this.ui.coach(null);
       this.prevStep = { step, s };
       this.audio.ui('success');
       this.scope.exit();
       // le premier objectif validé clôt le tutoriel, même inachevé
       if (this.tutorial && !this.tutorial.finished) { this.tutorial.skip(); this.setTutoPref('done'); this.ui.tuto(null, 'brief'); }
-      if (this.mission.finished) { this.ui.end(this.mission); this.setState('end'); }
+      if (this.mission.finished) this.endMission();
       else { this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, this.prevStep); this.setState('brief'); }
     };
     this.mission.onFail = (reason) => {
+      this.coach.clear();
+      this.ui.coach(null);
       this.audio.ui('fail');
       setTimeout(() => { this.scope.exit(); this.ui.fail(reason); this.setState('fail'); }, this.testMode ? 0 : 2600);
     };
     const at = this.data.alertTexts;
     this.mission.onAlarm = () => this.ui.toast(at?.raised ?? 'L’alerte est donnée', at?.raisedSub ?? 'Discrétion perdue', 4);
+  }
+
+  /** classements de l'accueil */
+  private showBoards(): void {
+    this.ui.setBoards(this.scores.boards, this.scores.online, this.scores.localCount());
+  }
+
+  /**
+   * La partie compte-t-elle pour le classement ? Non pour une partie d'essai : mode test (`?test`, scripts
+   * automatisés), aides forcées par `?d=` (le coefficient du score n'est plus celui du niveau) ou objectifs sautés
+   * par `?step=`. `?scores=1` l'autorise malgré le mode test : c'est le test dédié (e2e/scores.mjs).
+   */
+  rankedGame(): boolean {
+    if (this.difficulty !== this.data.difficulty || this.params.has('step')) return false;
+    return !this.testMode || this.params.get('scores') === '1';
+  }
+
+  /** Mission accomplie : bilan, rang dans le classement du niveau, saisie du nom si le score y entre. */
+  private endMission(): void {
+    const m = this.mission, sc = m.score();
+    const level = this.data.id;
+    const title = LEVELS.find((l) => l.id === level)?.meta.title ?? level;
+    this.endResult = { score: sc.total, grade: sc.grade, accuracy: sc.accuracy, shots: m.totalShots, time: Math.floor(m.elapsed) };
+    const ranked = this.rankedGame();
+    this.ui.end(m, { title, ranked, board: this.scores.boards[level], online: this.scores.online, lastName: this.scores.lastName(), result: this.endResult });
+    this.setState('end');
+    // d'autres joueurs ont pu s'inscrire pendant la partie : le classement est relu
+    void this.scores.load().then(() => { this.ui.endBoard(this.scores.boards[level], this.scores.online); this.showBoards(); });
   }
 
   private buildRack(): void {
@@ -670,8 +743,11 @@ export class Game {
 
   private onImpact(r: ImpactReport): void {
     const b = r.bullet as any;
+    // cibles de l'objectif encore debout avant ce tir : c'est sur elles que le conseil compte les tirs manqués
+    const pending = this.mission.running ? this.mission.currentTargets().filter((t) => !t.done || t === r.target) : [];
     const text = this.mission.onImpact(r, b.elev ?? 0, b.windage ?? 0);
     this.tutorial?.onImpact(!!r.result?.success);
+    this.coachImpact(r, pending);
     const inCam = this.bc !== null && this.bc.bullet === r.bullet;
     this.audio.impact(r.kind, r.point.x, r.point.y, r.point.z, inCam ? 0.03 : r.distance / 343, r.energy);
     this.impactFx(r.kind, r.point, r.energy);
@@ -686,6 +762,98 @@ export class Game {
     const sub = `${fr(r.distance)} m · ${fr(r.tof, 2)} s de vol · ${fr(r.energy)} J`;
     this.ui.toast(text, sub, ok ? 3.4 : 2.4);
     if (inCam && this.bc) { this.bc.look.copy(r.point); }
+  }
+
+  // ------------------------------------------------------------------ conseil après tirs manqués
+  /** le joueur veut-il les conseils ? `?coach=1` / `?coach=0` forcent ; en mode test ils sont coupés par défaut */
+  coachWanted(): boolean {
+    const f = this.params.get('coach');
+    if (f === '1') return true;
+    if (f === '0' || this.testMode) return false;
+    return this.coachPref !== 'off';
+  }
+  closeCoach(): void {
+    this.coach.dismiss();
+    this.ui.coach(null);
+  }
+  /** largeur utile d'une cible, m : la plus grande de ses zones touchables */
+  private targetWidth(t: Target): number {
+    let w = 0;
+    for (const c of t.colliders) w = Math.max(w, c.shape === 'sphere' ? 2 * c.r : 2 * Math.max(c.half.x, c.half.z));
+    return w;
+  }
+  /**
+   * Rapporte un impact au suivi des tirs manqués. `pending` : cibles de l'objectif encore à neutraliser avant ce tir.
+   * Rien pendant le tutoriel (il explique déjà la distance, le carnet et la tourelle), ni si le joueur a coupé les conseils.
+   */
+  private coachImpact(r: ImpactReport, pending: Target[]): void {
+    if (!pending.length || !this.coachWanted() || (this.tutorial && this.tutorial.active)) return;
+    let sig;
+    let target: Target;
+    if (r.target && pending.includes(r.target)) {
+      target = r.target;
+      // touchée sans effet (hors plaques et cloche, qui sonnent toujours) : l'énergie ou la pénétration manquent
+      const weak = !r.result?.success && r.kind !== 'steel' && r.kind !== 'bell';
+      if (weak) this.coachWeakE = r.energy;
+      sig = this.coach.record({ kind: weak ? 'weak' : 'hit', target: target.id });
+    } else if (r.target) return; // autre cible (objectif à venir, civil) : ni touche ni tir manqué sur celle-ci
+    else {
+      // tir manqué : écart angulaire à la cible la plus proche de l'impact, vu du poste de tir
+      const o = r.bullet.origin;
+      let best: { t: Target; up: number; right: number; d: number } | null = null;
+      for (const t of pending) {
+        const los = t.aimPoint(new Vector3()).sub(o);
+        const dist = los.length();
+        if (dist < 1) continue;
+        los.multiplyScalar(1 / dist);
+        const right = new Vector3().crossVectors(los, new Vector3(0, 1, 0)).normalize();
+        const up = new Vector3().crossVectors(right, los);
+        const d = r.point.clone().sub(o);
+        const z = d.dot(los);
+        if (z < 1) continue;
+        const x = (d.dot(right) / z) * 1000, y = (d.dot(up) / z) * 1000;
+        const a = Math.hypot(x, y);
+        if (!best || a < best.d) best = { t, up: y, right: x, d: a };
+      }
+      if (!best || best.d > AIM_WINDOW_MIL) return;
+      target = best.t;
+      sig = this.coach.record({ kind: 'miss', target: target.id, offset: { up: best.up, right: best.right } });
+    }
+    if (!sig) return;
+    if ('hide' in sig) { this.ui.coach(null); return; }
+    this.openCoach(target, sig.show, sig.reminder);
+  }
+  /** Compose et affiche le conseil : solution de tir de l'arme en main sur la cible, par le vent du moment (calcul gardé en cache). */
+  private openCoach(target: Target, reason: 'miss' | 'weak', reminder: boolean): void {
+    const def = this.rifle.def;
+    const eye = this.player.eye(new Vector3());
+    const aim = target.aimPoint(new Vector3());
+    const dx = aim.x - eye.x, dz = aim.z - eye.z;
+    const trueRange = eye.distanceTo(aim);
+    // distance connue du joueur : affichée en continu (assisté), ou mesurée au télémètre sur cette cible (à 5 % près)
+    const measured = this.coachRange && this.coachRange.step === this.mission.step.id && Math.abs(this.coachRange.v - trueRange) <= 0.05 * trueRange ? this.coachRange.v : null;
+    const known = this.difficulty === 'assist' ? trueRange : this.difficulty === 'standard' ? measured : null;
+    // les chiffres cités sont ceux de la distance que le joueur a lue : ce sont ceux qu'il retrouvera au carnet
+    const range = known ?? trueRange;
+    const azimuthDeg = ((Math.atan2(dx, -dz) * 180) / Math.PI + 360) % 360;
+    // le vent va à l'opposé de l'azimut d'où il vient (voir world/wind.ts)
+    const windFromDeg = ((Math.atan2(this.ws.x, -this.ws.z) * 180) / Math.PI + 180) % 360;
+    const setup = { range, heightDiff: aim.y - eye.y, azimuthDeg, windSpeed: this.ws.speed, windFromDeg, env: this.benv, air: GAME_AIR, sightHeight: SIGHT_HEIGHT };
+    const key = `|${Math.round(range)}|${Math.round(setup.heightDiff)}|${Math.round(azimuthDeg)}|${this.ws.speed.toFixed(1)}|${Math.round(windFromDeg / 5)}`;
+    const solve = (w: WeaponDef): FiringSolution | null => {
+      const k = w.id + key;
+      if (!this.coachSols.has(k)) { if (this.coachSols.size > 60) this.coachSols.clear(); this.coachSols.set(k, firingSolution(w, setup)); }
+      return this.coachSols.get(k) ?? null;
+    };
+    const solution = solve(def);
+    const width = this.targetWidth(target);
+    const weak = reason === 'weak';
+    const { issues, alternatives } = assessWeapon(def, this.weapons, solve, { targetWidth: width, weak, weakEnergy: weak ? this.coachWeakE : null });
+    this.ui.coach(buildAdvice({
+      touch: this.touch, difficulty: this.difficulty, reason, reminder, misses: this.coach.streak, weapon: def, range: known, solution,
+      elevDial: this.rifle.elevMil, windDial: this.rifle.windMil, windSpeed: this.difficulty === 'real' ? null : this.ws.speed,
+      diagnosis: weak ? null : diagnose(this.coach.offsets), issues, alternatives, intel: this.mission.step.intel, advancedBook: !!this.benv,
+    }));
   }
 
   private impactFx(kind: ImpactKind, p: Vector3, energy: number): void {
@@ -935,7 +1103,7 @@ export class Game {
           if (inp.click(0)) this.fire();
           if (inp.hit('KeyT')) {
             if (this.difficulty === 'real') this.ui.toast('Pas de télémètre', 'Estimez la distance au réticule : taille (m) × 1000 ÷ mils', 3);
-            else { this.range = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2)); this.rangeT = 8; this.audio.rangefinder(); this.tutoRanged = true; }
+            else { this.range = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2)); this.rangeT = 8; this.audio.rangefinder(); this.tutoRanged = true; this.coachRange = { v: this.range, step: this.mission.step.id }; }
           }
         } else if (inp.click(0)) this.ui.toast('Épaulez d’abord', 'Clic droit, accroupi ou couché', 1.8);
         if (inp.hit('KeyR')) this.rifle.reload();
@@ -944,6 +1112,7 @@ export class Game {
         if (inp.hit('KeyB')) { sc.exit(); this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, null); this.setState('brief'); }
         if (inp.hit('KeyH')) this.showFps = !this.showFps;
         if (inp.hit('KeyP')) this.skipTutorial();
+        if (this.coach.visible && (inp.hit('Enter') || inp.hit('NumpadEnter'))) this.closeCoach();
       }
       pl.update(dt, inp, sc.active);
       const stab = pl.stance === 'prone' ? 1 : pl.supported ? 1.9 : 4.2;
@@ -1183,7 +1352,7 @@ export class Game {
     if (v === undefined) {
       const e = env
         ? firingSolution(def, { range: Math.round(dist), azimuthDeg: az, env, air: GAME_AIR, sightHeight: SIGHT_HEIGHT })?.elevMil ?? 0
-        : ballisticTable(def, { zero: def.zero, sightHeight: SIGHT_HEIGHT, crosswind: 5, ranges: [Math.round(dist)], air: GAME_AIR })[0].elevMil;
+        : ballisticTable(def, { zero: def.zero, sightHeight: SIGHT_HEIGHT, crosswind: 5, ranges: [Math.round(dist)], air: GAME_AIR })[0]?.elevMil ?? 0; // hors de portée : pas de ligne
       v = Math.max(0, Math.round(e * 10) / 10);
       if (this.tutoNeed.size > 200) this.tutoNeed.clear();
       this.tutoNeed.set(key, v);

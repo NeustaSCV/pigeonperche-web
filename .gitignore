@@ -15,3 +15,6 @@ src/buildings/bank/README.md
 src/buildings/bank/LIVRAISON.md
 # document de conception périmé
 PLAN.md
+
+# classement du serveur (fichier des scores)
+data/

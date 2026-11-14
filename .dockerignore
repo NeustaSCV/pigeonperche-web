@@ -1,0 +1,13 @@
+# Le contexte de construction ne contient que ce que le Dockerfile copie : tout le reste est écarté
+# (dépendances et sorties locales, tests de bout en bout, sauvegardes, fichier des scores, dossiers cachés).
+*
+!package.json
+!package-lock.json
+!index.html
+!tsconfig.json
+!vite.config.ts
+!public
+!server
+!src
+!tests
+**/.DS_Store

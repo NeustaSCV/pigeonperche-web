@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
+    "start": "node server/server.mjs",
     "test": "vitest run",
     "gen:terrain": "node tools/gen-terrain.mjs",
     "e2e:mission": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/mission.mjs --shots",
@@ -23,7 +24,9 @@
     "e2e:buildings": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/buildings.mjs",
     "gen:icons": "PLAYWRIGHT_BROWSERS_PATH=0 node tools/gen-icons.mjs",
     "e2e:integration": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/integration.mjs",
-    "e2e:physics": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/physics.mjs"
+    "e2e:physics": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/physics.mjs",
+    "e2e:scores": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/scores.mjs",
+    "e2e:coach": "PLAYWRIGHT_BROWSERS_PATH=0 node e2e/coach.mjs"
   },
   "dependencies": {
     "postprocessing": "^6.39.6",

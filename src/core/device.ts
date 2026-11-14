@@ -15,6 +15,8 @@ export function isTouchDevice(params: URLSearchParams): boolean {
 /** Zone où le navigateur doit garder son comportement tactile : défilement interne des écrans, curseurs. */
 const scroller = (t: EventTarget | null): HTMLElement | null => (t instanceof Element ? t.closest<HTMLElement>('.scroll') : null);
 const isRange = (t: EventTarget | null): boolean => t instanceof HTMLInputElement && t.type === 'range';
+/** champ de saisie (nom du classement) : le toucher, le curseur et la sélection y restent ceux du système */
+const isText = (t: EventTarget | null): boolean => t instanceof HTMLInputElement && t.type === 'text';
 const onGame = (t: EventTarget | null): boolean => t instanceof Element && !!t.closest('#view, #touch, #rotate');
 
 /**
@@ -55,7 +57,7 @@ export function installGestureGuards(): string[] {
     const now = e.timeStamp;
     const quick = now - lastT < 350 && Math.hypot(t.clientX - lastX, t.clientY - lastY) < 40;
     lastT = now; lastX = t.clientX; lastY = t.clientY;
-    if (!quick || !e.cancelable || onGame(e.target) || isRange(e.target)) return;
+    if (!quick || !e.cancelable || onGame(e.target) || isRange(e.target) || isText(e.target)) return;
     e.preventDefault();
     const el = e.target instanceof Element ? e.target.closest<HTMLElement>('button, [data-act], [data-w], [data-tur], [data-k]') : null;
     el?.click();
@@ -63,7 +65,7 @@ export function installGestureGuards(): string[] {
   on('dblclick', document, 'dblclick', (e) => e.preventDefault());
   // appui long : menu contextuel (Android), sélection de texte et loupe, glisser d'image
   on('contextmenu', document, 'contextmenu', (e) => e.preventDefault());
-  on('selectstart', document, 'selectstart', (e) => e.preventDefault());
+  on('selectstart', document, 'selectstart', (e) => { if (!isText(e.target)) e.preventDefault(); });
   on('dragstart', document, 'dragstart', (e) => e.preventDefault());
   return done;
 }

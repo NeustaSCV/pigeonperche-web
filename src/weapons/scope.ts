@@ -1,9 +1,12 @@
-// Vue lunette : visée, grossissement, tremblement (respiration, cœur), apnée, recul, réticule mil-dot au premier plan focal.
+// Vue lunette : visée, grossissement, tremblement (respiration, cœur), apnée, recul, réticule gradué en mrad au premier plan focal.
 import { Quaternion, Vector3, type PerspectiveCamera } from 'three';
 import type { Input } from '../core/input';
 import { damp } from '../core/noise';
 import { recoilVelocity, type WeaponDef } from '../config/weapons';
 import type { Rifle } from './rifle';
+import {
+  AXIS_MIL, BAR_BOTTOM_START_MIL, BAR_MIL, BAR_START_MIL, CENTER_DOT_MIL, CENTER_GAP_MIL, LINE_MIL, RETICLE, TREE_MIL, reticleLod, treeHalfWidth,
+} from './reticle-geometry';
 
 export const BASE_FOV = 55;
 const TAN_BASE = Math.tan((BASE_FOV * Math.PI) / 360);
@@ -168,11 +171,27 @@ export class Scope {
   }
 }
 
-/** Réticule mil-dot, dessiné en canvas 2D par-dessus le rendu. Premier plan focal : il grossit avec l'image. */
+/** noir légèrement translucide : l'aspect d'une gravure sur verre */
+const INK = 'rgba(8,9,8,0.9)';
+const GOLD = 'rgba(255,196,84,0.95)';
+/** côté du petit canvas qui porte le losange du point d'impact prédit, px CSS */
+const MARK = 18;
+
+/**
+ * Réticule gravé en mrad (croix ouverte, graduations fines, arbre de contre-visée de 24 mrad : cotes dans
+ * reticle-geometry.ts), dessiné en canvas 2D par-dessus le rendu. Premier plan focal : il grossit avec l'image,
+ * chaque graduation reste à sa valeur.
+ * Le canvas n'est redessiné que si la vue ou le grossissement change (`draws` compte les tracés) ; le losange du
+ * point d'impact prédit est un petit élément à part, déplacé sans rien redessiner.
+ */
 export class Reticle {
   canvas: HTMLCanvasElement;
   private g: CanvasRenderingContext2D;
+  private mark: HTMLCanvasElement;
+  private markKey = '';
   private lastKey = '';
+  /** nombre de tracés complets du réticule depuis la création */
+  draws = 0;
   /** point d'impact prédit (pixels par rapport au centre), mode assisté */
   predict: { x: number; y: number } | null = null;
 
@@ -181,6 +200,9 @@ export class Reticle {
     this.canvas.className = 'reticle';
     parent.appendChild(this.canvas);
     this.g = this.canvas.getContext('2d')!;
+    const m = (this.mark = document.createElement('canvas'));
+    m.style.cssText = `position:absolute;left:0;top:0;width:${MARK}px;height:${MARK}px;pointer-events:none;display:none`;
+    parent.appendChild(m);
   }
 
   /** pixels (CSS) par milliradian pour le champ courant */
@@ -195,8 +217,8 @@ export class Reticle {
   draw(fovDeg: number, visible: number, view: { w: number; h: number; cx: number; cy: number; R: number }): void {
     const w = view.w, h = view.h;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const pk = this.predict ? `${Math.round(this.predict.x)},${Math.round(this.predict.y)}` : '';
-    const key = `${w}x${h}:${view.cx.toFixed(1)}:${view.cy.toFixed(1)}:${view.R.toFixed(1)}:${fovDeg.toFixed(3)}:${visible > 0.5 ? 1 : 0}:${pk}`;
+    this.placeMark(visible, view, dpr);
+    const key = `${w}x${h}:${view.cx.toFixed(1)}:${view.cy.toFixed(1)}:${view.R.toFixed(1)}:${fovDeg.toFixed(3)}:${visible >= 0.02 ? 1 : 0}:${dpr}`;
     this.canvas.style.opacity = String(visible);
     if (key === this.lastKey) return;
     this.lastKey = key;
@@ -208,88 +230,122 @@ export class Reticle {
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);
     if (visible < 0.02) return;
-    const cx = view.cx, cy = view.cy;
+    this.draws++;
+    const cx = view.cx, cy = view.cy, R = view.R;
     const ppm = Reticle.pxPerMil(fovDeg, h);
-    const R = view.R;
+    const lod = reticleLod(ppm, dpr);
     g.save();
     g.beginPath();
     g.arc(cx, cy, R - 2, 0, Math.PI * 2);
     g.clip();
-    g.strokeStyle = 'rgba(8,8,8,0.92)';
-    g.fillStyle = 'rgba(8,8,8,0.92)';
-    const thin = Math.max(1, Math.min(1.6, ppm * 0.045));
-    g.lineWidth = thin;
-    const gap = 0.35 * ppm; // centre dégagé
-    const fine = 10 * ppm; // au-delà : barres épaisses
-    const line = (x0: number, y0: number, x1: number, y1: number): void => {
-      g.beginPath();
-      g.moveTo(cx + x0, cy + y0);
-      g.lineTo(cx + x1, cy + y1);
-      g.stroke();
-    };
-    line(-fine, 0, -gap, 0);
-    line(gap, 0, fine, 0);
-    line(0, -fine, 0, -gap);
-    line(0, gap, 0, Math.min(R, 24 * ppm));
-    // point central
+    g.fillStyle = INK;
+    // rectangle donné en pixels par rapport au centre optique
+    const rect = (x0: number, y0: number, x1: number, y1: number): void => g.rect(cx + x0, cy + y0, x1 - x0, y1 - y0);
+
+    // ---- branches, barres extérieures, graduations séparables : un seul chemin ----
     g.beginPath();
-    g.arc(cx, cy, Math.max(0.9, 0.05 * ppm), 0, Math.PI * 2);
+    // les deux branches restent centrées sur le centre optique : c'est leur épaisseur qui s'ajuste aux pixels de
+    // l'écran (nombre pair de pixels si le centre tombe entre deux pixels, impair s'il tombe au milieu d'un pixel),
+    // pour un trait net sans déplacer le réticule
+    const snap = (c: number): number => {
+      const pos = c * dpr, want = lod.axisW * dpr;
+      const onEdge = Math.abs(pos - Math.round(pos)) < 0.02, onMid = Math.abs(pos - Math.floor(pos) - 0.5) < 0.02;
+      if (!onEdge && !onMid) return lod.axisW / 2;
+      let n = Math.max(1, Math.round(want));
+      if ((n % 2 === 0) !== onEdge) n += 1;
+      return n / dpr / 2;
+    };
+    const ah = snap(cy), av = snap(cx), g0 = CENTER_GAP_MIL * ppm, g1 = (AXIS_MIL + LINE_MIL / 2) * ppm;
+    rect(-g1, -ah, -g0, ah);
+    rect(g0, -ah, g1, ah);
+    rect(-av, -g1, av, -g0);
+    rect(-av, g0, av, (TREE_MIL + LINE_MIL / 2) * ppm);
+    const bar = Math.max(BAR_MIL * ppm, 2.5) / 2, b0 = BAR_START_MIL * ppm;
+    rect(-R, -bar, -b0, bar);
+    rect(b0, -bar, R, bar);
+    rect(-bar, -R, bar, -b0);
+    rect(-bar, BAR_BOTTOM_START_MIL * ppm, bar, R);
+    const t = lod.tickW / 2;
+    for (const k of RETICLE.ticks) {
+      if (k.pitch < lod.minPitch) continue;
+      const p = k.at * ppm;
+      if (k.axis === 'h') rect(p - t, k.from * ppm, p + t, k.to * ppm);
+      else rect(k.from * ppm, p - t, k.to * ppm, p + t);
+    }
+    // point central flottant, points de dérive séparables
+    const dot = (x: number, y: number, d: number): void => { g.moveTo(cx + x + d / 2, cy + y); g.arc(cx + x, cy + y, d / 2, 0, Math.PI * 2); };
+    dot(0, 0, Math.max(CENTER_DOT_MIL * ppm, lod.axisW * 1.5, 1.5));
+    if (lod.dots) for (const d of RETICLE.dots) if (d.y % lod.rowStep === 0) dot(d.x * ppm, d.y * ppm, lod.dotPx);
+    // léger liseré clair : la gravure noire reste lisible sur un fond sombre, sans se voir sur un fond clair
+    g.shadowColor = 'rgba(236,240,232,0.55)';
+    g.shadowBlur = 1.6 * dpr;
     g.fill();
-    // graduations : point plein tous les mils, tiret au demi-mil, chiffres pairs
-    const dot = Math.max(1.3, Math.min(4, 0.11 * ppm));
-    g.font = `${Math.max(9, Math.min(13, ppm * 0.5))}px ui-sans-serif, system-ui, sans-serif`;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    const maxDown = Math.min(24, Math.floor(R / ppm));
-    for (let m = 1; m <= 10; m++) {
-      for (const [sx, sy] of [[1, 0], [-1, 0], [0, -1]] as const) {
-        g.beginPath();
-        g.arc(cx + sx * m * ppm, cy + sy * m * ppm, dot, 0, Math.PI * 2);
-        g.fill();
-        if (ppm > 9) {
-          const hx = (m - 0.5) * ppm;
-          if (sx !== 0) line(sx * hx, -0.12 * ppm, sx * hx, 0.12 * ppm);
-          else line(-0.12 * ppm, sy * hx, 0.12 * ppm, sy * hx);
-        }
-      }
-    }
-    // branche basse : sapin de contre-visée jusqu'à 24 mils, repères de vent
-    for (let m = 1; m <= maxDown; m++) {
-      const y = m * ppm;
+
+    // ---- familles trop serrées pour l'écran : elles se fondent en grisé, au taux de couverture des traits ----
+    g.shadowBlur = 0;
+    g.shadowColor = 'transparent';
+    for (const b of RETICLE.bands) {
+      if (b.pitch >= lod.minPitch) continue;
+      g.globalAlpha = Math.min(0.5, lod.tickW / (b.pitch * ppm));
       g.beginPath();
-      g.arc(cx, cy + y, dot, 0, Math.PI * 2);
+      rect(Math.min(b.a0, b.a1) * ppm, b.from * ppm, Math.max(b.a0, b.a1) * ppm, b.to * ppm);
       g.fill();
-      if (ppm > 9) line(-0.12 * ppm, y - 0.5 * ppm, 0.12 * ppm, y - 0.5 * ppm);
-      const half = Math.min(6, 1 + Math.floor(m / 2));
-      if (m % 2 === 0) {
-        for (let k = 1; k <= half; k++)
-          for (const s of [-1, 1]) {
-            g.beginPath();
-            g.arc(cx + s * k * ppm, cy + y, dot * 0.6, 0, Math.PI * 2);
-            g.fill();
-          }
-        if (ppm > 7) g.fillText(String(m), cx + (half + 0.9) * ppm, cy + y);
-      }
     }
-    if (ppm > 7) for (const m of [2, 4, 6, 8, 10]) for (const s of [-1, 1]) g.fillText(String(m), cx + s * m * ppm, cy + 0.75 * ppm);
-    // barres épaisses extérieures
-    g.lineWidth = Math.max(2.5, 0.22 * ppm);
-    line(-R, 0, -fine - 0.5 * ppm, 0);
-    line(fine + 0.5 * ppm, 0, R, 0);
-    line(0, -R, 0, -fine - 0.5 * ppm);
-    // point d'impact prédit (mode assisté)
-    if (this.predict) {
-      g.strokeStyle = 'rgba(255,196,84,0.95)';
-      g.lineWidth = 1.5;
-      const px = cx + this.predict.x, py = cy + this.predict.y;
+    if (!lod.dots) {
+      // points de dérive non séparables : un trait gris par ligne de l'arbre, sur toute sa largeur
+      const dh = lod.dotPx / 3;
+      g.globalAlpha = 0.32;
       g.beginPath();
-      g.moveTo(px, py - 6); g.lineTo(px + 6, py); g.lineTo(px, py + 6); g.lineTo(px - 6, py); g.closePath();
-      g.stroke();
-      g.beginPath();
-      g.arc(px, py, 1.2, 0, Math.PI * 2);
-      g.fillStyle = 'rgba(255,196,84,0.95)';
+      for (let drop = 2; drop <= TREE_MIL; drop += 2) {
+        const e = treeHalfWidth(drop) * ppm, y = drop * ppm;
+        if (y - dh > R) break;
+        rect(-e, y - dh, -ppm, y + dh);
+        rect(ppm, y - dh, e, y + dh);
+      }
       g.fill();
+    }
+    g.globalAlpha = 1;
+
+    // ---- chiffres ----
+    if (lod.labels !== 'none') {
+      const f = lod.fontPx, cap = f * 0.72;
+      g.font = `500 ${f.toFixed(2)}px ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif`;
+      g.textBaseline = 'alphabetic';
+      g.shadowColor = 'rgba(236,240,232,0.55)';
+      g.shadowBlur = 1.6 * dpr;
+      for (const l of RETICLE.labels) {
+        // à faible grossissement : seulement les lignes de l'arbre multiples de 4, rien autour du centre
+        if (lod.labels === 'sparse' && (l.value % 4 !== 0 || l.y < 1)) continue;
+        g.textAlign = l.anchor === 'bottom' ? 'center' : l.anchor;
+        g.fillText(l.text, cx + l.x * ppm, cy + l.y * ppm + (l.anchor === 'bottom' ? 0 : cap / 2));
+      }
     }
     g.restore();
+  }
+
+  /** Losange du point d'impact prédit (mode assisté) : dessiné une fois, puis seulement déplacé. */
+  private placeMark(visible: number, view: { cx: number; cy: number; R: number }, dpr: number): void {
+    const m = this.mark, p = this.predict;
+    const show = !!p && visible >= 0.02 && Math.hypot(p.x, p.y) < view.R - 2 - MARK / 2;
+    const key = show ? `${dpr}:${(view.cx + p!.x).toFixed(1)}:${(view.cy + p!.y).toFixed(1)}:${visible.toFixed(2)}` : '';
+    if (key === this.markKey) return;
+    this.markKey = key;
+    if (!show) { m.style.display = 'none'; return; }
+    if (m.width !== MARK * dpr) {
+      m.width = m.height = MARK * dpr;
+      const g = m.getContext('2d')!, c = MARK / 2;
+      g.setTransform(dpr, 0, 0, dpr, 0, 0);
+      g.strokeStyle = g.fillStyle = GOLD;
+      g.lineWidth = 1.5;
+      g.beginPath();
+      g.moveTo(c, c - 6); g.lineTo(c + 6, c); g.lineTo(c, c + 6); g.lineTo(c - 6, c); g.closePath();
+      g.stroke();
+      g.beginPath();
+      g.arc(c, c, 1.2, 0, Math.PI * 2);
+      g.fill();
+    }
+    m.style.display = 'block';
+    m.style.opacity = String(visible);
+    m.style.transform = `translate(${(view.cx + p!.x - MARK / 2).toFixed(2)}px,${(view.cy + p!.y - MARK / 2).toFixed(2)}px)`;
   }
 }

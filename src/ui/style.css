@@ -233,8 +233,9 @@ html.touch #menu .mbtn { grid-column: 1; }
 html.touch #menu .opt, html.touch #menu .opt-note { grid-column: 2; }
 html.touch #menu .m-start { grid-row: 1; } html.touch #menu .o-diff { grid-row: 1; }
 html.touch #menu .m-help { grid-row: 2; } html.touch #menu .opt-note { grid-row: 2; margin: 0 0 0 110px; max-width: 300px; }
-html.touch #menu .m-fs { grid-row: 3; } html.touch #menu .o-qual { grid-row: 3; }
-html.touch #menu .o-vol { grid-row: 4; } html.touch #menu .o-tuto { grid-row: 5; }
+html.touch #menu .m-scores { grid-row: 3; } html.touch #menu .o-qual { grid-row: 3; }
+html.touch #menu .m-fs { grid-row: 4; }
+html.touch #menu .o-vol { grid-row: 4; } html.touch #menu .o-tuto { grid-row: 5; } html.touch #menu .o-coach { grid-row: 6; }
 html.touch #menu .foot { position: static; margin-top: 10px; }
 html.touch .card { padding: 16px 20px; max-height: calc(100% - 16px); }
 html.touch .card h2 { font-size: 22px; margin: 2px 0 8px; }
@@ -424,7 +425,7 @@ html.touch.portrait #menu { justify-content: flex-start; padding: calc(var(--sat
 html.touch.portrait #menu h1 { font-size: clamp(50px, 17.6vw, 124px); line-height: 1.06; letter-spacing: 0.2em; text-shadow: 0 2px 30px rgba(0, 0, 0, 0.7); }
 html.touch.portrait #menu .sub { margin: 16px 0 0 3px; font-size: 10.5px; letter-spacing: 0.26em; line-height: 1.8; }
 html.touch.portrait #menu .sub i { display: none; }
-html.touch.portrait #menu .menu-list { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; row-gap: 2px; margin-top: auto; padding-top: 18px; align-items: center; justify-items: stretch; }
+html.touch.portrait #menu .menu-list { display: grid; grid-template-columns: max-content 1fr max-content; column-gap: 12px; row-gap: 2px; margin-top: auto; padding-top: 18px; align-items: center; justify-items: stretch; }
 html.touch.portrait #menu .menu-list > * { grid-column: 1 / -1; grid-row: auto; }
 html.touch.portrait #menu .m-start { order: 1; min-height: 54px; margin-bottom: 10px; text-align: center; font-size: 17px; letter-spacing: 0.26em; border: 1px solid var(--gold); background: rgba(231, 181, 101, 0.1); color: var(--ink); }
 html.touch.portrait #menu .m-start:active { background: var(--gold); color: #14120e; }
@@ -432,9 +433,17 @@ html.touch.portrait #menu .o-diff { order: 2; }
 html.touch.portrait #menu .opt-note { order: 3; margin: 0 0 4px 96px; max-width: none; min-height: 32px; font-size: 11.5px; line-height: 1.4; }
 html.touch.portrait #menu .o-qual { order: 4; }
 html.touch.portrait #menu .o-vol { order: 5; }
-html.touch.portrait #menu .o-tuto { order: 6; }
+/* Tutoriel et Conseils partagent une rangée (l'accueil tient sans défiler à 375 × 664) */
+html.touch.portrait #menu .opt-pair { order: 6; display: flex; gap: 10px; }
+html.touch.portrait #menu .opt-pair .opt { flex: 1 1 0; min-width: 0; gap: 6px; }
+html.touch.portrait #menu .opt-pair .opt > span { width: auto; font-size: 9.5px; letter-spacing: 0.1em; }
+/* niveau sans tutoriel : le volume prend la place du tutoriel dans la paire (voir hud.ts) */
+/* dernière rangée : Commandes, Scores, Plein écran (ce dernier absent là où le navigateur ne l'offre pas) */
+html.touch.portrait #menu .m-help, html.touch.portrait #menu .m-scores, html.touch.portrait #menu .m-fs { font-size: 13px; letter-spacing: 0.12em; }
 html.touch.portrait #menu .m-help { order: 7; grid-column: 1; }
-html.touch.portrait #menu .m-fs { order: 8; grid-column: 2; text-align: right; }
+html.touch.portrait #menu .m-scores { order: 8; grid-column: 2; text-align: center; }
+html.touch.portrait #menu .no-fs .m-scores { text-align: right; grid-column: 2 / -1; }
+html.touch.portrait #menu .m-fs { order: 9; grid-column: 3; text-align: right; }
 html.touch.portrait .opt { gap: 10px; padding: 0 2px; }
 html.touch.portrait .opt > span { width: 84px; flex: none; font-size: 10.5px; letter-spacing: 0.18em; }
 html.touch.portrait .opt .seg { flex: 1; }
@@ -631,3 +640,133 @@ html.touch.portrait #loading h1.title .pin, html.touch.portrait #menu h1.title .
 html.touch.portrait #menu h1.title { font-size: clamp(44px, 15.6vw, 110px); }
 html.touch.portrait #loading h1.title { font-size: clamp(34px, 11.6vw, 76px); }
 html.touch.portrait #menu h1.title { font-size: clamp(42px, 15vw, 106px); padding-top: 0.42em; }
+
+/* ====================================================================================================
+   CLASSEMENTS : cinq premiers par niveau à l'accueil, vingt premiers du niveau joué en fin de mission.
+   ==================================================================================================== */
+.board { list-style: none; margin: 0; padding: 0; font-variant-numeric: tabular-nums; }
+.board li { display: grid; grid-template-columns: 16px minmax(0, 1fr) auto 38px; column-gap: 9px; align-items: baseline; padding: 3px 0; font-size: 12.5px; color: var(--dim); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.board .rk { color: var(--faint); font-size: 11px; text-align: right; }
+.board .nm { color: var(--ink); font-size: 12px; letter-spacing: 0.06em; white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.board .sc { color: var(--ink); text-align: right; }
+.board .ac, .board .xs, .board .xt { font-size: 11px; text-align: right; white-space: nowrap; }
+.board li.none { display: block; border: 0; color: var(--faint); font-size: 11.5px; letter-spacing: 0.08em; }
+.board li.me { background: rgba(231, 181, 101, 0.12); box-shadow: inset 2px 0 0 var(--gold); }
+.board li.me .rk, .board li.me .nm, .board li.me .sc { color: var(--gold); }
+.board-col h3 { font-family: var(--serif); font-weight: 400; font-size: 16px; letter-spacing: 0.08em; margin: 0 0 4px; padding-bottom: 4px; color: var(--dim); border-bottom: 1px solid var(--line); }
+.board-col.cur h3 { color: var(--ink); border-bottom-color: var(--gold); }
+.boards-g { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+/* accueil, ordinateur : panneau discret en bas à droite, hors du titre et des options */
+.m-scores { display: none; }
+#menu .boards { position: absolute; right: 4vw; bottom: 34px; width: min(780px, 52vw); padding: 13px 18px 12px; background: rgba(10, 11, 10, 0.52); border: 1px solid var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.boards-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 10.5px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); }
+.boards-h i { font-style: normal; color: var(--faint); letter-spacing: 0.16em; }
+#menu .boards .board { min-height: 112px; }
+/* fenêtre étroite : seul le classement du niveau choisi ; trop étroite ou trop basse : rien (le titre et les options d'abord) */
+@media (max-width: 1500px) { #menu .boards { width: 270px; } #menu .boards .boards-g { grid-template-columns: 1fr; } #menu .boards .board-col:not(.cur) { display: none; } #menu .boards .boards-h i { display: none; } }
+@media (max-width: 940px), (max-height: 560px) { #menu .boards { display: none; } }
+/* appareil tactile : bouton « Scores » et écran à part (l'accueil en portrait est déjà plein) */
+html.touch #menu .boards { display: none; }
+html.touch .m-scores { display: block; }
+#scores { align-items: center; justify-content: center; }
+#scores .card { width: 100%; max-width: 760px; }
+#scores .boards-g { margin-top: 14px; }
+.boards-note { margin: 14px 0 0 !important; color: var(--faint) !important; font-size: 11.5px !important; letter-spacing: 0.04em; }
+html.touch #scores { padding: var(--sat) calc(var(--sar) + 8px) var(--sab) calc(var(--sal) + 8px); }
+html.touch.portrait #scores { padding: calc(var(--sat) + 8px) calc(var(--sar) + 8px) calc(max(var(--sab), 10px) + 8px) calc(var(--sal) + 8px); }
+html.touch.portrait #scores .boards-g { grid-template-columns: 1fr; gap: 14px; }
+html.touch.portrait #scores .board li { font-size: 13.5px; padding: 4px 0; grid-template-columns: 16px minmax(0, 1fr) auto 46px; }
+html.touch.portrait #scores .board .nm { letter-spacing: 0.16em; }
+/* classement local de repli : le vider (écran des commandes) */
+.local-scores { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin: 6px 0 12px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--faint); font-size: 12px; }
+.local-scores button { background: none; border: 1px solid var(--line); padding: 5px 12px; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); cursor: pointer; white-space: nowrap; }
+.local-scores button:hover { color: var(--ink); }
+.local-scores button.armed { border-color: var(--red); color: var(--red); }
+html.touch .local-scores button { min-height: 44px; }
+
+/* fin de mission : bilan des objectifs à gauche, classement du niveau à droite */
+html:not(.touch) #end .card { max-height: calc(100% - 28px); overflow-y: auto; }
+.end-cols { display: grid; grid-template-columns: minmax(0, 1fr) 410px; gap: 32px; align-items: start; }
+.end-detail { order: 1; }
+.end-rank { order: 2; }
+.rank-k { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.rank-mode { font-style: normal; color: var(--faint); letter-spacing: 0.16em; white-space: nowrap; }
+.card p.rank-msg { margin: 7px 0 9px; font-size: 13px; line-height: 1.45; color: var(--dim); }
+.card p.rank-msg.hot { color: var(--ink); }
+.rank-form { display: flex; align-items: center; gap: 18px; margin: 0 0 12px; }
+#ui .rank-name { width: 176px; padding: 7px 4px 6px 10px; background: rgba(0, 0, 0, 0.28); border: 0; border-bottom: 1px solid var(--gold); border-radius: 0; font-family: var(--sans); font-size: 18px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--ink); outline: none; cursor: text; user-select: text; -webkit-user-select: text; -webkit-appearance: none; appearance: none; }
+#ui .rank-name:focus { background: rgba(231, 181, 101, 0.1); }
+#ui .rank-name::placeholder { color: var(--faint); letter-spacing: 0.2em; font-size: 13px; }
+.rank-form .mbtn { font-size: 14px; padding: 8px 4px; }
+.rank-form .mbtn.primary { font-size: 15px; color: var(--gold); }
+.rank-form .mbtn:disabled { opacity: 0.5; cursor: default; }
+#end table.dope .xp { white-space: nowrap; }
+.board.full li { grid-template-columns: 18px minmax(0, 1fr) 54px 40px 52px 66px; column-gap: 8px; padding: 2.5px 6px 2.5px 4px; }
+html.touch .rank-name, html.touch #ui .rank-name { -webkit-user-select: text; user-select: text; min-height: 44px; font-size: 17px; }
+html.touch #end .rank-form .mbtn { min-width: 44px; }
+html.touch.portrait .end-cols { display: block; }
+html.touch.portrait .end-detail { margin-top: 14px; }
+html.touch.portrait .rank-form { gap: 8px; margin-bottom: 8px; }
+html.touch.portrait #ui .rank-name { flex: 1; min-width: 0; width: auto; letter-spacing: 0.2em; }
+html.touch.portrait .card .rank-form .mbtn.primary { min-height: 44px; padding: 8px 12px; font-size: 13px; letter-spacing: 0.14em; }
+html.touch.portrait .rank-form .rank-skip { font-size: 13px; letter-spacing: 0.12em; padding: 8px 6px; }
+/* portrait : liste défilante compacte, sept lignes visibles */
+html.touch.portrait .board.full { max-height: 172px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+html.touch.portrait .board.full li { grid-template-columns: 18px minmax(0, 1fr) 58px 40px; font-size: 13px; padding: 3px 6px 3px 4px; }
+html.touch.portrait .board.full .xs, html.touch.portrait .board.full .xt { display: none; }
+
+/* ====================================================================================================
+   CONSEIL après plusieurs tirs manqués : encart à gauche, hors du champ de la lunette ; il ne met pas le jeu en pause.
+   ==================================================================================================== */
+.opt-pair { display: contents; }
+.coach { position: absolute; z-index: 5; left: 30px; top: 150px; width: 400px; max-height: calc(100% - 150px - 132px); overflow: hidden; background: rgba(14, 15, 14, 0.86); border: 1px solid var(--line); border-left: 2px solid var(--gold); padding: 12px 16px 6px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); pointer-events: none; text-shadow: none; }
+.coach-k { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); white-space: nowrap; }
+.coach-k i { font-style: normal; font-size: 10px; letter-spacing: 0.16em; color: var(--faint); }
+.coach-k i b { color: var(--dim); font-weight: 500; border: 1px solid var(--line); padding: 0 4px; margin-right: 4px; }
+.coach-t { font-family: var(--serif); font-size: 19px; letter-spacing: 0.03em; margin: 3px 0 7px; }
+.coach p, .coach ol { margin: 0 0 7px; font-size: 12.5px; line-height: 1.5; color: var(--dim); }
+.coach ol { padding-left: 17px; }
+.coach li { margin-bottom: 4px; padding-left: 2px; }
+.coach li::marker { color: var(--gold); }
+.coach .coach-full b { color: var(--ink); font-weight: 500; }
+.coach p.coach-d { color: var(--ink); border-left: 2px solid var(--gold); padding-left: 9px; }
+.coach p.coach-c { border-top: 1px solid var(--line); padding-top: 7px; }
+.coach-s { display: none; font-size: 12.5px; line-height: 1.45; color: var(--ink); margin-bottom: 7px; }
+/* en visée : adossé au bord du champ, sans le paragraphe d'explication ; fenêtre étroite : version courte */
+html.noscopecoach #hud.in-scope .coach { display: none; }
+#hud.in-scope .coach { width: clamp(180px, calc(var(--field-l, 384px) - 44px), 350px); top: 112px; max-height: calc(100% - 112px - 96px); }
+#hud.in-scope .coach .coach-w { display: none; }
+html.tightscope #hud.in-scope .coach .coach-full { display: none; }
+html.tightscope #hud.in-scope .coach .coach-s { display: block; }
+@media (max-height: 790px) { html:not(.touch) .coach .coach-w { display: none; } html:not(.touch) .coach p, html:not(.touch) .coach ol { font-size: 12px; line-height: 1.42; } }
+/* tactile : bouton de fermeture, défilement interne si le texte dépasse */
+.coach-x { pointer-events: auto; background: none; border: 1px solid var(--line); color: var(--ink); min-width: 76px; min-height: 44px; margin: -8px -8px -6px 0; padding: 0 10px; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; }
+.coach-x:active { background: var(--gold); border-color: var(--gold); color: #14120e; }
+html.touch .coach { left: calc(var(--sal) + 12px); top: calc(var(--sat) + 84px); width: 330px; max-height: calc(100% - var(--sat) - 84px - 150px); padding: 8px 12px 4px; pointer-events: auto; }
+html.touch .coach-k { align-items: center; }
+html.touch #hud.in-scope .coach { width: 300px; top: calc(var(--sat) + 60px); }
+html.touch.portrait .coach, html.touch.portrait #hud.in-scope .coach { left: calc(var(--sal) + 8px); right: calc(var(--sar) + 8px); width: auto; }
+html.touch.portrait .coach { top: calc(var(--sat) + 132px); max-height: calc(100% - var(--sat) - 132px - var(--bm) - 205px * var(--ts)); padding: 7px 10px 3px; }
+html.touch.portrait .coach-t { font-size: 16px; margin: 1px 0 5px; }
+html.touch.portrait .coach p, html.touch.portrait .coach ol { font-size: 12px; line-height: 1.42; margin-bottom: 6px; }
+/* portrait, en visée : bandeau court au-dessus du champ (qui descend d'autant, comme pour le tutoriel) */
+html.touch.portrait #hud.in-scope .coach { top: calc(var(--sat) + 6px); max-height: none; overflow: visible; pointer-events: none; padding: 5px 10px 2px; }
+html.touch.portrait #hud.in-scope .coach .coach-full, html.touch.portrait #hud.in-scope .coach .coach-t { display: none; }
+html.touch.portrait #hud.in-scope .coach .coach-s { display: block; font-size: 11.5px; line-height: 1.36; margin: 2px 0 5px; }
+html.touch.portrait #hud.in-scope .coach-k { font-size: 9px; }
+html.touch #hud.has-coach .obj { display: none; }
+/* portrait, hors lunette : l'essentiel d'abord (écart mesuré, arme, étapes), l'explication ensuite ; le bas s'estompe tant qu'il reste à lire */
+html.touch.portrait .coach .coach-full { display: flex; flex-direction: column; }
+html.touch.portrait .coach .coach-d { order: 1; }
+html.touch.portrait .coach .coach-c { order: 2; border-top: 0; padding-top: 0; }
+html.touch.portrait .coach ol { order: 3; }
+html.touch.portrait .coach .coach-w { order: 4; }
+html.touch .coach .coach-full::after { content: ''; order: 9; flex: none; display: block; position: sticky; bottom: -4px; height: 22px; margin-top: -22px; background: linear-gradient(rgba(14, 15, 14, 0), rgba(14, 15, 14, 0.96)); pointer-events: none; }
+html.touch .coach .coach-full { padding-bottom: 14px; }
+/* petit téléphone (375 × 664) : les trois classements pleins, quinze lignes, tiennent sans défiler */
+@media (max-height: 700px) {
+  html.touch.portrait #scores .boards-g { gap: 9px; margin-top: 8px; }
+  html.touch.portrait #scores .board li { padding: 2px 0; font-size: 13px; }
+  html.touch.portrait #scores .board-col h3 { font-size: 15px; margin-bottom: 2px; padding-bottom: 3px; }
+  html.touch.portrait #scores .boards-note { margin-top: 8px !important; }
+}

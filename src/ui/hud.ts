@@ -4,13 +4,15 @@ import type { DragModel, TableRow } from '../ballistics/solver';
 import { recoilVelocity, type WeaponDef } from '../config/weapons';
 import { QUALITY, type QualityName } from '../core/engine';
 import { DIFFICULTY_LABEL, DIFFICULTY_NOTE, type Difficulty, type Mission, type ShotLog, type Step, type StepStats } from '../game/mission';
+import { BOARD_SIZE, HOME_SIZE, NAME_MAX, cleanName, escapeHtml, rankOf, type ScoreBoards, type ScoreEntry, type ScoreResult, type SubmitOutcome } from '../game/scores';
 import type { LevelEntry } from '../levels';
 import type { LevelId } from '../levels/types';
 import { Reticle } from '../weapons/scope';
 import type { TutoView } from '../game/tutorial';
+import type { Advice } from '../game/coach';
 import { touchHelpHtml } from './touch';
 
-export type ScreenName = 'loading' | 'menu' | 'brief' | 'pause' | 'fail' | 'end' | 'rack' | 'book' | 'help';
+export type ScreenName = 'loading' | 'menu' | 'brief' | 'pause' | 'fail' | 'end' | 'rack' | 'book' | 'help' | 'scores';
 
 export interface UIHandlers {
   start(): void;
@@ -31,6 +33,26 @@ export interface UIHandlers {
   setTutorial(on: boolean): void;
   skipTutorial(): void;
   fullscreen(): void;
+  /** réglage « Conseils : avec / sans » */
+  setCoach(on: boolean): void;
+  /** le joueur ferme le conseil affiché */
+  closeCoach(): void;
+  /** inscrit le score de la mission terminée sous ce nom */
+  submitScore(name: string): Promise<SubmitOutcome>;
+  /** vide le classement local de ce navigateur */
+  clearLocalScores(): void;
+}
+
+/** Ce que l'écran de fin sait du classement du niveau joué. */
+export interface EndRanking {
+  /** titre du niveau (« Facile ») */
+  title: string;
+  /** faux : partie d'essai (mode test, aides forcées, objectifs sautés), le score n'est pas classé */
+  ranked: boolean;
+  board: ScoreEntry[];
+  online: boolean;
+  lastName: string;
+  result: ScoreResult;
 }
 
 export interface HudState {
@@ -69,6 +91,17 @@ export interface HudState {
 }
 
 const fr = (n: number, d = 0): string => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+/** rang en toutes lettres courtes : « 1er », « 2e » */
+const ord = (n: number): string => (n === 1 ? '1er' : n + 'e');
+/** durée courte : « 6 min 04 » */
+const dur = (s: number): string => `${Math.floor(s / 60)} min ${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const modeLabel = (online: boolean): string => (online ? 'en ligne' : 'local à cet appareil');
+/**
+ * Une ligne de classement. Le nom est nettoyé à la lecture (lettres, chiffres, espace, tiret) et échappé ici :
+ * il n'entre jamais tel quel dans la page. `full` : colonnes de l'écran de fin (tirs, durée).
+ */
+const boardRow = (e: { name: string; score: number; accuracy: number; shots: number; time: number }, rank: number, full: boolean, me = false): string =>
+  `<li class="${me ? 'me' : ''}"><span class="rk">${rank}</span><span class="nm">${escapeHtml(e.name) || '—'}</span><span class="sc">${fr(e.score)}</span><span class="ac">${fr(e.accuracy * 100)} %</span>${full ? `<span class="xs">${e.shots} tir${e.shots > 1 ? 's' : ''}</span><span class="xt">${dur(e.time)}</span>` : ''}</li>`;
 
 /** Une ligne du carnet décomposé (corrections en mrad ; positif = monter, ou corriger à droite). */
 export interface BookRow {
@@ -154,6 +187,8 @@ export interface UIInit {
   volume: number;
   touch?: boolean;
   tutorial?: boolean;
+  /** conseils après plusieurs tirs manqués */
+  coach?: boolean;
   fullscreen?: boolean;
   homeTip?: boolean;
   /** les trois niveaux du registre, et celui qui est chargé */
@@ -197,6 +232,7 @@ export class UI {
     this.alertTexts = init.alertTexts ?? {};
     const cur = init.levels.find((l) => l.id === init.level)!;
     this.reticle = new Reticle(root);
+    const boardCols = init.levels.map((l) => `<section class="board-col${l.id === init.level ? ' cur' : ''}"><h3>${l.meta.title}</h3><ol class="board" data-board="${l.id}"><li class="none">Aucun score</li></ol></section>`).join('');
     root.insertAdjacentHTML(
       'beforeend',
       `
@@ -236,6 +272,17 @@ export class UI {
           <div class="tuto-x" data-id="tutoX"></div>
           <div class="tuto-c" data-id="tutoC"></div>
         </div>
+        <div class="coach scroll hidden" data-id="coach" role="status">
+          <div class="coach-k"><span>Conseil</span>${touch ? '<button class="coach-x" data-act="closeCoach" aria-label="Fermer le conseil">Fermer</button>' : '<i data-id="coachClose"></i>'}</div>
+          <div class="coach-t" data-id="coachT"></div>
+          <div class="coach-s" data-id="coachS"></div>
+          <div class="coach-full">
+            <p class="coach-d" data-id="coachD"></p>
+            <p class="coach-w" data-id="coachW"></p>
+            <ol data-id="coachL"></ol>
+            <p class="coach-c" data-id="coachC"></p>
+          </div>
+        </div>
       </div>
       <div class="letterbox" data-id="letterbox"></div>
 
@@ -244,17 +291,22 @@ export class UI {
       <div class="screen veil scroll" id="menu">
         <h1 class="title"><span class="struck"><s>FAU</s><span class="at"><span class="pin"><em class="fix">Pigeon</em></span></span><s>CON</s></span> <span>PERCHÉ</span></h1>
         <div class="sub"><span>Tir de précision</span><i> · </i><span>${cur.meta.tagline}</span></div>
-        <div class="menu-list">
+        <div class="menu-list${init.fullscreen ? '' : ' no-fs'}">
           <button class="mbtn primary m-start" data-act="start">Commencer</button>
           <div class="opt o-diff"><span>Niveau</span><div class="seg" data-id="segLevel"></div></div>
           <div class="opt-note" data-id="diffNote"></div>
           <div class="opt o-qual"><span>Qualité</span><div class="seg" data-id="segQual"></div></div>
           <div class="opt o-vol"><span>Volume</span><input type="range" min="0" max="100" data-id="vol" /></div>
-          <div class="opt o-tuto" data-id="tutoRow"><span>Tutoriel</span><div class="seg" data-id="segTuto"></div></div>
+          <div class="opt-pair">
+            <div class="opt o-tuto" data-id="tutoRow"><span>Tutoriel</span><div class="seg" data-id="segTuto"></div></div>
+            <div class="opt o-coach"><span>Conseils</span><div class="seg" data-id="segCoach"></div></div>
+          </div>
           <button class="mbtn m-help" data-act="help">Commandes</button>
+          <button class="mbtn m-scores" data-act="scores">Scores</button>
           ${init.fullscreen ? '<button class="mbtn m-fs" data-act="fullscreen">Plein écran</button>' : ''}
         </div>
         <div class="foot">${touch ? 'Jouez au casque.' : 'Jouez au casque. Clic pour capturer la souris, Échap pour la libérer.'}${init.homeTip ? `<span class="hometip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>Sans les barres de Safari : <i>Partager</i>, puis <i>Sur l’écran d’accueil</i>.</span>` : ''}</div>
+        <div class="boards"><div class="boards-h"><span>Meilleurs scores</span><i data-mode></i></div><div class="boards-g">${boardCols}</div></div>
       </div>
 
       <div class="screen veil" id="brief"><div class="card scroll" data-id="briefCard"></div></div>
@@ -264,7 +316,13 @@ export class UI {
         <p class="help-note" style="color:var(--dim)">Les boutons n’apparaissent que lorsqu’ils servent. Tourelles : un appui donne un clic de 0,1 mrad, un appui maintenu les enchaîne ; −1, +1, G1 et D1 donnent 1 mrad. On n’épaule que couché ou accroupi.</p>` : `<h2>Clavier et souris</h2>
         <div class="keys">${KEYS.map(([a, b]) => `<div><span>${a}</span><kbd>${b}</kbd></div>`).join('')}</div>
         <p style="color:var(--dim)">Les touches sont lues par position : ZQSD sur un clavier français, WASD sur un clavier anglais. On ne peut épauler que couché (bipied) ou accroupi ; accroupi contre un mur, l’arme est appuyée et tremble moins.</p>`}
+        <div class="local-scores hidden" data-id="localRow"><span data-id="localT"></span><button data-act="clearLocal" data-id="localB">Effacer</button></div>
         <div class="row-btn help-back"><button class="mbtn" data-act="closeHelp">Retour</button></div></div></div>
+
+      <div class="screen veil-full" id="scores"><div class="card scroll"><div class="kicker">Meilleurs scores<button class="xclose" data-act="closeScores">Retour</button></div>
+        <div class="boards-g">${boardCols}</div>
+        <p class="boards-note">Les cinq premiers de chaque niveau. Classement <span data-mode></span>.</p>
+        <div class="row-btn help-back"><button class="mbtn" data-act="closeScores">Retour</button></div></div></div>
 
       <div class="screen veil-full" id="pause"><div class="card scroll"><div class="kicker">Pause</div><h2 class="title small"><span class="struck"><s>Fau</s><span class="at"><span class="pin"><em class="fix">Pigeon</em></span></span><s>con</s></span> perché</h2>
         <div class="opt"><span>Qualité</span><div class="seg" data-id="segQual2"></div></div>
@@ -301,7 +359,7 @@ export class UI {
       `,
     );
     root.querySelectorAll<HTMLElement>('[data-id]').forEach((e) => (this.el[e.dataset.id!] = e));
-    for (const n of ['loading', 'menu', 'brief', 'pause', 'fail', 'end', 'rack', 'book', 'help'] as ScreenName[]) this.screens.set(n, root.querySelector('#' + n)!);
+    for (const n of ['loading', 'menu', 'brief', 'pause', 'fail', 'end', 'rack', 'book', 'help', 'scores'] as ScreenName[]) this.screens.set(n, root.querySelector('#' + n)!);
     this.el.hud = root.querySelector('#hud')!;
 
     const seg = (host: HTMLElement, items: [string, string][], sel: string, cb: (k: string) => void): void => {
@@ -329,7 +387,10 @@ export class UI {
     seg(this.el.segQual, quals, init.quality, (k) => h.setQuality(k as QualityName));
     seg(this.el.segQual2, quals, init.quality, (k) => h.setQuality(k as QualityName));
     seg(this.el.segTuto, [['on', 'Avec'], ['off', 'Sans']], init.tutorial ? 'on' : 'off', (k) => h.setTutorial(k === 'on'));
+    seg(this.el.segCoach, [['on', 'Avec'], ['off', 'Sans']], init.coach === false ? 'off' : 'on', (k) => h.setCoach(k === 'on'));
     this.el.tutoRow.classList.toggle('hidden', init.difficulty === 'real' || !init.hasTutorial);
+    // sans réglage du tutoriel, le volume rejoint « Conseils » : en portrait ils partagent une rangée (l'accueil tient sans défiler)
+    if (this.el.tutoRow.classList.contains('hidden')) this.el.tutoRow.parentElement!.prepend(this.el.vol.closest('.opt')!);
     for (const id of ['vol', 'vol2']) {
       const v = this.el[id] as HTMLInputElement;
       v.value = String(Math.round(init.volume * 100));
@@ -361,6 +422,28 @@ export class UI {
       else if (act === 'close') h.close();
       else if (act === 'skipTuto') h.skipTutorial();
       else if (act === 'fullscreen') h.fullscreen();
+      else if (act === 'closeCoach') h.closeCoach();
+      else if (act === 'scores') this.show('scores');
+      else if (act === 'closeScores') this.show('menu');
+      else if (act === 'submitScore') this.submitScore();
+      else if (act === 'skipScore') this.skipScore();
+      else if (act === 'clearLocal') this.clearLocal();
+    });
+    // saisie du nom (écran de fin) : nettoyage au fil de la frappe, Entrée pour valider
+    root.addEventListener('input', (e) => {
+      const t = e.target as HTMLInputElement;
+      if (!t.matches?.('.rank-name')) return;
+      const v = cleanName(t.value, true);
+      if (v !== t.value) t.value = v;
+      const me = this.el.endCard.querySelector('.board .me .nm');
+      if (me) me.textContent = cleanName(v) || '—';
+    });
+    root.addEventListener('keydown', (e) => {
+      const t = e.target as HTMLElement;
+      if (!t.matches?.('.rank-name')) return;
+      // la frappe reste dans le champ : le jeu ne lit pas ces touches
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); this.submitScore(); }
     });
     root.addEventListener('mouseover', (e) => { if ((e.target as HTMLElement).closest('button')) h.hover(); });
   }
@@ -510,9 +593,37 @@ export class UI {
 
   /** compteur des changements de la carte du tutoriel (sa hauteur a pu changer) */
   tutoRev = 0;
-  /** hauteur de la carte du tutoriel à l'écran, en pixels CSS (0 si elle est masquée) */
+  /** hauteur de la carte logée au-dessus du champ de la lunette (tutoriel, ou conseil), en pixels CSS ; 0 s'il n'y en a pas */
   tutoHeight(): number {
-    return this.el.tuto.classList.contains('hidden') ? 0 : this.el.tuto.offsetHeight;
+    if (!this.el.tuto.classList.contains('hidden')) return this.el.tuto.offsetHeight;
+    return this.el.coach.classList.contains('hidden') ? 0 : this.el.coach.offsetHeight;
+  }
+
+  /**
+   * Conseil après plusieurs tirs manqués (voir game/coach.ts) ; `null` le retire. Les textes viennent du jeu : chiffres
+   * et commandes, sans rien de saisi par le joueur.
+   */
+  coach(a: Advice | null): void {
+    const on = !!a;
+    if (!on && this.el.coach.classList.contains('hidden')) return;
+    this.el.coach.classList.toggle('hidden', !on);
+    this.el.hud.classList.toggle('has-coach', on);
+    this.tutoRev++;
+    if (!a) return;
+    this.el.coachT.textContent = a.title;
+    this.el.coachS.innerHTML = a.short;
+    this.el.coachD.innerHTML = a.diag;
+    this.el.coachD.classList.toggle('hidden', !a.diag);
+    this.el.coachW.innerHTML = a.why;
+    this.el.coachL.innerHTML = a.steps.map((x) => `<li>${x}</li>`).join('');
+    this.el.coachL.classList.toggle('hidden', !a.steps.length);
+    this.el.coachC.innerHTML = a.calibre;
+    this.el.coachC.classList.toggle('hidden', !a.calibre);
+    if (this.el.coachClose) this.el.coachClose.innerHTML = a.close;
+    this.el.coach.scrollTop = 0;
+  }
+  get coachShown(): boolean {
+    return !this.el.coach.classList.contains('hidden');
   }
 
   /** Carte du tutoriel : étape en cours, commande, progression. `null` la retire. Renvoie vrai si elle a changé. */
@@ -657,12 +768,38 @@ export class UI {
     this.el.bWind.textContent = (wind === 0 ? '' : wind > 0 ? 'D ' : 'G ') + fr(Math.abs(wind), 1) + ' mrad';
   }
 
+  // ---------------- classements ----------------
+  private localArmed = 0;
+  /** Classements de l'accueil (cinq premiers par niveau), mode « en ligne » ou « local », classement local à vider. */
+  setBoards(boards: ScoreBoards, online: boolean, localCount: number): void {
+    this.root.querySelectorAll<HTMLElement>('[data-board]').forEach((ol) => {
+      const list = (boards[ol.dataset.board as LevelId] ?? []).slice(0, HOME_SIZE);
+      ol.innerHTML = list.length ? list.map((e, i) => boardRow(e, i + 1, false)).join('') : '<li class="none">Aucun score</li>';
+    });
+    this.root.querySelectorAll<HTMLElement>('[data-mode]').forEach((e) => (e.textContent = modeLabel(online)));
+    this.el.localRow.classList.toggle('hidden', localCount === 0);
+    this.el.localT.textContent = `Classement local de cet appareil : ${localCount} score${localCount > 1 ? 's' : ''}.`;
+    this.el.localB.textContent = 'Effacer';
+    this.el.localB.classList.remove('armed');
+  }
+  /** deux appuis : le premier arme (« Confirmer »), le second efface */
+  private clearLocal(): void {
+    const b = this.el.localB;
+    if (b.classList.contains('armed')) { clearTimeout(this.localArmed); this.h.clearLocalScores(); return; }
+    b.classList.add('armed');
+    b.textContent = 'Confirmer l’effacement';
+    this.localArmed = window.setTimeout(() => { b.classList.remove('armed'); b.textContent = 'Effacer'; }, 5000);
+  }
+
   fail(reason: string): void {
     this.el.failT.textContent = reason;
     this.show('fail');
   }
 
-  end(m: Mission): void {
+  /** écran de fin : état du classement du niveau joué */
+  private rank: { info: EndRanking; phase: 'entry' | 'done' | 'out' | 'unranked' | 'skipped'; rank: number; note: string; busy: boolean } | null = null;
+
+  end(m: Mission, info: EndRanking): void {
     const sc = m.score();
     const min = Math.floor(m.elapsed / 60), sec = Math.floor(m.elapsed % 60);
     this.el.endCard.innerHTML = `<div class="kicker">Mission accomplie · ${DIFFICULTY_LABEL[m.difficulty]}</div><h2>${sc.grade}</h2>
@@ -672,10 +809,103 @@ export class UI {
         <div><small>Temps</small><b>${min} min ${String(sec).padStart(2, '0')}</b></div>
         <div><small>Munitions</small><b>${m.totalShots}</b></div>
       </div>
+      <div class="end-cols">
+      <div class="end-rank">
+        <div class="kicker rank-k"><span>Classement · ${info.title}</span><i class="rank-mode"></i></div>
+        <p class="rank-msg" aria-live="polite"></p>
+        <div class="rank-form hidden">
+          <input class="rank-name" type="text" inputmode="text" maxlength="${NAME_MAX}" size="${NAME_MAX}" placeholder="VOTRE NOM" aria-label="Votre nom, ${NAME_MAX} caractères au plus" autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false" enterkeyhint="done" />
+          <button class="mbtn primary rank-ok" data-act="submitScore">Inscrire</button>
+          <button class="mbtn rank-skip" data-act="skipScore">Passer</button>
+        </div>
+        <ol class="board full scroll"></ol>
+      </div>
+      <div class="end-detail">
       <table class="dope"><tr><th>Objectif</th><th class="xp">Arme</th><th>Tirs</th><th>Touches</th><th>Distance</th><th class="xp">Temps</th><th>Points</th></tr>
       ${m.stats.map((s, i) => `<tr><td>${this.steps[i].title}</td><td class="xp">${s.weapon || '—'}</td><td>${s.shots}</td><td>${s.hits}</td><td>${fr(s.distance)} m</td><td class="xp">${fr(s.time)} s</td><td>${fr(s.points)}</td></tr>`).join('')}
       ${this.alertRow ? `<tr><td>Discrétion</td>${[['lg', 5], ['sh', 3]].map(([c, n]) => `<td class="${c}c" colspan="${n}" style="text-align:left;color:var(--dim)">${m.alarm ? this.alertTexts.endRaised ?? 'L’alerte a été donnée.' : `${this.alertTexts.endQuiet ?? 'Aucune alerte donnée'} (niveau final ${fr(m.alert)} %).`}</td>`).join('')}<td>${fr(sc.discretion)}</td></tr>` : ''}</table>
+      </div>
+      </div>
       <div class="row-btn" style="margin-top:20px"><button class="mbtn primary" data-act="restart">Rejouer</button></div>`;
+    const phase = !info.ranked ? 'unranked' : rankOf(info.board, info.result.score) <= BOARD_SIZE ? 'entry' : 'out';
+    this.rank = { info, phase, rank: 0, note: '', busy: false };
+    const input = this.el.endCard.querySelector<HTMLInputElement>('.rank-name')!;
+    input.value = info.lastName;
+    this.renderRank();
+    this.el.endCard.scrollTop = 0;
     this.show('end');
+    // sur ordinateur le champ est prêt à la frappe ; au doigt, le clavier ne s'ouvre que si le joueur touche le champ
+    if (phase === 'entry' && !this.touch) setTimeout(() => { input.focus(); input.select(); }, 60);
+  }
+
+  /** Le classement du niveau a été relu (d'autres joueurs ont pu s'inscrire pendant la partie). */
+  endBoard(board: ScoreEntry[], online: boolean): void {
+    const r = this.rank;
+    if (!r || r.phase === 'done') return;
+    r.info.board = board;
+    r.info.online = online;
+    if (r.phase === 'entry' || r.phase === 'out') r.phase = rankOf(board, r.info.result.score) <= BOARD_SIZE ? 'entry' : 'out';
+    this.renderRank();
+  }
+
+  private renderRank(): void {
+    const r = this.rank;
+    if (!r) return;
+    const card = this.el.endCard, q = <T extends HTMLElement>(sel: string): T => card.querySelector<T>(sel)!;
+    const { board, result } = r.info;
+    const input = q<HTMLInputElement>('.rank-name');
+    const pending = r.phase === 'entry';
+    const rank = pending ? rankOf(board, result.score) : r.rank;
+    let rows = board.map((e) => ({ ...e, me: false }));
+    if (pending) rows.splice(rank - 1, 0, { ...result, name: cleanName(input.value), date: '', me: true });
+    else if (r.phase === 'done' && rank > 0 && rows[rank - 1]) rows[rank - 1].me = true;
+    rows = rows.slice(0, BOARD_SIZE);
+    let msg: string;
+    if (r.phase === 'entry') msg = rank === 1 ? 'Nouveau record du niveau. Inscrivez votre nom.' : `Vous entrez au classement : ${ord(rank)} sur ${rows.length}. Inscrivez votre nom.`;
+    else if (r.phase === 'done') msg = rank === 1 ? 'Record du niveau : vous êtes 1er.' : rank > 0 ? `Inscrit : ${ord(rank)} du classement.` : 'D’autres tireurs sont passés devant entre-temps : le score ne tient plus dans les vingt premiers.';
+    else if (r.phase === 'out') msg = `Hors des vingt premiers. Score à battre : ${fr(board[BOARD_SIZE - 1]?.score ?? 0)}.`;
+    else if (r.phase === 'skipped') msg = 'Score non inscrit.';
+    else msg = 'Partie d’essai : score non classé.';
+    q('.rank-msg').textContent = msg + (r.note ? ' ' + r.note : '');
+    q('.rank-msg').classList.toggle('hot', r.phase === 'entry' || (r.phase === 'done' && rank > 0));
+    q('.rank-mode').textContent = modeLabel(r.info.online);
+    q('.rank-form').classList.toggle('hidden', !pending);
+    const ok = q<HTMLButtonElement>('.rank-ok');
+    ok.disabled = r.busy;
+    ok.textContent = r.busy ? 'Envoi…' : 'Inscrire';
+    const ol = q('.board.full');
+    ol.innerHTML = rows.length ? rows.map((e, i) => boardRow(e, i + 1, true, e.me)).join('') : '<li class="none">Aucun score pour l’instant.</li>';
+    // liste défilante (portrait) : la ligne du joueur reste en vue
+    const me = ol.querySelector<HTMLElement>('.me');
+    if (me && ol.scrollHeight > ol.clientHeight) ol.scrollTop = Math.max(0, me.offsetTop - ol.offsetTop - ol.clientHeight / 2 + me.offsetHeight / 2);
+  }
+
+  private submitScore(): void {
+    const r = this.rank;
+    if (!r || r.phase !== 'entry' || r.busy) return;
+    const input = this.el.endCard.querySelector<HTMLInputElement>('.rank-name')!;
+    r.busy = true;
+    r.note = '';
+    this.renderRank();
+    void this.h.submitScore(input.value).then((out) => {
+      if (this.rank !== r) return;
+      r.busy = false;
+      if (out.status === 'ok') {
+        input.blur();
+        r.phase = 'done';
+        r.rank = out.rank;
+        r.info.board = out.board;
+        r.info.online = out.online;
+        r.note = out.fellBack ? 'Serveur injoignable : score enregistré sur cet appareil seulement.' : '';
+      } else if (out.status === 'retry') r.note = out.message;
+      else { r.phase = 'skipped'; r.note = out.message; }
+      this.renderRank();
+    });
+  }
+  private skipScore(): void {
+    const r = this.rank;
+    if (!r || r.phase !== 'entry' || r.busy) return;
+    r.phase = 'skipped';
+    this.renderRank();
   }
 }
