@@ -4,7 +4,7 @@
 // caboteur sont tenus par leurs corps-morts : ils ne bougent que de quelques centimètres avec la houle.
 import { BoxGeometry, Color, CylinderGeometry, Group, Mesh, MeshBasicMaterial, SphereGeometry, Vector3 } from 'three';
 import type { Engine } from '../../core/engine';
-import { BUOY_LAMP_Y, CarriedTarget, Floater, Runner, buoyGeometry, hullGeometry, paintMesh, painter, skiffGeometry, tint } from '../../game/extra/sea-targets';
+import { BUOY_LAMP_Y, CarriedTarget, CarrierBody, Floater, Runner, buoyGeometry, hullGeometry, paintMesh, painter, skiffGeometry, tint } from '../../game/extra/sea-targets';
 import { FuelDrum, SteelPlate, type Target } from '../../game/targets';
 import type { Swell } from '../../world/sea';
 import type { LevelHost } from '../types';
@@ -52,9 +52,12 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
     const c = new Floater({ x: B.x, z: B.z, level: SEA_LEVEL, swell, follow: FOLLOW.buoy, tilt: 1 });
     const gb = painter();
     buoyGeometry(gb, B.color, B.shape);
-    c.group.add(paintMesh(e, gb));
+    const bm = paintMesh(e, gb);
+    c.group.add(bm);
     carriers.add(c.group);
     const L = lamp(e, 0.2, B.shape === 'can' ? [9, 1.2, 0.8] : [1.0, 8, 2.2]);
+    // le corps de la bouée arrête la balle et renvoie le télémètre
+    list.push(new CarrierBody(B.id + '-corps', 'Corps de la bouée', c, [bm]));
     list.push(new CarriedTarget({ id: B.id, label: B.label, carrier: c, local: new Vector3(0, BUOY_LAMP_Y, 0), r: 0.21, kind: 'glass', mesh: L.mesh, lit: L.lit, note: 'Feu éteint.' }));
   }
 
@@ -84,8 +87,11 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
     tint(gb, 0xd8d8d8);
     gb.box(A.roof.x, A.roof.y + 0.75, A.roof.z, 0.07, 1.5, 0.07);
     gb.box(A.mast.x - 0.5, A.mast.y - 1.5, 0, 0.9, 0.08, 0.08);
-    c.group.add(paintMesh(e, gb));
+    const hull = paintMesh(e, gb);
+    c.group.add(hull);
     carriers.add(c.group);
+    const shipBody = new CarrierBody('caboteur-coque', 'Coque du caboteur', c, [hull]);
+    list.push(shipBody);
     const ab = painter();
     tint(ab, 0xa9afb3);
     ab.box(0, 0, 0, 0.36, 0.6, 0.5);
@@ -96,10 +102,11 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
     led.position.set(0, 0.2, 0.27);
     const am = new Group();
     am.add(paintMesh(e, ab), led);
-    list.push(new CarriedTarget({
+    const antenna = new CarriedTarget({
       id: 'antenne', label: 'Émetteur radio du caboteur', carrier: c, local: new Vector3(A.roof.x, A.roof.y + 1.8, A.roof.z), half: new Vector3(0.18, 0.3, 0.25),
       kind: 'electric', minEnergy: 150, weakNote: 'Le boîtier a encaissé : pas assez d’énergie à cette distance.', note: 'Radio hors service.', mesh: am, lit: led,
-    }));
+    });
+    list.push(antenna);
     const pg = new Group();
     const body = painter();
     tint(body, 0x2e3134);
@@ -115,7 +122,9 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
     const lit = new Group();
     lit.add(lens, lens2);
     pg.add(lit);
-    list.push(new CarriedTarget({ id: 'projecteur', label: 'Projecteur de pont du caboteur', carrier: c, local: new Vector3(A.mast.x - 0.95, A.mast.y - 1.5, 0), r: 0.33, kind: 'glass', mesh: pg, lit, note: 'Projecteur éteint.' }));
+    const lamp2 = new CarriedTarget({ id: 'projecteur', label: 'Projecteur de pont du caboteur', carrier: c, local: new Vector3(A.mast.x - 0.95, A.mast.y - 1.5, 0), r: 0.33, kind: 'glass', mesh: pg, lit, note: 'Projecteur éteint.' });
+    list.push(lamp2);
+    shipBody.over.push(antenna, lamp2);
   }
 
   // --- 5. barge de ravitaillement : un bidon de carburant sous l'abri, visible du musoir seulement ---
@@ -130,7 +139,8 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
   const skiff = new Runner({ level: SEA_LEVEL, swell, follow: FOLLOW.skiff, tilt: 1 }, SKIFF.route, SKIFF.speed);
   const sg = painter();
   const S = skiffGeometry(sg, 5.6, 0xd96a1e);
-  skiff.group.add(paintMesh(e, sg));
+  const skiffMesh = paintMesh(e, sg);
+  skiff.group.add(skiffMesh);
   carriers.add(skiff.group);
   const hit = new Mesh(new BoxGeometry(0.01, 0.01, 0.01), new MeshBasicMaterial({ visible: false }));
   const motor = new CarriedTarget({
@@ -143,6 +153,8 @@ export function buildTargets(h: LevelHost, swell: Swell): PhareTargets {
     },
   });
   list.push(motor);
+  // la coque du canot arrête la balle ; le moteur garde la priorité
+  list.push(new CarrierBody('canot-coque', 'Coque du canot', skiff, [skiffMesh], [motor]));
 
   // --- 7. tourelle de la passe : la lanterne ---
   {

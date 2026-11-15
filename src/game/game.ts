@@ -1025,6 +1025,12 @@ export class Game {
     let best = R;
     const hit = new Vector3();
     if (this.terrain.raycast(from.x, from.y, from.z, far.x, far.y, far.z, hit, 3)) best = eye.distanceTo(hit);
+    // la surface de l'eau renvoie le télémètre : sans elle, on mesurerait le fond à travers la mer
+    const water = this.data.terrain.waterLevel;
+    if (water != null && dir.y < -1e-6 && eye.y > water) {
+      const dw = (eye.y - water) / -dir.y;
+      if (dw > skip && dw < best) best = dw;
+    }
     const d = this.col.segment(from, far);
     if (d >= 0 && d + skip < best) best = d + skip;
     for (const t of this.shots.targets) {

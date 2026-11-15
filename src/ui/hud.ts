@@ -581,8 +581,9 @@ export class UI {
         const a = Math.round((s.windRel * 180) / Math.PI);
         if (this.last.windA !== String(a)) {
           this.last.windA = String(a);
-          // la flèche pointe là où va le vent
-          this.el.windA.style.transform = `rotate(${a}deg)`;
+          // la flèche pointe là où va le vent (haut = dans l'axe du tir, droite = le vent pousse à droite) ;
+          // le trait part du centre vers le bas : un demi-tour le met dans le bon sens
+          this.el.windA.style.transform = `rotate(${a + 180}deg)`;
         }
       }
     }

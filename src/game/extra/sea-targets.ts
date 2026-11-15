@@ -13,7 +13,7 @@
 //
 // Le porteur n'est pas une cible : ajouter son `group` à un groupe de la scène (le décor de la carte). Ses cibles
 // l'appellent d'elles-mêmes (`setTime`) ; une carte qui a un porteur sans cible appelle `setTime(rt.time)` dans `frame`.
-import { BufferGeometry, Group, Mesh, MeshStandardMaterial, Quaternion, Vector3, type Object3D } from 'three';
+import { BufferGeometry, Group, Mesh, MeshStandardMaterial, Quaternion, Raycaster, Vector3, type Object3D } from 'three';
 import type { ImpactKind } from '../../audio/types';
 import { GeoBuilder } from '../../core/builder';
 import type { Engine } from '../../core/engine';
@@ -275,6 +275,43 @@ export class CarriedTarget extends Target {
     }
     this.s.onDone?.(h, ctx);
     return { kind: k, success: true, note: this.s.note };
+  }
+}
+
+/**
+ * Corps d'un porteur (flotteur de bouée, coque) : il arrête la balle et renvoie le télémètre, sans rien valoir.
+ * La collision suit le maillage visible. `over` : cibles posées sur le porteur, qui gardent la priorité quand le
+ * même segment les traverse (leur zone touchable peut être noyée dans le maillage).
+ */
+export class CarrierBody extends Target {
+  private time = 0;
+  private ray = new Raycaster();
+  private dir = new Vector3();
+  constructor(id: string, label: string, private carrier: Floater, private meshes: Object3D[], readonly over: Target[] = []) {
+    super(id, label);
+  }
+  segment(a: Vector3, b: Vector3): { t: number; part: string } | null {
+    const len = this.dir.copy(b).sub(a).length();
+    if (len < 1e-6) return null;
+    this.ray.set(a, this.dir.divideScalar(len));
+    this.ray.far = len;
+    const hit = this.ray.intersectObjects(this.meshes, false)[0];
+    if (!hit) return null;
+    for (const t of this.over) if (t.active && t.segment(a, b)) return null;
+    return { t: hit.distance / len, part: 'body' };
+  }
+  aimPoint(out: Vector3): Vector3 {
+    return out.copy(this.carrier.group.position);
+  }
+  predict(dt: number, out: Vector3): Vector3 {
+    return this.carrier.worldAt(out.set(0, 0, 0), this.time + dt, out);
+  }
+  update(_dt: number, ctx: TargetCtx): void {
+    this.time = ctx.time;
+  }
+  onHit(): HitResult {
+    this.hits++;
+    return { kind: 'metal' };
   }
 }
 
