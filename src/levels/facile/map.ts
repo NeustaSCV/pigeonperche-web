@@ -344,3 +344,18 @@ export const TEST_VIEWS: Record<string, { at: [number, number, number, 'stand' |
   lunette: { at: [POSTS.guet.x, POSTS.guet.z, 0, 'prone', 3.0], scope: { weapon: '65cm', zoom: 18, target: 'bell' } },
   'lunette-loin': { at: [POSTS.terrasse.x, POSTS.terrasse.z, 0, 'prone', 0], scope: { weapon: '65cm', zoom: 18, target: 'tower' } },
 };
+
+/**
+ * Écho du tir : éperon au-dessus d'une vallée douce. Une croupe proche à l'ouest, le versant du bourg et le coteau d'en
+ * face vers 1 km au nord, les collines boisées de l'horizon ; pays ouvert, queue courte.
+ * Distances et azimuts relevés sur la carte de hauteur (pentes tournées vers le site). Voir src/levels/README.md.
+ */
+export const ECHO = {
+  reliefs: [
+    { distance: 260, bearing: 270, size: 0.15 },
+    { distance: 950, bearing: 0, size: 0.5 },
+    { distance: 1050, bearing: 330, size: 0.45 },
+    { distance: 1250, bearing: 150, size: 0.35 },
+  ],
+  tail: 0.75,
+};

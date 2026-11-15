@@ -21,6 +21,7 @@ const data: LevelData = {
   },
   render: M.RENDER,
   sun: { bearing: M.SUN_BEARING, elevation: M.SUN_ELEVATION },
+  echo: M.ECHO,
   wind: M.WIND,
   atmosphere: M.ATMOSPHERE,
   sky: M.SKY,

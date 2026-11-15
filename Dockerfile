@@ -3,7 +3,9 @@
 #   docker build -t pigeon-perche .
 #   docker run -d -p 8080:8080 -v pigeon-scores:/data pigeon-perche
 
-FROM node:24-alpine AS build
+# L'étape de construction tourne sur l'architecture de la machine qui construit (dist/ ne dépend pas de l'architecture) :
+# construire sur un Mac pour un serveur x86 reste rapide.
+FROM --platform=$BUILDPLATFORM node:24-alpine AS build
 WORKDIR /app
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 COPY package.json package-lock.json ./

@@ -1,7 +1,7 @@
 // Effets de post-traitement maison : atmosphère (perspective aérienne, brume, ombres de nuages),
 // lentille (mirage, aberration), finition (étalonnage, vignettage, masque de lunette, grain).
 import { BlendFunction, Effect, EffectAttribute } from 'postprocessing';
-import { Matrix3, Matrix4, Uniform, Vector2, Vector3, type PerspectiveCamera, type Texture } from 'three';
+import { Matrix3, Matrix4, Uniform, Vector2, Vector3, Vector4, type PerspectiveCamera, type Texture } from 'three';
 
 const atmosphereFrag = /* glsl */ `
 uniform mat4 uProjInv;
@@ -263,6 +263,8 @@ uniform float uSat;
 uniform float uContrast;
 uniform float uFade;
 uniform float uBlackout;
+uniform vec4 uVeil;
+uniform float uFlashF;
 uniform vec2 uCenterF;
 uniform float uScopeR;
 uniform float uVigK;
@@ -288,6 +290,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   // vignettage général
   col *= 1.0 - uVignette * smoothstep(0.35, 1.05, r);
 
+  float flashK = 0.0;
   if (uScopeF > 0.001) {
     // champ circulaire centré sur le centre optique (centre de l'écran en paysage, moitié haute en portrait)
     float R = uScopeR;
@@ -299,7 +302,19 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
     float inside = 1.0 - smoothstep(R - 0.012, R, rr);
     float shade = 1.0 - smoothstep(R * 0.62, R * 1.06, rs) * 0.92;
     float tube = 1.0 - smoothstep(R * 0.55, R * 1.0, rr) * 0.35;
-    vec3 sc = col * inside * shade * tube;
+    vec3 img = col;
+    if (uVeil.a + uFlashF > 0.001) {
+      // départ du coup : voile de souffle et de poussière devant l'objectif (plus dense vers le bas du champ, d'où
+      // monte la poussière ; il roule un peu), éclair de la flamme d'une image dans le bas du champ (ajouté plus bas)
+      vec2 q = c / R;
+      float low = 1.0 - smoothstep(-0.9, 0.9, q.y);
+      float roll = 0.5 + 0.5 * sin(q.x * 3.1 + uTimeF * 5.0 + sin(q.y * 4.3 - uTimeF * 3.0) * 1.3);
+      float va = clamp(uVeil.a * (0.62 + 0.3 * low + 0.16 * roll), 0.0, 0.96);
+      img = mix(img, uVeil.rgb, va);
+      flashK = uFlashF * (0.25 + 0.75 * low * low) * uScopeF;
+    }
+    flashK *= inside * shade;
+    vec3 sc = img * inside * shade * tube;
     // liseré de la bague d'oculaire
     float ring = smoothstep(R + 0.004, R + 0.008, rr) * (1.0 - smoothstep(R + 0.012, R + 0.03, rr));
     sc += vec3(0.012, 0.012, 0.014) * ring;
@@ -307,6 +322,8 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   }
   col += (hash12(gl_FragCoord.xy + fract(uTimeF) * 61.0) - 0.5) * 0.014;
   col *= 1.0 - uBlackout;
+  // l'éclair de la flamme passe par-dessus le noir du départ
+  col += vec3(1.0, 0.72, 0.4) * flashK;
   col = mix(col, vec3(0.0), uFade);
   outputColor = vec4(max(col, 0.0), 1.0);
 }
@@ -326,6 +343,8 @@ export class FinishEffect extends Effect {
         ['uContrast', new Uniform(0.35)],
         ['uFade', new Uniform(0)],
         ['uBlackout', new Uniform(0)],
+        ['uVeil', new Uniform(new Vector4(0.74, 0.72, 0.66, 0))],
+        ['uFlashF', new Uniform(0)],
         ['uCenterF', new Uniform(new Vector2(0.5, 0.5))],
         ['uScopeR', new Uniform(0.462)],
         ['uVigK', new Uniform(1)],

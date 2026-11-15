@@ -75,6 +75,8 @@ export class Terrain {
   material!: MeshStandardMaterial;
   /** couleur moyenne linéaire de la texture d'herbe (pour accorder les brins) */
   grassMean: [number, number, number] = [0.1, 0.13, 0.04];
+  /** albédo moyen (RVB linéaire) des six matières du relief : herbe, roche, éboulis, sol de forêt, terre, mousse */
+  matMean: number[][] = [[0.1, 0.13, 0.04], [0.3, 0.29, 0.27], [0.3, 0.28, 0.25], [0.12, 0.1, 0.07], [0.25, 0.19, 0.13], [0.1, 0.12, 0.05]];
   private nDetail = makeNoise2D(777);
   private N: number;
   private S: number;
@@ -176,6 +178,29 @@ export class Terrain {
     const i = Math.min(N - 1, Math.max(0, Math.round((x / S + 0.5) * (N - 1))));
     const j = Math.min(N - 1, Math.max(0, Math.round((z / S + 0.5) * (N - 1))));
     return this.splat[(j * N + i) * 4 + ch] / 255;
+  }
+
+  /**
+   * Teinte de la poussière que soulève le sol en (x, z), RVB linéaire, clarté comprise : albédo moyen des matières
+   * présentes (carte de matières) multiplié par la palette du niveau. Sous l'herbe vole un mélange de terre et de
+   * débris d'herbe, à la teinte de la prairie telle que le relief la dessine (mousse, sécheresse de la palette) :
+   * brun olive sur une carte verte, ocre pâle sur une carte sèche, gris sur la roche et les éboulis.
+   */
+  dustColorAt(x: number, z: number, out: [number, number, number]): [number, number, number] {
+    const m = this.matMean, pal = this.palette;
+    const wR = this.splatAt(x, z, 0), wS = this.splatAt(x, z, 1), wF = this.splatAt(x, z, 2), wD = this.splatAt(x, z, 3);
+    const wG = Math.max(0, 1 - wR - wS - wF - wD);
+    const tot = wR + wS + wF + wD + wG || 1;
+    // prairie : mêmes mélanges que le programme du relief (mousse à 38 %, taches sèches selon `dryness`)
+    const dry = Math.min(1, Math.max(0, 0.3 + 1.5 * (pal.dryness ?? 0)));
+    const lush = [0.92, 1, 0.82], parched = [1.42, 1.22, 0.74], mossK = [0.9, 0.95, 0.7], cast = [0.86, 1, 0.7];
+    const meadow = [0, 1, 2].map((i) => (m[0][i] * 0.62 + m[5][i] * mossK[i] * 0.38) * cast[i] * (lush[i] + (parched[i] - lush[i]) * dry));
+    const layers: [number, number[], number[] | undefined, number][] = [
+      [wR, m[1], pal.rock, 0.6], [wS, m[2], pal.scree, 1], [wF, m[3], pal.forest, 0.8], [wD + wG * 0.55, m[4], pal.dirt, 1], [wG * 0.45, meadow, pal.grass, 1],
+    ];
+    out[0] = out[1] = out[2] = 0;
+    for (const [w, mean, tint, k] of layers) for (let i = 0; i < 3; i++) out[i] += (w / tot) * mean[i] * (tint?.[i] ?? 1) * k;
+    return out;
   }
 
   /** altitude au-dessus de laquelle aucun cours d'eau ne coule (rejet rapide de `waterSurfaceAt`) */
@@ -292,6 +317,7 @@ export class Terrain {
     const an = engine.q.anisotropy;
     const [alb, nor] = await Promise.all([loadTexArray(names, 'diff', 1024, an), loadTexArray(names, 'nor', 1024, an)]);
     this.grassMean = alb.mean[0];
+    this.matMean = alb.mean;
 
     // carte de normales globale (monde) issue de la grille
     const nm = new Uint8Array(N * N * 4);
@@ -335,6 +361,7 @@ export class Terrain {
         const pal = this.palette;
         sh.uniforms.uPal = { value: [pal.grass, pal.rock, pal.scree, pal.forest, pal.dirt, pal.moss].map((c) => new Vector3(...(c ?? [1, 1, 1]))) };
         sh.uniforms.uPalK = { value: new Vector3(pal.dryness ?? 0, pal.mossAmount ?? 1, this.valleyY) };
+        sh.uniforms.uRockFrom = { value: this.spec.slopeRockFrom ?? 0 };
         Object.assign(sh.uniforms, wind.uniforms);
         sh.vertexShader = sh.vertexShader
           .replace('#include <common>', '#include <common>\nvarying vec3 vWPos;\nvarying vec3 vWNormal;')
@@ -353,6 +380,7 @@ export class Terrain {
             uniform vec3 uMean[6];
             uniform vec3 uPal[6];
             uniform vec3 uPalK;
+            uniform float uRockFrom;
             varying vec3 vWPos;
             varying vec3 vWNormal;
             ${WIND_GLSL}
@@ -375,6 +403,8 @@ export class Terrain {
               vec3 mac3 = texture2D(tNoise, vWPos.xz * 0.11).rgb;
 
               float slopeRock = smoothstep(0.72, 0.58, Nb.y + (mac2.r - 0.5) * 0.2 + (mac3.g - 0.5) * 0.1);
+              // carte en terre : près du site, les talus des cônes de vue restent en herbe (sinon bandes de roche en dents de scie)
+              slopeRock *= smoothstep(uRockFrom * 0.85, uRockFrom + 0.001, rxz);
               float wRock = clamp(max(sp.r * (0.4 + 0.6 * wFar), slopeRock), 0.0, 1.0);
               float wScree = sp.g;
               float wDirt = sp.a;

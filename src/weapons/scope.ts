@@ -144,13 +144,16 @@ export class Scope {
     this.eyeY = damp(this.eyeY, this.kvY * 0.0009 + this.swayY * 0.004, 12, dt);
   }
 
-  /** Applique le recul d'un tir. */
-  recoil(def: WeaponDef): void {
+  /**
+   * Applique le recul d'un tir. `jump` : facteur du saut du champ (effets du coup de feu, src/world/shotfx-params.ts) ;
+   * il ne touche que l'impulsion du ressort, pas le déplacement résiduel de la visée ni le noir du départ.
+   */
+  recoil(def: WeaponDef, jump = 1): void {
     const v = recoilVelocity(def);
     const kick = (v * 4 + def.chargeGr * 0.08) * (this.stability > 1.2 ? 1.5 : 1);
     // impulsion : vitesse initiale du ressort (mrad/s)
-    this.kvY += kick * 16;
-    this.kvX += (Math.random() - 0.5) * kick * 9;
+    this.kvY += kick * 16 * jump;
+    this.kvX += (Math.random() - 0.5) * kick * 9 * jump;
     // la visée ne revient pas exactement au même endroit
     this.pitch += (Math.random() - 0.3) * kick * 0.00012;
     this.yaw += (Math.random() - 0.5) * kick * 0.00016;

@@ -299,7 +299,7 @@ src/
   player/      déplacements et personnage
   game/        boucle de jeu, tirs, cibles, mission, tutoriel, classements, conseils
   shared/      cœur du classement, commun au jeu et au serveur
-  audio/       moteur sonore entièrement synthétisé
+  audio/       moteur sonore synthétisé ; tir hybride (attaque enregistrée, shot-*.ts)
   ui/          interface, commandes tactiles, styles
 public/        relief, textures, modèles, ciel, police du titre, icônes
 tools/         générateur de relief et d'icônes
@@ -313,7 +313,7 @@ Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier,
 ## Limites connues
 
 - **Jamais joué de bout en bout par une personne sur les trois cartes.** Tout a été vérifié par tests automatisés et par lecture de captures. Les mouvements, le rythme et le confort restent à juger en jouant.
-- **Son** : entièrement synthétisé, vérifié par le code et non à l'oreille.
+- **Son** : synthétisé, sauf l'attaque du coup de feu et la culasse (huit enregistrements CC0, `CREDITS.md`) ; le tir de chaque arme est dérivé de sa fiche et l'écho des reliefs de la carte. Vérifié par des mesures (`e2e/audio.mjs`, `e2e/audio-mesures.py`) et non à l'oreille.
 - **Téléphone réel** : seul le niveau d'origine a été ouvert sur un iPhone. Les commandes tactiles sont testées dans un navigateur de bureau en fenêtre portrait.
 - **Mission standard automatisée** : le tireur automatique prend parfois un tir de plus sur une cible mobile (véhicule), selon l'instant où le coup part.
 - **Personnage** : silhouette simple, sans animation de visage.

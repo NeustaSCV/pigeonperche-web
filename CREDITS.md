@@ -45,7 +45,7 @@ Modifications: models were decimated and repacked as GLB with glTF-Transform; tr
 
 ## Contenu créé pour le jeu
 
-- **Sons** : aucun échantillon. Tout est synthétisé à l'exécution avec Web Audio (`src/audio/`).
+- **Sons** : synthétisés à l'exécution avec Web Audio (`src/audio/`), sauf huit courts enregistrements libres (attaque du coup de feu, culasse, douille), listés à la section « Sons enregistrés ». Le grave, la queue et les échos du tir, l'ambiance, les impacts et le chargeur sont synthétisés.
 - **Relief** : généré par `tools/gen-terrain.mjs` (bruit, érosion hydraulique, sites).
 - **Ruine, village, campement, pont, relais, mirador, personnages, carabines, herbe, lierre, fanions, eau** : géométrie et shaders procéduraux (`src/world/`, `src/player/`, `src/weapons/`).
 - **Arbres** : les modèles Poly Haven comptent plus de deux millions de triangles ; leur feuillage a été recuit en cartes alpha (`tools/assets/bake_cards.py`) et les troncs décimés avec glTF-Transform (`tools/assets/build-models.mjs`).
@@ -67,6 +67,23 @@ Les sept carabines du jeu (`src/weapons/rifle-model.ts`, `rifle-parts.ts`, `rifl
 Les noms « CZ 457 Varmint », « Tikka T3x Tac A1 », « Ruger Precision Rifle », « Sako TRG 42 » et « PGM 338 » sont cités à titre descriptif, pour désigner les armes réelles qui ont inspiré les modèles. Le jeu n'est ni affilié à leurs fabricants (Česká zbrojovka, Sako/Tikka, Sturm, Ruger & Co., PGM Précision) ni approuvé par eux ; ces noms et marques appartiennent à leurs propriétaires respectifs.
 
 Liste des références visuelles consultées et cotes relevées : `native/tools/weapons-ref/SOURCES.md` et `native/CREDITS.md` (section carabines).
+
+## Sons enregistrés (`public/assets/audio/`)
+
+Huit extraits, tous sous **CC0 1.0** (domaine public ; attribution non requise, donnée ici par courtoisie). Ils sont recoupés et convertis par `tools/gen-shot-audio.py` (une voie, WAV PCM 16 bits, 0,15 à 0,64 s, 222 Ko au total). Si un fichier manque, le jeu synthétise le son correspondant.
+
+| Fichier | Emploi | Titre d'origine | Auteur | Source | Licence |
+|---|---|---|---|---|---|
+| `shot-small.wav` | attaque du tir, petit calibre (.22 LR) | The Free Firearm Sound Library — Ruger Mark III (R_35P.wav) | Still North Media | https://opengameart.org/content/the-free-firearm-sound-library | CC0 1.0 |
+| `shot-intermediate.wav` | attaque du tir, calibre intermédiaire (.223) | The Free Firearm Sound Library — AR-15 (D_32P.wav) | Still North Media | https://opengameart.org/content/the-free-firearm-sound-library | CC0 1.0 |
+| `shot-medium.wav` | attaque du tir, calibres moyens (6 mm à .308) | The Free Firearm Sound Library — Tikka (W_29P.wav) | Still North Media | https://opengameart.org/content/the-free-firearm-sound-library | CC0 1.0 |
+| `shot-magnum.wav` | attaque du tir, magnums et gros calibres (7 mm PRC à .50 BMG, abaissée selon la charge) | The Free Firearm Sound Library — 1917 (B_24P.wav) | Still North Media | https://opengameart.org/content/the-free-firearm-sound-library | CC0 1.0 |
+| `shot-suppressed.wav` | attaque du tir avec modérateur (.308 subsonique) | Silenced Sniper Rifle.flac | qubodup | https://freesound.org/s/182815/ | CC0 1.0 |
+| `bolt-open.wav` | culasse ouverte | Mosin Nagant Bolt Action Cycle | Zott820 | https://freesound.org/s/370345/ | CC0 1.0 |
+| `bolt-close.wav` | culasse refermée | Mosin Nagant Bolt Action Cycle | Zott820 | https://freesound.org/s/370345/ | CC0 1.0 |
+| `casing.wav` | douille qui touche le sol | Cartridge case 7.62mm on concrete #1 | Joseph Sardin (BigSoundBank.com) | https://bigsoundbank.com/s1367.html | CC0 1.0 |
+
+Il n'existe pas d'enregistrement libre de .338 Lapua Magnum ni de .50 BMG dans cette banque : leur attaque est celle d'un .30-06, relue plus bas, et leur poids est synthétisé d'après la charge de poudre.
 
 ## Police du titre
 

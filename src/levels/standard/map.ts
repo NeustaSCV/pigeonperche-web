@@ -334,3 +334,21 @@ export const TEST_VIEWS: Record<string, { at: [number, number, number, 'stand' |
   sun: { at: [6, -2, 4.25, 'stand'], pitch: 0.1 },
   scope: { at: [2.6, -18.7, 0, 'crouch'], scope: { weapon: '65cm', zoom: 18, target: 'hostile' } },
 };
+
+/**
+ * Écho du tir : la ruine est sur un piton, dans une vallée encaissée. Le versant sud monte à 450 m, ses épaules au
+ * sud-est et au sud-ouest, la crête de l'est, puis la grande paroi du nord (400 m de haut, à 1,5 km) et le fond du
+ * nord-ouest : la détonation revient six fois, de plus en plus sourde.
+ * Distances et azimuts relevés sur la carte de hauteur (pentes tournées vers le site). Voir src/levels/README.md.
+ */
+export const ECHO = {
+  reliefs: [
+    { distance: 450, bearing: 180, size: 0.8 },
+    { distance: 650, bearing: 140, size: 0.6 },
+    { distance: 900, bearing: 215, size: 0.6 },
+    { distance: 1300, bearing: 100, size: 0.5 },
+    { distance: 1500, bearing: 350, size: 0.9 },
+    { distance: 2100, bearing: 300, size: 0.6 },
+  ],
+  tail: 1.1,
+};

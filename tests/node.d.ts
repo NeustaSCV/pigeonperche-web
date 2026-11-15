@@ -2,6 +2,7 @@
 declare module 'node:fs' {
   export function mkdtempSync(prefix: string): string;
   export function readFileSync(path: string, encoding: 'utf8'): string;
+  export function readFileSync(path: string): { buffer: ArrayBuffer; byteOffset: number; byteLength: number };
   export function readdirSync(path: string): string[];
   export function rmSync(path: string, options?: { recursive?: boolean; force?: boolean }): void;
   export function writeFileSync(path: string, data: string): void;

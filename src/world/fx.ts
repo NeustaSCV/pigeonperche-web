@@ -29,7 +29,7 @@ interface P {
   life: number; max: number;
   s0: number; s1: number;
   r: number; g: number; b: number; a: number;
-  grav: number; drag: number; windK: number; glow: number;
+  grav: number; drag: number; windK: number; glow: number; fade: number;
 }
 export interface PuffOpts {
   count?: number;
@@ -39,11 +39,15 @@ export interface PuffOpts {
   life?: number;
   size?: [number, number];
   color?: number;
+  /** teinte en RVB linéaire (prioritaire sur `color`) : poussière à la couleur du sol */
+  rgb?: [number, number, number];
   alpha?: number;
   gravity?: number;
   drag?: number;
   wind?: number;
   glow?: number;
+  /** exposant de l'extinction (défaut 2) : plus petit, la bouffée reste dense plus longtemps */
+  fade?: number;
   dir?: Vector3;
 }
 interface Emitter {
@@ -76,6 +80,13 @@ export class Fx {
   private birdData: { cx: number; cz: number; r: number; h: number; sp: number; ph: number }[] = [];
   private dummy = new Object3D();
   private time = 0;
+  private mat: ShaderMaterial;
+  /**
+   * Distance (m) en deçà de laquelle les particules s'effacent : dans la lunette, la fumée et la poussière du départ
+   * du coup, à quelques mètres de l'objectif, noieraient tout le champ ; le voile de souffle les remplace (shotfx.ts).
+   * 0 : aucune (vue extérieure).
+   */
+  nearFade = 0;
 
   constructor(private wind: Wind, sunTint: Color) {
     // --- particules ---
@@ -93,9 +104,11 @@ export class Fx {
     g.instanceCount = 0;
     this.geo = g;
     const mat = new ShaderMaterial({
-      uniforms: { uTint: { value: sunTint } },
-      vertexShader: /* glsl */ `attribute vec3 iPos; attribute vec4 iCol; attribute float iSize; varying vec2 vUv; varying vec4 vCol;
-        void main(){ vUv = position.xy; vCol = iCol; vec4 mv = viewMatrix * vec4(iPos, 1.0); mv.xy += position.xy * iSize; gl_Position = projectionMatrix * mv;
+      uniforms: { uTint: { value: sunTint }, uNearFade: { value: 0 } },
+      vertexShader: /* glsl */ `attribute vec3 iPos; attribute vec4 iCol; attribute float iSize; uniform float uNearFade; varying vec2 vUv; varying vec4 vCol;
+        void main(){ vUv = position.xy; vCol = iCol; vec4 mv = viewMatrix * vec4(iPos, 1.0);
+          vCol.a *= smoothstep(uNearFade * 0.55, uNearFade, -mv.z + 0.0001);
+          mv.xy += position.xy * iSize; gl_Position = projectionMatrix * mv;
           // plan proche adaptatif de la lunette : la poussière du départ du coup (à plus de 0,55 m) reste visible, collée au plan proche
           if (-mv.z > 0.55) gl_Position.z = max(gl_Position.z, -gl_Position.w * 0.9999); }`,
       fragmentShader: /* glsl */ `uniform vec3 uTint; varying vec2 vUv; varying vec4 vCol;
@@ -105,6 +118,7 @@ export class Fx {
       blending: NormalBlending,
       side: DoubleSide,
     });
+    this.mat = mat;
     const mesh = new Mesh(g, mat);
     mesh.frustumCulled = false;
     mesh.renderOrder = 20;
@@ -201,7 +215,8 @@ export class Fx {
 
   puff(pos: Vector3, o: PuffOpts = {}): void {
     const n = o.count ?? 8;
-    this.c.set(o.color ?? 0xb8a890);
+    if (o.rgb) this.c.setRGB(o.rgb[0], o.rgb[1], o.rgb[2]);
+    else this.c.set(o.color ?? 0xb8a890);
     for (let i = 0; i < n && this.ps.length < MAX; i++) {
       const a = Math.random() * Math.PI * 2, e = (Math.random() - 0.3) * (o.spread ?? 1);
       const sp = (o.speed ?? 1) * (0.4 + Math.random() * 0.8);
@@ -213,7 +228,7 @@ export class Fx {
         x: pos.x, y: pos.y, z: pos.z, vx, vy, vz, life, max: life,
         s0: (o.size?.[0] ?? 0.15) * k, s1: (o.size?.[1] ?? 0.8) * k,
         r: this.c.r * k, g: this.c.g * k, b: this.c.b * k, a: o.alpha ?? 0.5,
-        grav: o.gravity ?? 0, drag: o.drag ?? 1.2, windK: o.wind ?? 1, glow: o.glow ?? 0,
+        grav: o.gravity ?? 0, drag: o.drag ?? 1.2, windK: o.wind ?? 1, glow: o.glow ?? 0, fade: o.fade ?? 2,
       });
     }
   }
@@ -235,6 +250,7 @@ export class Fx {
   update(dt: number, cam: PerspectiveCamera, sunDir: Vector3, zoomK: number, realDt: number, viewH = window.innerHeight): void {
     this.time += dt;
     this.birdTime.value += dt;
+    this.mat.uniforms.uNearFade.value = this.nearFade;
     for (const e of this.emitters) {
       if (!e.on) continue;
       e.acc += e.rate * dt;
@@ -260,7 +276,7 @@ export class Fx {
       const u = 1 - p.life / p.max;
       this.aPos[n * 3] = p.x; this.aPos[n * 3 + 1] = p.y; this.aPos[n * 3 + 2] = p.z;
       this.aSize[n] = p.s0 + (p.s1 - p.s0) * Math.sqrt(u);
-      const fade = Math.min(1, u * 8) * (1 - u) * (1 - u);
+      const fade = Math.min(1, u * 8) * (p.fade === 2 ? (1 - u) * (1 - u) : Math.pow(1 - u, p.fade));
       const gl = 1 + p.glow * (1 - u) * 6;
       this.aCol[n * 4] = p.r * gl; this.aCol[n * 4 + 1] = p.g * gl; this.aCol[n * 4 + 2] = p.b * gl; this.aCol[n * 4 + 3] = p.a * fade;
       n++;

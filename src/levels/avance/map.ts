@@ -393,3 +393,17 @@ export const TEST_VIEWS: Record<string, { at: [number, number, number, 'stand' |
   'lunette-fourneau': { at: [POSTS.mirador.x, POSTS.mirador.z, 0, 'prone', MIRADOR.floor], scope: { weapon: '375ct', zoom: 25, target: 'fourneau' } },
   'lunette-extreme': { at: [POSTS.mirador.x, POSTS.mirador.z, 0, 'prone', MIRADOR.floor], scope: { weapon: '375ct', zoom: 25, target: 'extreme' } },
 };
+
+/**
+ * Écho du tir : éperon de plateau, 300 m au-dessus de la plaine. Rien ne renvoie le son vers le tireur, sinon les
+ * deux rebords de corniche et la butte témoin de l'est : écho à peine perceptible, queue très courte.
+ * Distances et azimuts relevés sur la carte de hauteur (pentes tournées vers le site). Voir src/levels/README.md.
+ */
+export const ECHO = {
+  reliefs: [
+    { distance: 800, bearing: 120, size: 0.25 },
+    { distance: 850, bearing: 240, size: 0.25 },
+    { distance: 1550, bearing: 90, size: 0.3 },
+  ],
+  tail: 0.45,
+};

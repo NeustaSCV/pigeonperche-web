@@ -1,4 +1,6 @@
-// Contrat entre le jeu et le moteur audio. Le moteur est entièrement synthétisé (Web Audio).
+// Contrat entre le jeu et le moteur audio. Le moteur est synthétisé (Web Audio) ; seuls l'attaque du coup de feu et la
+// mécanique de culasse partent d'enregistrements (src/audio/samples.ts), avec repli sur la synthèse.
+import type { EchoSpec, ShotSource } from './shot-params';
 
 export type Surface = 'grass' | 'stone' | 'gravel' | 'wood';
 
@@ -17,7 +19,10 @@ export type ImpactKind =
   | 'electric' // grésillement, court-circuit
   | 'tire'; // sifflement d'air
 
-/** Signature sonore d'une munition, définie dans config/weapons.ts. */
+/**
+ * Ancienne signature sonore d'une munition (config/weapons.ts). Le moteur ne la lit plus : le tir est dérivé de la
+ * fiche de l'arme (src/audio/shot-params.ts). Conservée dans les fiches comme description.
+ */
 export interface ShotProfile {
   /** 0..1 : niveau global (0,12 pour le .22 LR subsonique, 1 pour le .338 LM). */
   loudness: number;
@@ -81,8 +86,12 @@ export interface IAudioEngine {
   /** Chaque image. */
   update(dt: number, state: AmbienceState): void;
 
-  /** Coup de feu du joueur (à la position du joueur) : détonation, claquement, écho qui roule dans la vallée. */
-  shot(profile: ShotProfile): void;
+  /** Reliefs de la carte qui renvoient le son du tir (`LevelData.echo`) ; null ou absent : valeurs par défaut. */
+  setEcho(spec: EchoSpec | null | undefined): void;
+  /** Prépare le tir d'une arme (calcul du tampon) : à appeler quand le joueur la prend, pas au départ du coup. */
+  prepareShot(weapon: ShotSource): void;
+  /** Coup de feu du joueur (à la position du joueur) : détonation selon l'arme, queue, écho des reliefs de la carte. */
+  shot(weapon: ShotSource): void;
   boltOpen(): void;
   boltClose(): void;
   dryFire(): void;

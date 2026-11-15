@@ -280,8 +280,9 @@ export class Vegetation {
       'grass',
     );
 
-    // côté d'un pavé d'herbe (un appel de dessin chacun) : 8 m ; une herbe clairsemée se contente de pavés plus grands
-    const CH = bl.chunk ?? 8;
+    // côté d'un pavé d'herbe (un appel de dessin chacun) : 12 m. À 8 m, l'herbe coûtait une centaine d'appels au départ
+    // de la carte facile (une cinquantaine à 12 m, pour 4 % de triangles en plus et une image identique à l'œil).
+    const CH = bl.chunk ?? 12;
     const R = 72;
     const dens = engine.q.grass * (bl.density ?? 1);
     const hk = bl.height ?? 1;

@@ -23,6 +23,7 @@ const data: LevelData = {
   },
   render: M.RENDER,
   sun: { bearing: M.SUN_BEARING, elevation: M.SUN_ELEVATION },
+  echo: M.ECHO,
   // vent d'origine du jeu, désormais déclaré (mêmes valeurs que le défaut du moteur)
   wind: { fromBearing: 255, speed: 3.5 },
   weapons: M.WEAPON_IDS,

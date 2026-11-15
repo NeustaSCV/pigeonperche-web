@@ -1,6 +1,7 @@
 // Contrat d'un niveau (une carte). Voir src/levels/README.md.
 // Un niveau = un dossier src/levels/<id>/ : meta.ts (fiche du menu), map.ts (données), index.ts (le module `level`),
 // terrain.gen.mjs (relief). Le moteur, le joueur, les cibles et l'interface sont communs et lisent ces données.
+import type { EchoSpec } from '../audio/shot-params';
 import type { Object3D, PerspectiveCamera, Vector3 } from 'three';
 import type { Landmarks, Surface } from '../audio/types';
 import type { AudioEngine } from '../audio/engine';
@@ -71,6 +72,11 @@ export interface TerrainSpec {
    * `soft`, rayon de raccord (m) entre le sol en place et le plan (défaut 0 : arête vive, visible en facettes).
    */
   clear: { x: number; z: number; y: number; b0: number; b1: number; slope: number; start: number; drop?: number; dropLen?: number; soft?: number }[];
+  /**
+   * Distance à l'origine (m) en deçà de laquelle une pente raide ne devient pas de la roche (facultatif, défaut 0 :
+   * toute pente raide est rocheuse). Pour une carte en terre, où les talus des cônes de vue doivent rester en herbe.
+   */
+  slopeRockFrom?: number;
 }
 
 type RGB = [number, number, number];
@@ -92,7 +98,7 @@ export interface PaletteSpec {
   mossAmount?: number;
   /**
    * brins d'herbe : teinte, densité et hauteur relatives (défaut 1), part de brins fleuris (défaut 1 = 3 %) ;
-   * `chunk` : côté des pavés d'herbe en mètres (défaut 8 ; un appel de dessin par pavé : 12 pour une herbe clairsemée)
+   * `chunk` : côté des pavés d'herbe en mètres (défaut 12 ; un appel de dessin par pavé)
    */
   blades?: { tint?: RGB; density?: number; height?: number; flowers?: number; chunk?: number };
   /** feuillage des arbres (détaillés, lointains, et ceux des modèles de bâtiments), fougères et touffes */
@@ -357,6 +363,11 @@ export interface LevelData {
   sky?: SkySpec;
   /** teintes du relief et de la végétation (facultatif : défaut = pays vert d'origine) */
   palette?: PaletteSpec;
+  /**
+   * Écho du tir : reliefs qui renvoient la détonation, vus du site de tir (distance, azimut, taille), et ampleur de
+   * la queue diffuse. Facultatif : sans ce champ, une vallée moyenne (`DEFAULT_ECHO`, src/audio/shot-params.ts).
+   */
+  echo?: EchoSpec;
   /** armes du râtelier (identifiants de src/config/weapons.ts), dans l'ordre ; arme en main au départ */
   weapons: string[];
   startWeapon: string;

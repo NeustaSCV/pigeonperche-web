@@ -240,15 +240,117 @@ describe('texte du conseil', () => {
     expect(all(a)).not.toMatch(/\d+ m\/s de vent/);
     expect(a.short).toContain('Mesurez la distance');
   });
-  it('diagnostic : « trop bas », correction en mrad et en clics, en tête du conseil', () => {
-    const a = buildAdvice(base({ diagnosis: diagnose([{ up: -0.7, right: 0 }, { up: -0.9, right: 0.1 }, { up: -0.8, right: -0.1 }]) }));
-    expect(a.diag).toContain('Vos trois derniers tirs sont passés environ 0,8 mrad trop bas');
-    expect(a.diag).toContain('montez l’élévation de 0,8 mrad (8 clics)');
+  /** consignes chiffrées de l'encart complet, par axe : tout impératif suivi d'une valeur en mrad ou en clics */
+  const orders = (a: ReturnType<typeof buildAdvice>): { v: string[]; h: string[] } => {
+    const t = [a.diag, a.why, ...a.steps, a.calibre].join('\n').replace(/<\/?b>/g, '');
+    const grab = (res: RegExp[]): string[] => res.flatMap((re) => [...t.matchAll(re)].map((m) => m[0]));
+    return {
+      v: grab([/(montez|descendez)[^.;\n]*? de [\d,]+ mrad/gi, /visez [\d,]+ mrad plus (haut|bas)/gi]),
+      h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /tournez-la de \d+ clics? vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
+    };
+  };
+  const bookOf = (c: CoachContext): number => Math.round((c.solution!.parts.drop + c.solution!.parts.coriolisV) * 10) / 10;
+  const low = (mil: number) => diagnose([{ up: -mil + 0.1, right: 0 }, { up: -mil - 0.1, right: 0.1 }, { up: -mil, right: -0.1 }]);
+  const high = (mil: number) => diagnose([{ up: mil + 0.1, right: 0 }, { up: mil - 0.1, right: 0.1 }, { up: mil, right: -0.1 }]);
+  const right = (mil: number) => diagnose([{ up: 0.1, right: mil + 0.1 }, { up: -0.1, right: mil - 0.1 }, { up: 0, right: mil }]);
+  const left = (mil: number) => diagnose([{ up: 0.1, right: -mil + 0.1 }, { up: -0.1, right: -mil - 0.1 }, { up: 0, right: -mil }]);
+
+  it('carnet non chiffré (distance non mesurée) : l’écart mesuré est la seule consigne, en mrad et en clics', () => {
+    const a = buildAdvice(base({ range: null, diagnosis: low(0.8) }));
+    expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 0,8 mrad trop bas. Le plus direct : montez l’élévation de 0,8 mrad (8 clics).');
     expect(a.short.startsWith('Impacts 0,8 mrad trop bas.')).toBe(true);
-    const b = buildAdvice(base({ diagnosis: diagnose([{ up: 0.1, right: 1.2 }, { up: -0.1, right: 1.0 }, { up: 0, right: 1.1 }]) }));
+    const b = buildAdvice(base({ range: null, diagnosis: right(1.1) }));
     expect(b.diag).toContain('1,1 mrad trop à droite');
     expect(b.diag).toContain('corrigez la dérive de 1,1 mrad à gauche');
     expect(buildAdvice(base()).diag).toBe('');
+  });
+  it('tirs trop bas, tourelle sous le carnet (le cas de la capture) : une seule consigne, celle du carnet ; la mesure est expliquée', () => {
+    const c = base({ elevDial: 0, diagnosis: low(2 * bookOf(base())) });
+    const book = bookOf(c), f1 = (n: number): string => n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    const a = buildAdvice(c);
+    expect(a.diag).toBe(`Vos trois derniers tirs sont passés environ ${f1(2 * book)} mrad trop bas. La tourelle n’est pas réglée pour cette distance : commencez par la mettre à la valeur du carnet (étape 3). Si les tirs restent bas ensuite, c’est la visée ou le vent.`);
+    expect(a.diag).not.toMatch(/montez|descendez|clic/);
+    expect(orders(a).v).toEqual([`montez de ${f1(book)} mrad`]);
+    expect(a.steps[2]).toContain(`Votre tourelle est à 0,0 mrad, le carnet donne ${f1(book)} : montez de ${f1(book)} mrad (${Math.round(book * 10)} clics).`);
+  });
+  it('écart mesuré = écart tourelle/carnet : le conseil le dit, consigne à l’étape 3', () => {
+    const c = base({ elevDial: 0 });
+    const a = buildAdvice({ ...c, diagnosis: low(bookOf(c) + 0.1) });
+    expect(a.diag).toContain('C’est à peu près ce qui manque à votre tourelle pour cette distance : mettez-la à la valeur du carnet (étape 3).');
+    expect(orders(a).v).toHaveLength(1);
+    expect(orders(a).v[0]).toMatch(/^montez de /);
+  });
+  it('tirs trop hauts, tourelle sous le carnet : contre-visée supposée, consigne unique = le carnet', () => {
+    const a = buildAdvice(base({ elevDial: 0, diagnosis: high(1.1) }));
+    expect(a.diag).toContain('1,1 mrad trop haut');
+    expect(a.diag).toContain('Votre tourelle est pourtant sous la valeur du carnet : vous visez sans doute au-dessus de la cible pour compenser. Mettez-la à la valeur du carnet (étape 3), puis visez le centre.');
+    expect(orders(a).v).toHaveLength(1);
+    expect(orders(a).v[0]).toMatch(/^montez de /);
+    // tourelle au-dessus du carnet, tirs trop hauts : on la redescend
+    const c = base();
+    const b = buildAdvice({ ...c, elevDial: bookOf(c) + 1.5, diagnosis: high(2.4) });
+    expect(b.diag).toContain('Si les tirs restent hauts ensuite');
+    expect(orders(b).v).toEqual(['descendez de 1,5 mrad']);
+  });
+  it('tourelle déjà au carnet mais tirs décalés : la consigne est l’écart mesuré, au réticule ; l’étape 3 ne chiffre rien', () => {
+    const c = base();
+    const a = buildAdvice({ ...c, elevDial: bookOf(c), diagnosis: low(0.8) });
+    expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 0,8 mrad trop bas. Votre tourelle est déjà à la valeur du carnet : l’écart vient de la visée, de la tenue de l’arme ou du vent. Pour le rattraper sans la dérégler, visez 0,8 mrad plus haut, sur les graduations du réticule.');
+    expect(a.steps[2]).toContain('c’est la valeur du carnet');
+    expect(orders(a).v).toEqual(['visez 0,8 mrad plus haut']);
+  });
+  it('dérive : mêmes règles avec la correction que demande le vent (étape 4)', () => {
+    const c = base();
+    const need = c.solution!.windMil, f1 = (n: number): string => Math.abs(n).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+    // vent venant de la gauche : la balle part à droite, la correction se prend à gauche
+    expect(need).toBeLessThan(-0.3);
+    const a = buildAdvice({ ...c, diagnosis: right(1.6) });
+    expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 1,6 mrad trop à droite. La dérive n’est pas réglée pour ce vent : commencez par là (étape 4). Si les tirs restent à droite ensuite, c’est la visée ou une saute de vent.');
+    expect(a.steps[3]).toContain(`Ici, avec 3,0 m/s de vent, il faut ${f1(need)} mrad à gauche et votre tourelle est à 0,0 mrad : tournez-la de ${Math.round(Math.abs(need) * 10)} clics vers la gauche.`);
+    expect(orders(a).h).toHaveLength(1);
+    // tourelle de dérive déjà juste : écart mesuré, au réticule
+    const b = buildAdvice({ ...c, windDial: Math.round(need * 10) / 10, diagnosis: left(0.9) });
+    expect(b.diag).toContain('Votre tourelle est déjà à la valeur que demande ce vent');
+    expect(b.steps[3]).toContain('votre tourelle y est');
+    expect(orders(b).h).toEqual(['visez 0,9 mrad plus à droite']);
+    // tourelle réglée du mauvais côté et tirs à gauche : le joueur compense
+    const d = buildAdvice({ ...c, windDial: 1, diagnosis: left(0.9) });
+    expect(d.diag).toContain('décalée dans l’autre sens');
+    expect(orders(d).h).toHaveLength(1);
+    // deux axes : une phrase par axe
+    const e = buildAdvice({ ...c, elevDial: 0, diagnosis: diagnose([{ up: -3, right: 1.5 }, { up: -3.1, right: 1.6 }, { up: -2.9, right: 1.7 }]) });
+    expect(e.diag).toContain('En hauteur : ');
+    expect(e.diag).toContain('En dérive : ');
+    expect(orders(e)).toMatchObject({ v: [expect.stringMatching(/^montez de /)], h: [expect.stringMatching(/^tournez-la de /)] });
+  });
+  it('jamais deux consignes chiffrées pour le même axe, quels que soient le niveau, les tourelles et les impacts', () => {
+    const c0 = base();
+    const book = bookOf(c0), need = Math.round(c0.solution!.windMil * 10) / 10;
+    const diags = [null, low(0.8), low(2.6), low(book), high(1.1), high(3), left(1.2), right(0.9), right(Math.abs(need)), left(Math.abs(need)),
+      diagnose([{ up: -2.6, right: 1.1 }, { up: -2.5, right: 1.2 }, { up: -2.7, right: 1 }]), diagnose([{ up: 1.4, right: -0.8 }, { up: 1.5, right: -0.9 }, { up: 1.3, right: -0.7 }]),
+      diagnose([{ up: 2.0, right: -1 }, { up: -1.5, right: 1.2 }, { up: 0.3, right: 0.2 }])];
+    let n = 0;
+    for (const difficulty of ['standard', 'assist', 'real'] as const)
+      for (const known of difficulty === 'real' ? [false] : [true, false])
+        for (const elevDial of [0, 0.5, book, book + 0.1, book + 1.5])
+          for (const windDial of [0, need, -need, need + 0.4])
+            for (const touch of [false, true])
+              for (const weapon of [W('308'), W('22lr')])
+                for (const diagnosis of diags) {
+                  const sol = solveAt(weapon.id === '22lr' ? 80 : 412)(weapon);
+                  const a = buildAdvice(base({ difficulty, touch, weapon, solution: sol, range: known ? (weapon.id === '22lr' ? 80 : 412) : null, windSpeed: difficulty === 'real' ? null : 3, elevDial, windDial, diagnosis }));
+                  const o = orders(a);
+                  const tag = JSON.stringify({ difficulty, known, elevDial, windDial, w: weapon.id, d: diagnosis }) + '\n' + [a.diag, ...a.steps].join('\n');
+                  expect(o.v.length, tag).toBeLessThanOrEqual(1);
+                  expect(o.h.length, tag).toBeLessThanOrEqual(1);
+                  // une tendance mesurée reçoit toujours sa consigne, sauf si le réglage du carnet est déjà fait ailleurs dans l'encart
+                  if (diagnosis?.vertical && difficulty !== 'real') expect(o.v.length, tag).toBe(1);
+                  if (diagnosis?.horizontal && difficulty !== 'real') expect(o.h.length, tag).toBe(1);
+                  // le diagnostic ne chiffre de correction que s'il porte la consigne de l'axe
+                  expect((a.diag.match(/\d+ clics?/g) ?? []).length, tag).toBeLessThanOrEqual(1);
+                  n++;
+                }
+    expect(n).toBeGreaterThan(1500);
   });
   it('tactile : boutons à la place des touches, aucune touche de clavier citée', () => {
     const a = buildAdvice(base({ touch: true, range: null }));

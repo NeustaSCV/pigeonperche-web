@@ -34,7 +34,7 @@ voir « Ajouts d'intégration ») · `buildings` (`[{ id, carte?, x, z, yaw, usu
 voir « Ajouts d'intégration ») ·
 `site` (`baseY`, `start`, `rack`) · `posts` · `sightlines` · `steps` + `stepPost` · `alertZone` / `alertLabel` ·
 `failNote` · `tutorial` (ou `null`) · `testPlan`, `testWalk?`, `testTouch?`, `testViews?` (tests automatisés) ·
-`wind?`, `atmosphere?`, `sky?`, `palette?` (voir « Corrections du socle »).
+`wind?`, `atmosphere?`, `sky?`, `palette?`, `echo?` (voir « Corrections du socle »).
 
 ### `LevelScene` (construit, dans cet ordre)
 
@@ -260,12 +260,29 @@ Réglages livrés : `avance` — fond à 590 m, nappe de 2 à 60 m (densité 0,5
 62 % dans la plaine, ciel dégagé à 0,8 ; `facile` — vent 1,2 m/s du 265° (2,6 m/s aux deux derniers objectifs), ciel
 dégagé à 0,85 ; `standard` — vent d'origine déclaré (3,5 m/s du 255°).
 
+### Écho du tir (`data.echo`)
+
+```ts
+echo?: {
+  reliefs: { distance, bearing, size }[],   // reliefs qui renvoient la détonation, vus du site de tir (six au plus)
+  tail?,                                     // queue diffuse : 1 vallée, 0,5 terrain ouvert, 1,3 cirque fermé (défaut 1)
+}
+```
+
+Chaque relief donne un écho : `distance` en mètres (le retour arrive après 2 × distance / 343 s, plus sourd et plus
+faible avec la distance : −9 dB par doublement), `bearing` son azimut vu du site (0 = nord, sens horaire ; l'écho
+reste de ce côté-là quand le joueur tourne la tête), `size` sa taille apparente (0,2 une lisière ou une butte,
+0,5 un versant, 1 une paroi ou un grand versant proche). Repère de niveau : un versant de taille 0,6 à 230 m revient
+27 dB sous la détonation. Facultatif : sans ce champ, une vallée moyenne (`DEFAULT_ECHO` dans
+`src/audio/shot-params.ts`). Un plateau ou une plaine déclare peu de reliefs, petits et lointains, et `tail` vers 0,5.
+Pour relever les reliefs d'une carte : chercher autour du site, sur la carte de hauteur, les pentes tournées vers lui.
+
 ### Palette et végétation (`data.palette`, `VegetationSpec.trees / rocks / clumps`)
 
 ```ts
 palette?: { grass?, rock?, scree?, forest?, dirt?, moss?,        // teintes RVB linéaires multipliées aux matières du relief
             dryness?, mossAmount?,                               // taches d'herbe sèche (−0,5 à +0,5), mousse (0 à 1)
-            blades?: { tint?, density?, height?, flowers?, chunk? },   // brins d'herbe ; chunk : côté des pavés (8 m)
+            blades?: { tint?, density?, height?, flowers?, chunk? },   // brins d'herbe ; chunk : côté des pavés (12 m)
             foliage?, understory?, rocks? }                      // arbres (ceux des bâtiments compris), touffes, rochers
 ```
 

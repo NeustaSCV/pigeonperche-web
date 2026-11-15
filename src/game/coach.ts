@@ -261,22 +261,62 @@ const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 /** réglage de dérive : « 0,6 mrad à gauche », « 0,0 » */
 const side = (mil: number): string => (Math.abs(mil) < 0.05 ? '0,0 mrad' : `${fr(Math.abs(mil), 1)} mrad à ${mil > 0 ? 'droite' : 'gauche'}`);
 
-function diagText(d: Diagnosis | null, c: CoachContext): { text: string; short: string } {
+/**
+ * Ce que l'encart sait du réglage d'un axe quand il cite les chiffres du carnet : `gap` = valeur demandée − réglage de
+ * la tourelle, mrad (positif : il faut monter, ou aller à droite). null : le carnet n'est pas chiffré dans l'encart
+ * (distance inconnue, niveau sans aide) et l'écart mesuré est alors la seule consigne.
+ */
+interface AxisPlan { gap: number | null }
+/** en deçà, la tourelle est « à la valeur du carnet » (un demi-clic) */
+const AT_BOOK = 0.05;
+/** écart mesuré et écart tourelle/carnet tenus pour identiques en deçà, mrad */
+const SAME = 0.3;
+
+/**
+ * Diagnostic des impacts. Règle : UNE consigne chiffrée par axe dans tout l'encart.
+ * - carnet non chiffré dans l'encart : la consigne est l'écart mesuré (ici) ;
+ * - tourelle pas à la valeur du carnet : la consigne est celle de l'étape (3 pour l'élévation, 4 pour la dérive) ; le
+ *   diagnostic donne la mesure, sans chiffrer de correction, et dit comment la lire (c'est l'écart du réglage, ou
+ *   il restera de la visée ou du vent, ou le joueur compense déjà en contre-visée) ;
+ * - tourelle déjà à la valeur du carnet : la consigne est l'écart mesuré, à prendre au réticule pour ne pas dérégler
+ *   la tourelle (l'étape se borne alors à constater que la tourelle est juste).
+ */
+function diagText(d: Diagnosis | null, c: CoachContext, plan: { v: AxisPlan; h: AxisPlan }): { text: string; short: string } {
   if (!d) return { text: '', short: '' };
   const n = `${d.n === 2 ? 'Vos deux' : `Vos ${count(d.n)}`} derniers tirs`;
   if (d.scattered !== null) return { text: `${n} sont dispersés sur ${fr(d.scattered, 1)} mrad, sans tendance nette : ${c.touch ? 'tenez <b>Souffle</b>' : 'retenez votre souffle (<b>Espace</b>)'} et attendez que le réticule se pose avant de presser la détente.`, short: `Impacts dispersés (${fr(d.scattered, 1)} mrad) : retenez votre souffle.` };
-  const parts: string[] = [], fix: string[] = [], sh: string[] = [];
+  const parts: string[] = [], fix: string[] = [], notes: string[] = [], sh: string[] = [];
+  const both = !!d.vertical && !!d.horizontal;
   if (d.vertical) {
-    parts.push(`environ ${fr(d.vertical.mil, 1)} mrad trop ${d.vertical.low ? 'bas' : 'haut'}`);
-    fix.push(`${d.vertical.low ? 'montez' : 'descendez'} l’élévation de ${fr(d.vertical.mil, 1)} mrad (${clicks(d.vertical.mil)})`);
-    sh.push(`${fr(d.vertical.mil, 1)} mrad trop ${d.vertical.low ? 'bas' : 'haut'}`);
+    const { mil, low } = d.vertical, gap = plan.v.gap;
+    const where = low ? 'bas' : 'haut';
+    parts.push(`environ ${fr(mil, 1)} mrad trop ${where}`);
+    sh.push(`${fr(mil, 1)} mrad trop ${where}`);
+    const k = both ? 'En hauteur : ' : '';
+    if (gap === null) fix.push(`${low ? 'montez' : 'descendez'} l’élévation de ${fr(mil, 1)} mrad (${clicks(mil)})`);
+    else if (Math.abs(gap) < AT_BOOK) notes.push(`${k}${both ? 'v' : 'V'}otre tourelle est déjà à la valeur du carnet : l’écart vient de la visée, de la tenue de l’arme ou du vent. Pour le rattraper sans la dérégler, visez ${fr(mil, 1)} mrad plus ${low ? 'haut' : 'bas'}, sur les graduations du réticule.`);
+    // tourelle sous le carnet et tirs bas (ou l'inverse) : le réglage explique tout ou partie de l'écart
+    else if (gap > 0 === low) notes.push(Math.abs(mil - Math.abs(gap)) <= SAME
+      ? `${k}${both ? 'c' : 'C'}’est à peu près ce qui manque à votre tourelle pour cette distance : mettez-la à la valeur du carnet (étape 3).`
+      : `${k}${both ? 'l' : 'L'}a tourelle n’est pas réglée pour cette distance : commencez par la mettre à la valeur du carnet (étape 3). Si les tirs restent ${low ? 'bas' : 'hauts'} ensuite, c’est la visée ou le vent.`);
+    else notes.push(`${k}${both ? 'v' : 'V'}otre tourelle est pourtant ${gap > 0 ? 'sous' : 'au-dessus de'} la valeur du carnet : vous visez sans doute ${gap > 0 ? 'au-dessus' : 'en dessous'} de la cible pour compenser. Mettez-la à la valeur du carnet (étape 3), puis visez le centre.`);
   }
   if (d.horizontal) {
-    parts.push(`${d.vertical ? '' : 'environ '}${fr(d.horizontal.mil, 1)} mrad trop à ${d.horizontal.left ? 'gauche' : 'droite'}`);
-    fix.push(`corrigez la dérive de ${fr(d.horizontal.mil, 1)} mrad à ${d.horizontal.left ? 'droite' : 'gauche'}`);
-    sh.push(`${fr(d.horizontal.mil, 1)} mrad trop à ${d.horizontal.left ? 'gauche' : 'droite'}`);
+    const { mil, left } = d.horizontal, gap = plan.h.gap;
+    const where = left ? 'gauche' : 'droite', back = left ? 'droite' : 'gauche';
+    parts.push(`${d.vertical ? '' : 'environ '}${fr(mil, 1)} mrad trop à ${where}`);
+    sh.push(`${fr(mil, 1)} mrad trop à ${where}`);
+    const k = both ? 'En dérive : ' : '';
+    if (gap === null) fix.push(`corrigez la dérive de ${fr(mil, 1)} mrad à ${back}`);
+    else if (Math.abs(gap) < AT_BOOK) notes.push(`${k}${both ? 'v' : 'V'}otre tourelle est déjà à la valeur que demande ce vent : il a pu tourner, ou la visée a glissé. Pour rattraper l’écart sans la dérégler, visez ${fr(mil, 1)} mrad plus à ${back}, sur les graduations du réticule.`);
+    // il manque de la dérive à droite et les tirs passent à gauche (ou l'inverse)
+    else if (gap > 0 === left) notes.push(Math.abs(mil - Math.abs(gap)) <= SAME
+      ? `${k}${both ? 'c' : 'C'}’est à peu près ce qui manque à votre tourelle de dérive par ce vent : réglez-la comme indiqué à l’étape 4.`
+      : `${k}${both ? 'l' : 'L'}a dérive n’est pas réglée pour ce vent : commencez par là (étape 4). Si les tirs restent à ${where} ensuite, c’est la visée ou une saute de vent.`);
+    else notes.push(`${k}${both ? 'v' : 'V'}otre tourelle de dérive est pourtant décalée dans l’autre sens : vous visez sans doute à côté de la cible pour compenser. Réglez-la comme indiqué à l’étape 4, puis visez le centre.`);
   }
-  return { text: `${n} sont passés ${parts.join(' et ')}. Le plus direct : ${fix.join(', puis ')}.`, short: `Impacts ${sh.join(', ')}.` };
+  const direct = fix.length ? ` Le plus direct : ${fix.join(', puis ')}.` : '';
+  return { text: `${n} sont passés ${parts.join(' et ')}.${direct}${notes.length ? ' ' + notes.join(' ') : ''}`, short: `Impacts ${sh.join(', ')}.` };
 }
 
 function calibreText(c: CoachContext): { text: string; short: string } {
@@ -310,11 +350,9 @@ export function buildAdvice(c: CoachContext): Advice {
   const t = c.touch, w = c.weapon, s = c.solution;
   const known = c.range !== null && s !== null;
   const title = c.reason === 'weak' ? 'Touché, mais sans effet' : c.reminder ? 'Toujours pas au but' : `${cap(count(c.misses))} tirs manqués : reprenons le réglage`;
-  const diag = diagText(c.diagnosis, c);
   const cal = calibreText(c);
   const steps: string[] = [];
   let why: string;
-  let short = diag.short;
   // élévation « du carnet » : chute (pente comprise) et Coriolis vertical, sans le vent
   // (en deçà de la distance de zérotage elle serait négative : la tourelle ne descend pas sous zéro)
   const book = known ? Math.max(0, s!.parts.drop + s!.parts.coriolisV) : 0;
@@ -330,12 +368,17 @@ export function buildAdvice(c: CoachContext): Advice {
       : `Votre tourelle est à ${fr(c.elevDial, 1)} mrad, le carnet donne ${fr(book, 1)} : ${gap > 0 ? 'montez' : 'descendez'} de ${fr(Math.abs(gap), 1)} mrad (${clicks(gap)}).`
     : '';
   const hold = known && book > w.turretMaxMil + 0.05 ? ` La tourelle s’arrête à ${fr(w.turretMaxMil, 1)} mrad : le reste se vise plus haut, sur les graduations du réticule.` : '';
+  /** dérive demandée par le vent du moment − réglage de la tourelle ; null si l'encart ne la chiffre pas */
+  const windGap = known && c.windSpeed !== null && c.difficulty !== 'real' ? s!.windMil - c.windDial : null;
   const windLine = (): string => {
-    if (!known || c.windSpeed === null) return '';
+    if (windGap === null) return '';
     const need = s!.windMil;
-    if (Math.abs(need) < 0.05 && Math.abs(c.windDial) < 0.05) return ` Ici le vent de ${fr(c.windSpeed, 1)} m/s ne demande aucune correction.`;
-    return ` Ici, avec ${fr(c.windSpeed, 1)} m/s de vent : ${side(need)} ; votre tourelle est à ${side(c.windDial)}.`;
+    if (Math.abs(need) < 0.05 && Math.abs(c.windDial) < 0.05) return ` Ici le vent de ${fr(c.windSpeed!, 1)} m/s ne demande aucune correction.`;
+    if (Math.abs(windGap) < AT_BOOK) return ` Ici, avec ${fr(c.windSpeed!, 1)} m/s de vent, il faut ${side(need)} : votre tourelle y est.`;
+    return ` Ici, avec ${fr(c.windSpeed!, 1)} m/s de vent, il faut ${side(need)} et votre tourelle est à ${side(c.windDial)} : tournez-la de ${clicks(windGap)} vers la ${windGap > 0 ? 'droite' : 'gauche'}.`;
   };
+  const diag = diagText(c.diagnosis, c, { v: { gap: known && c.difficulty !== 'real' ? gap : null }, h: { gap: windGap } });
+  let short = diag.short;
 
   if (c.difficulty === 'real') {
     why = 'Une balle tombe dès qu’elle quitte le canon, et de plus en plus vite avec la distance : la lunette doit viser plus haut, d’un angle que le carnet donne en mrad. Ici, pas de télémètre : tout commence par une bonne estimation de la distance.';

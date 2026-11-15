@@ -27,9 +27,12 @@ const data: LevelData = {
     dir: 'facile', size: M.TERRAIN_SIZE, res: M.TERRAIN_RES, waterLevel: null,
     pads: [M.SITES.plate1, { x: 36, z: -42, r0: 34, r1: 48 }, M.SITES.plate2, M.SITES.balloon, M.SITES.quarry, M.SITES.track, ...M.BUILDINGS.map(lotPad)],
     sculpt: M.SCULPT, clear: M.CLEAR,
+    // talus des cônes de vue (à moins de 110 m) en herbe, pas en roche
+    slopeRockFrom: 110,
   },
   render: M.RENDER,
   sun: { bearing: M.SUN_BEARING, elevation: M.SUN_ELEVATION },
+  echo: M.ECHO,
   wind: M.WIND,
   sky: M.SKY,
   weapons: M.WEAPON_IDS,

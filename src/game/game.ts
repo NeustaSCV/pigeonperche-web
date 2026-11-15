@@ -21,6 +21,8 @@ import { handleRifle, shoulderMount } from '../weapons/handling';
 import { Scope } from '../weapons/scope';
 import { Colliders } from '../world/colliders';
 import { Fx } from '../world/fx';
+import { ShotFx, type GroundKind } from '../world/shotfx';
+import { shotFxParams } from '../world/shotfx-params';
 import { Sky } from '../world/sky';
 import { Terrain } from '../world/terrain';
 import { Vegetation, type VegetationSpec } from '../world/vegetation';
@@ -97,6 +99,8 @@ export class Game {
   private siteGroup = new Group();
   private sceneryGroup = new Group();
   fx!: Fx;
+  /** effets visuels du coup de feu (flamme, poussière, recul, douille, voile de lunette) */
+  shotFx!: ShotFx;
   audio = new AudioEngine();
   input: Input;
   ui: UI;
@@ -360,6 +364,18 @@ export class Game {
       this.col.build();
       this.fx = new Fx(this.wind, this.sky.sunColor);
       e.scene.add(this.fx.group);
+      // effets du coup de feu ; version allégée sur appareil tactile et en qualité basse
+      const surf = { kind: 'stone' as 'stone' | 'wood' };
+      this.shotFx = new ShotFx(this.fx, {
+        setupMaterial: (m) => e.setupMaterial(m),
+        ground: (x, z, nearY, out?: { kind: GroundKind }) => {
+          const t = this.terrain.heightAt(x, z), s = this.col.surfaceAt(x, z, nearY, surf);
+          if (out) out.kind = s > t ? surf.kind : 'soil';
+          return Math.max(t, s);
+        },
+        dustColor: (x, z, out) => this.terrain.dustColorAt(x, z, out),
+      }, this.touch || e.q.name === 'low');
+      e.scene.add(this.shotFx.group);
       this.ctx = { fx: this.fx, wind: this.wind, terrain: this.terrain, time: 0 };
       this.buildTargets();
       const bad = checkLevel(this.data, [...this.targets.keys()], this.weapons.map((w) => w.id));
@@ -383,6 +399,7 @@ export class Game {
       e.scene.add(this.bulletMesh);
       this.scene.addEmitters?.(this.fx);
       this.audio.setLandmarks(this.scene.landmarks());
+      this.audio.setEcho(this.data.echo);
     });
     // diagnostic : ?hide=grass,veg,valley,ruin,terrain,fx,targets masque des pans entiers de la scène
     const hide = (this.params.get('hide') || '').split(',');
@@ -591,6 +608,8 @@ export class Game {
     this.rifleNode.add(this.rifleParts.group);
     this.player.char.group.add(this.rifleNode);
     this.range = null;
+    // le tampon du tir est calculé ici, pas au départ du coup
+    this.audio.prepareShot(def);
   }
 
   // ------------------------------------------------------------------ états
@@ -718,16 +737,15 @@ export class Game {
     const bullet = this.shots.fire(eye, los, def, elev, windage);
     (bullet as any).elev = elev;
     (bullet as any).windage = windage;
-    this.audio.shot(def.sound);
-    this.scope.recoil(def);
+    this.audio.shot(def);
+    this.scope.recoil(def, shotFxParams(def).scopeJump);
     this.mission.onShot(def);
     this.player.heartRate = Math.min(150, this.player.heartRate + 2 + def.chargeGr * 0.05);
     this.fx.clearTrail();
-    // poussière soulevée par le souffle du canon
-    if (!def.suppressed && def.v0 > 400) {
-      const m = this.v3.copy(eye).addScaledVector(los, 1.3);
-      m.y = Math.max(this.player.pos.y + 0.05, m.y - 0.25);
-      this.fx.puff(m, { count: Math.round(4 + def.chargeGr * 0.12), speed: 1.2 + def.chargeGr * 0.02, life: 1.4, size: [0.1, 0.9], color: 0xa89878, alpha: 0.28, dir: los });
+    // flamme, fumée, poussière soulevée, recul visible, voile de lunette : src/world/shotfx.ts
+    if (this.rifleParts) {
+      this.shotFx.aim(this.rifleParts.group, this.rifleParts.anchors.muzzle);
+      this.shotFx.fire(def, this.player.stance === 'prone', this.player.pos.y);
     }
     if (pred && pred.tof > 0.5) {
       const cur = this.mission.currentTargets();
@@ -1187,6 +1205,9 @@ export class Game {
     this.veg.update(cam, this.player.pos, zoomK, this.scope.amount);
     // bâtiments : niveau complet ou lointain selon la distance apparente (réévalué quatre fois par seconde)
     this.buildings?.update(cam.position, zoomK, dtReal);
+    // dans la lunette, les particules à moins de 9 m (fumée et poussière du départ du coup) cèdent la place au voile
+    this.fx.nearFade = inScopeView ? 9 : 0;
+    this.shotFx.update(dt, !inScopeView, this.rifle.boltPhase, this.rifleParts?.group ?? null, this.rifleParts?.boltRest ?? null, this.player.pos.y);
     this.fx.update(dt, cam, this.sky.sunDir, zoomK, dtReal, (e.view.h * Math.tan((REF_FOV * Math.PI) / 360)) / Math.tan((e.view.baseFov * Math.PI) / 360));
 
     // --- joueur visible, fusil ---
@@ -1199,6 +1220,9 @@ export class Game {
     fin.u('uScopeF').value = inScopeView ? 1 : 0;
     fin.u('uEye').value.set(sc.eyeX, sc.eyeY);
     fin.u('uBlackout').value = inScopeView ? sc.blackout : 0;
+    const veil = this.shotFx.veil;
+    fin.u('uVeil').value.set(veil.r, veil.g, veil.b, inScopeView ? veil.a : 0);
+    fin.u('uFlashF').value = inScopeView ? veil.flash : 0;
     fin.u('uFade').value = this.fade;
     e.shadowFocus = inScopeView ? this.aimDist : 0;
     if (e.dofPass && e.dof) {
@@ -1454,6 +1478,16 @@ export class Game {
       n.position.set(0.09 + Math.sin(0.55) * (mid - 0.1), 0.24 - Math.cos(0.55) * (mid - 0.1), -0.2);
       n.rotation.set(-Math.PI / 2 + 0.1, 0, 0.55);
       parts.bipod.visible = false;
+    }
+    // recul du coup de feu : l'arme part en arrière et se cabre, le bipied saute, le buste encaisse. Appliqué au modèle
+    // (pas à son nœud, que le jeu amortit) et avant l'ancrage des mains, qui suivent donc l'arme dans la même image.
+    const kick = this.shotFx.kick;
+    parts.group.position.set(0, aimPose ? kick.hop : 0, aimPose ? -kick.back : 0);
+    parts.group.rotation.x = aimPose ? -kick.rise : 0;
+    if (aimPose && kick.body !== 0) {
+      const rig = pl.char.rig;
+      rig.spine.rotation.x -= 0.05 * kick.body * (pl.stance === 'prone' ? 0.5 : 1);
+      rig.head.rotation.x -= 0.04 * kick.body;
     }
     // verrou, chargeur (ou cartouche d'une arme à un coup) : animés par src/weapons/handling.ts, qui donne aussi les
     // points de l'arme où vont les mains (poignée, levier de culasse là où il est sur ce modèle, chargeur, fût)

@@ -89,6 +89,16 @@ const truth = (page, id) => page.evaluate((id) => {
   const half = (g.targetWidth(t) / 2 / range) * 1000;
   return { range, measured: g.coachRange ? g.coachRange.v : null, book: s ? Math.max(0, s.elevMil) : null, rack: window.hr.level.weapons, off: Math.round((half * 1.7 + 0.8) * 10) / 10 };
 }, id);
+/** consignes chiffrées de l'encart complet, par axe (impératif suivi d'une valeur en mrad ou en clics) */
+const orders = (c) => {
+  const t = [c.diag, c.why, ...c.steps, c.calibre].join('\n');
+  const grab = (res) => res.flatMap((re) => [...t.matchAll(re)].map((m) => m[0]));
+  return {
+    v: grab([/(montez|descendez)[^.;\n]*? de [\d,]+ mrad/gi, /visez [\d,]+ mrad plus (haut|bas)/gi]),
+    h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /tournez-la de \d+ clics? vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
+  };
+};
+const single = (c, where) => { const o = orders(c); check(`${where} : au plus une consigne chiffrée par axe dans tout l’encart`, o.v.length <= 1 && o.h.length <= 1, JSON.stringify(o)); return o; };
 const fr1 = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const exitScope = (page) => page.evaluate(() => window.hr.game.scope.exit()).then(() => sleep(700));
 const enterScope = (page, id) => page.evaluate((id) => { const g = window.hr.game; g.scope.enter(g.player.yaw, 0); g.autoAim(id); }, id).then(() => sleep(700));
@@ -137,10 +147,14 @@ for (const mobile of [false, true]) {
   } else await page.screenshot({ path: `${OUT}/ordinateur-standard-lunette.png` });
   // contenu chiffré (version complète)
   const low = num((c.diag.match(/environ ([\d,]+) mrad trop bas/) ?? [])[1]);
-  check(`diagnostic : « vos trois derniers tirs sont passés environ ${fr1(off)} mrad trop bas » (écart imposé : ${fr1(off)}), correction en clics`, /Vos trois derniers tirs sont passés/.test(c.diag) && Math.abs(low - off) <= 0.25 && /montez l’élévation de [\d,]+ mrad \(\d+ clics\)/.test(c.diag), c.diag);
+  const gap = ref.book - dial0;
+  check(`diagnostic : « vos trois derniers tirs sont passés environ ${fr1(off)} mrad trop bas » (écart imposé : ${fr1(off)})`, /Vos trois derniers tirs sont passés/.test(c.diag) && Math.abs(low - off) <= 0.25, c.diag);
+  // tourelle à zéro, carnet au-dessus : le diagnostic renvoie à l'étape 3 sans chiffrer de correction concurrente
+  check('diagnostic et carnet divergents : le diagnostic explique et renvoie à l’étape 3, sans seconde correction chiffrée', gap < 0.05 ? /visez [\d,]+ mrad plus haut/.test(c.diag) : /valeur du carnet \(étape 3\)/.test(c.diag) && !/montez|descendez|\d+ clics?/.test(c.diag), c.diag);
+  const o = single(c, `${dev}, standard`);
+  check('la consigne d’élévation est celle du carnet (écart tourelle → carnet)', gap < 0.05 ? o.v.length === 1 : o.v.length === 1 && o.v[0] === `montez de ${fr1(gap)} mrad`, JSON.stringify(o.v));
   check('distance citée = distance mesurée au télémètre, proche de la distance réelle de la cible', c.steps[0]?.includes(`${Math.round(ref.measured).toLocaleString('fr-FR')} m`) && Math.abs(ref.measured - ref.range) < 0.05 * ref.range, `${c.steps[0]} (télémètre ${ref.measured?.toFixed(1)} m, cible à ${ref.range.toFixed(1)} m)`);
   check('valeur du carnet = solution de tir de l’arme en main à cette distance', c.steps[1]?.includes(`${fr1(ref.book)} mrad`), `${c.steps[1]} (solveur : ${ref.book?.toFixed(2)})`);
-  const gap = ref.book - dial0;
   check('réglage actuel de la tourelle et écart avec le carnet', Math.abs(gap) < 0.05 ? /c’est la valeur du carnet/.test(c.steps[2]) : c.steps[2]?.includes(`Votre tourelle est à ${fr1(dial0)} mrad, le carnet donne ${fr1(ref.book)} : ${gap > 0 ? 'montez' : 'descendez'} de ${fr1(Math.abs(gap))} mrad`), c.steps[2]);
   check('quatre étapes : distance, carnet, élévation, dérive selon le vent', c.steps.length === 4 && /m\/s/.test(c.steps[3]) && /vent/.test(c.steps[3]), c.steps[3]);
   check(mobile ? 'tactile : boutons nommés, aucune touche de clavier' : 'ordinateur : touches T, Tab, flèches, Entrée pour fermer', mobile ? /Télémètre/.test(c.steps[0]) && /Carnet/.test(c.steps[1]) && !/\b(Tab|Entrée|Échap)\b/.test([c.diag, c.why, ...c.steps, c.calibre].join(' ')) : /T en visant/.test(c.steps[0]) && /^Tab/.test(c.steps[1]) && /entrée/i.test(c.close), c.steps[0]);
@@ -192,7 +206,8 @@ for (const mobile of [false, true]) {
   const cited = names.filter((n) => c.calibre.includes(n));
   check(`objectif « ${s.step} » à ${Math.round(ref.range)} m avec le .223 : le conseil dit pourquoi l’arme peine, chiffres à l’appui`, c.shown && /^À [\d\s ]+ m, le \.223 Rem /.test(c.calibre) && /(mrad|Mach|J à l’arrivée|n’atteint pas)/.test(c.calibre), c.calibre);
   check('une ou deux armes présentes au râtelier du niveau sont proposées, avec la façon d’en changer', cited.length >= 1 && cited.length <= 2 && (mobile ? /bouton Râtelier/.test(c.calibre) : /touche E/.test(c.calibre)), cited.join(', '));
-  check('diagnostic : impacts trop à droite', /trop à droite/.test(c.diag) && /à gauche/.test(c.diag), c.diag);
+  check('diagnostic : impacts trop à droite, correction à gauche ou renvoi à l’étape 4', /trop à droite/.test(c.diag) && /à gauche|étape 4/.test(c.diag), c.diag);
+  single(c, `${dev}, arme inadaptée`);
   geometry(c, `${dev}, ${mobile ? 'hors lunette' : 'en lunette'}`);
   await page.screenshot({ path: `${OUT}/${dev}-calibre-${mobile ? 'hors-lunette' : 'lunette'}.png` });
   if (mobile) { await enterScope(page, id); c = await coach(page); geometry(c, 'portrait, en lunette'); check('bandeau en lunette : l’arme proposée y figure', /râtelier/i.test(c.short), c.short); await page.screenshot({ path: `${OUT}/portrait-calibre-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-calibre-hors-lunette.png` }); }
@@ -219,6 +234,7 @@ for (const mobile of [false, true]) {
   check('renvoi au carnet décomposé : chute + Coriolis, dérive gyroscopique', /décomposé/.test(c.steps[1]) && /Coriolis/.test(c.steps[1]) && /gyroscopique/.test(c.steps[1]), c.steps[1]);
   check('ni télémètre, ni distance réelle, ni correction du carnet révélés', !/Télémètre|T en visant/.test(all) && !all.includes(Math.round(ref.range).toLocaleString('fr-FR') + ' m') && !/le carnet donne \d/.test(all), `cible à ${Math.round(ref.range)} m`);
   check('diagnostic des impacts (observable à la lunette) : trop haut', /trop haut/.test(c.diag), c.diag);
+  single(c, `${dev}, avancé`);
   geometry(c, `${dev}, ${mobile ? 'hors lunette' : 'en lunette'}`);
   await page.screenshot({ path: `${OUT}/${dev}-avance-${mobile ? 'hors-lunette' : 'lunette'}.png` });
   if (mobile) { await enterScope(page, id); c = await coach(page); geometry(c, 'portrait, en lunette'); check('bandeau en lunette', /trop haut/.test(c.short), c.short); await page.screenshot({ path: `${OUT}/portrait-avance-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-avance-hors-lunette.png` }); }
@@ -238,6 +254,7 @@ console.log('\n— facile (assisté), réglage « Conseils », tutoriel —');
   await sleep(400);
   let c = await coach(page);
   check('facile : le conseil s’appuie sur la distance affichée et le losange d’impact prédit, sans télémètre', c.shown && /affichée en haut à droite/.test(c.steps[0]) && c.steps[0].includes(`${Math.round(ref.range)} m`) && /losange orange/.test(c.steps[3]) && !/T en visant/.test(c.steps.join(' ')), c.steps[0]);
+  single(c, 'ordinateur, facile');
   await page.screenshot({ path: `${OUT}/ordinateur-facile-lunette.png` });
   // fenêtre étroite : en lunette, version courte adossée au champ
   await page.setViewportSize({ width: 1180, height: 760 }); await sleep(500);
