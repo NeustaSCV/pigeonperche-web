@@ -283,7 +283,8 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
     return (await G(page, () => window.hr.game.scope.yaw)) - a;
   };
   const y4 = await dragYaw(4), y16 = await dragYaw(16);
-  check('viser en glissant : sensibilité réduite avec le grossissement', y4 > 0 && y16 > 0 && y4 / y16 > 3.2 && y4 / y16 < 4.8, `100 px : ${(y4 * 1000).toFixed(1)} mrad à 4×, ${(y16 * 1000).toFixed(1)} mrad à 16× (rapport ${(y4 / y16).toFixed(2)})`);
+  // au doigt, le zoom le plus bas balaie plus large encore que la seule proportion du grossissement (rapport 4) : 6 à 13
+  check('viser en glissant : sensibilité réduite avec le grossissement', y4 > 0 && y16 > 0 && y4 / y16 > 6 && y4 / y16 < 13 && y4 * 1000 > 90, `100 px : ${(y4 * 1000).toFixed(1)} mrad à 4×, ${(y16 * 1000).toFixed(1)} mrad à 16× (rapport ${(y4 / y16).toFixed(2)})`);
   // viser aussi depuis la zone libre de la moitié basse, sous les pouces
   s = await G(page, () => { const v = window.hr.engine.view; const bs = [...document.querySelectorAll('#touch [data-tb]')].filter((e) => e.getBoundingClientRect().width > 0).map((e) => e.getBoundingClientRect()); const top = Math.max(...bs.filter((b) => b.top < window.innerHeight * 0.8 && b.top > v.cy).map((b) => b.bottom)), bot = Math.min(...bs.filter((b) => b.bottom > window.innerHeight * 0.9).map((b) => b.top)); return { top, bot, yaw: window.hr.game.scope.yaw }; });
   if (s.bot - s.top > 30) {

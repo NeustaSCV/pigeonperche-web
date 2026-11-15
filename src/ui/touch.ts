@@ -89,10 +89,23 @@ const CAPTION = new Set(['fire', 'aim', 'reload', 'crouch', 'prone', 'rack', 'br
 const fr = (n: number, d = 0): string => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const REPEAT_DELAY = 380;
 const REPEAT_EVERY = 85;
-/** sensibilité du regard au doigt, en pixels souris par pixel CSS : hors lunette, puis en lunette (où le jeu la
- *  réduit déjà en proportion du grossissement, comme à la souris) */
+/** sensibilité du regard au doigt hors lunette, en pixels souris par pixel CSS (en lunette : scopeLookGain) */
 const LOOK_GAIN = 1.55;
-const LOOK_GAIN_SCOPE = 0.9;
+
+/**
+ * Sensibilité du doigt en lunette. Le jeu réduit déjà le déplacement en proportion du grossissement ; au doigt il
+ * faut en plus (1) balayer plus large quand le zoom est au plus bas, pour chercher la cible sans glisser dix fois,
+ * (2) garder un pointage fin à fort grossissement, (3) aller plus loin quand le geste est rapide.
+ * `zoom` : grossissement courant ; `speed` : vitesse du doigt, px CSS par milliseconde.
+ */
+export function scopeLookGain(zoom: number, speed: number): number {
+  // 2,6 à 4× et moins, 1,15 à 16× et plus (échelle logarithmique entre les deux)
+  const u = Number.isFinite(zoom) ? Math.min(1, Math.max(0, Math.log(Math.max(zoom, 1) / 4) / Math.log(16 / 4))) : 1;
+  const base = 2.6 + (1.15 - 2.6) * u;
+  // geste lent (moins de 0,25 px/ms) : aucun supplément ; geste vif (1,2 px/ms et plus) : +80 %
+  const fast = Number.isFinite(speed) ? Math.min(1, Math.max(0, (speed - 0.25) / 0.95)) : 0;
+  return base * (1 + 0.8 * fast);
+}
 /** portrait : la manette ne naît que sous cette fraction de la hauteur */
 const STICK_TOP = 0.42;
 
@@ -103,7 +116,7 @@ export class TouchControls {
   private els = new Map<string, HTMLElement>();
   private caps = new Map<string, HTMLElement>();
   private held = new Map<number, Held>();
-  private look = new Map<number, { x: number; y: number }>();
+  private look = new Map<number, { x: number; y: number; t: number }>();
   private stickId: number | null = null;
   private stick = { ox: 0, oy: 0 };
   private stickEl: HTMLElement;
@@ -203,7 +216,7 @@ export class TouchControls {
     }
     // en lunette, tout l'écran sert à viser ; hors lunette, la zone de la manette lui est réservée
     if (left && !this.f.scope) return;
-    this.look.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    this.look.set(e.pointerId, { x: e.clientX, y: e.clientY, t: e.timeStamp });
     this.pinch = 0;
   }
 
@@ -238,8 +251,10 @@ export class TouchControls {
     const l = this.look.get(e.pointerId);
     if (!l) return;
     const dx = e.clientX - l.x, dy = e.clientY - l.y;
+    const dt = Math.max(1, e.timeStamp - l.t);
     l.x = e.clientX;
     l.y = e.clientY;
+    l.t = e.timeStamp;
     if (this.f.scope && this.look.size === 2) {
       // pincement à deux doigts : grossissement
       const [a, b] = [...this.look.values()];
@@ -248,7 +263,7 @@ export class TouchControls {
       this.pinch = d;
       return;
     }
-    const g = this.f.scope ? LOOK_GAIN_SCOPE : LOOK_GAIN;
+    const g = this.f.scope ? scopeLookGain(this.f.zoom, Math.hypot(dx, dy) / dt) : LOOK_GAIN;
     this.input.addLook(dx * g, dy * g);
   }
 

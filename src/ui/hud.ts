@@ -70,6 +70,8 @@ export interface HudState {
   heading: number;
   /** poste conseillé : relèvement du prochain point de passage, distance de marche */
   guide: { label: string; hint: string; bearing: number; dist: number; arrived: boolean } | null;
+  /** relèvement de la cible de l'objectif en cours (rad, 0 = nord, sens horaire) ; null s'il n'y en a pas */
+  targetBearing: number | null;
   prompt: string;
   heart: number;
   air: number;
@@ -262,7 +264,7 @@ export class UI {
         <div class="bc"><div class="prompt" data-id="prompt"></div></div>
         <div class="tc"><div class="toast" data-id="toast"></div></div>
         <div class="compass" data-id="compass">
-          <div class="tape"><div class="strip" data-id="cStrip">${compassStrip()}</div><i class="mark" data-id="cMark"></i></div>
+          <div class="tape"><div class="strip" data-id="cStrip">${compassStrip()}</div><i class="mark" data-id="cMark"></i><i class="tgt hidden" data-id="cTgt"><b></b></i></div>
           <div class="needle"></div>
           <div class="way" data-id="cWay"><span class="arrow" data-id="cArrow"></span><span data-id="cLabel"></span></div>
         </div>
@@ -558,6 +560,20 @@ export class UI {
       if (this.last.cTx !== tx) {
         this.last.cTx = tx;
         this.el.cStrip.style.transform = `translateX(${tx}px)`;
+      }
+      // repère de la cible : losange bleu, distinct du triangle doré du pas de tir
+      const tb = s.targetBearing;
+      this.cls('cTgt', 'hidden', tb === null);
+      if (tb !== null) {
+        let rel = ((tb - s.heading) * 180) / Math.PI;
+        rel = ((rel + 540) % 360) - 180;
+        const off = Math.abs(rel) > C_HALF;
+        const key = (Math.max(-C_HALF, Math.min(C_HALF, rel)) * C_PX).toFixed(1) + (off ? 'o' : '');
+        if (this.last.cTg !== key) {
+          this.last.cTg = key;
+          this.el.cTgt.style.transform = `translateX(${parseFloat(key)}px)`;
+          this.el.cTgt.classList.toggle('edge', off);
+        }
       }
       const g = s.guide;
       this.cls('cMark', 'hidden', !g || g.arrived);

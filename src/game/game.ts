@@ -574,7 +574,7 @@ export class Game {
   }
 
   private blankHud(): HudState {
-    return { visible: false, scope: false, objective: null, index: 0, weapon: null, mag: 0, chambered: true, busy: '', stance: '', post: null, heading: 0, guide: null, prompt: '', heart: 60, air: 1, breath: 'normal', zoom: 8, elev: 0, wind: 0, range: null, rangeFlat: null, hold: '', windSpeed: null, windRel: 0, alert: 0, alarm: false, fps: 60, showFps: this.showFps };
+    return { visible: false, scope: false, objective: null, index: 0, weapon: null, mag: 0, chambered: true, busy: '', stance: '', post: null, heading: 0, guide: null, targetBearing: null, prompt: '', heart: 60, air: 1, breath: 'normal', zoom: 8, elev: 0, wind: 0, range: null, rangeFlat: null, hold: '', windSpeed: null, windRel: 0, alert: 0, alarm: false, fps: 60, showFps: this.showFps };
   }
 
   private buildTargets(): void {
@@ -983,6 +983,7 @@ export class Game {
     return best;
   }
   private losFrom = new Vector3();
+  private v4c = new Vector3();
 
   // ------------------------------------------------------------------ caméras
   private nearT = 0;
@@ -1352,6 +1353,15 @@ export class Game {
     const POSTS = this.data.posts, rack = this.data.site.rack;
     h.post = post ? POSTS[post].label : null;
     h.heading = inScopeView ? sc.yaw : pl.yaw;
+    // boussole : relèvement de la première cible encore debout de l'objectif en cours (elle peut bouger)
+    h.targetBearing = null;
+    for (const id of this.mission.step?.targets ?? []) {
+      const t = this.targets.get(id);
+      if (!t || t.done || !t.active) continue;
+      const a = t.aimPoint(this.v4c);
+      h.targetBearing = Math.atan2(a.x - pl.pos.x, -(a.z - pl.pos.z));
+      break;
+    }
     const want = this.mission.step ? this.data.stepPost[this.mission.step.id] : undefined;
     if (want && pl.guideTo(want, this.guide)) {
       const g = this.guide;
