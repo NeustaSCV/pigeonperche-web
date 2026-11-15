@@ -58,6 +58,11 @@ export class Mission {
   totalShots = 0;
   totalHits = 0;
   elapsed = 0;
+  /** points de bonus propres à la carte (enchaînements, rapidité), plafonnés par `bonusMax` ; ajoutés au score */
+  bonus = 0;
+  bonusMax = 0;
+  /** vitesse à laquelle l'alerte retombe, points par seconde */
+  alertDecay = 0.12;
   private cur: StepStats = { shots: 0, hits: 0, time: 0, distance: 0, weapon: '', points: 0 };
   /** délai avant de valider l'objectif (le temps de voir l'effet) */
   private completeT = -1;
@@ -86,7 +91,7 @@ export class Mission {
     if (!this.running || this.finished || this.failed) return;
     this.cur.time += dt;
     this.elapsed += dt;
-    this.alert = Math.max(0, this.alert - dt * 0.12);
+    this.alert = Math.max(0, this.alert - dt * this.alertDecay);
     if (this.completeT > 0) {
       this.completeT -= dt;
       if (this.completeT <= 0) this.complete();
@@ -98,6 +103,12 @@ export class Mission {
     this.cur.weapon = def.caliber;
     if (this.alertZone) this.addAlert(def.alert * 0.5);
   }
+  /** Bonus propre à la carte ; renvoie les points réellement accordés (le total est plafonné par `bonusMax`). */
+  addBonus(points: number): number {
+    const got = Math.max(0, Math.min(Math.round(points), this.bonusMax - this.bonus));
+    this.bonus += got;
+    return got;
+  }
   /** points des tirs d'adresse (plein centre, cible en mouvement), plafonnés à SKILL_PER_STEP par objectif de la carte */
   skill = 0;
   /** Bonus d'un tir d'adresse ; renvoie les points réellement accordés. */
@@ -105,6 +116,17 @@ export class Mission {
     const got = Math.max(0, Math.min(Math.round(points), this.steps.length * SKILL_PER_STEP - this.skill));
     this.skill += got;
     return got;
+  }
+  /** Fait monter l'alerte de `v` points (règle propre à une carte : tir manqué, délai dépassé…). */
+  raiseAlert(v: number): void {
+    this.addAlert(v);
+  }
+  /** Échec de l'objectif en cours, décidé par la carte. */
+  failStep(reason: string): void {
+    if (this.failed || this.finished) return;
+    this.failed = reason;
+    this.running = false;
+    this.onFail(reason);
   }
   private addAlert(v: number): void {
     this.alert = Math.min(100, this.alert + v);
@@ -162,7 +184,7 @@ export class Mission {
     if (this.running && this.completeT < 0 && this.currentTargets().every((t) => t.done)) this.completeT = 0.8;
   }
   score(): { total: number; accuracy: number; discretion: number; grade: string } {
-    const base = this.stats.reduce((a, s) => a + s.points, 0) + this.skill;
+    const base = this.stats.reduce((a, s) => a + s.points, 0) + this.bonus + this.skill;
     const discretion = this.alarm ? 0 : Math.round(2000 * (1 - this.alert / 100));
     const diff = this.difficulty === 'real' ? 1.5 : this.difficulty === 'standard' ? 1.2 : 1;
     const total = Math.round((base + discretion) * diff);

@@ -1,5 +1,5 @@
 // Types de scores-core.mjs (cœur du classement partagé par le jeu, le serveur et le greffon Vite).
-export type ScoreLevel = 'facile' | 'standard' | 'avance';
+export type ScoreLevel = 'facile' | 'standard' | 'avance' | 'fete' | 'phare' | 'plaine';
 
 /** une ligne de classement */
 export interface ScoreEntry {
@@ -28,7 +28,7 @@ export const GRADES: string[];
 export const SKILL_CENTRE: number;
 export const SKILL_MOVING: number;
 export const SKILL_PER_STEP: number;
-export const LEVEL_RULES: Record<ScoreLevel, { steps: number; factor: number; range: number }>;
+export const LEVEL_RULES: Record<ScoreLevel, { steps: number; factor: number; range: number; bonus?: number }>;
 export function scoreBounds(level: string): { min: number; max: number } | null;
 export function cleanName(raw: unknown, partial?: boolean): string;
 export function escapeHtml(s: unknown): string;

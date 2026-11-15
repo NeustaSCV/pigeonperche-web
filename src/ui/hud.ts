@@ -6,7 +6,7 @@ import { QUALITY, type QualityName } from '../core/engine';
 import { DIFFICULTY_LABEL, DIFFICULTY_NOTE, type Difficulty, type Mission, type ShotLog, type Step, type StepStats } from '../game/mission';
 import { BOARD_SIZE, HOME_SIZE, NAME_MAX, cleanName, escapeHtml, rankOf, type ScoreBoards, type ScoreEntry, type ScoreResult, type SubmitOutcome } from '../game/scores';
 import type { LevelEntry } from '../levels';
-import type { LevelId } from '../levels/types';
+import type { CampaignId, LevelId } from '../levels/types';
 import { Reticle } from '../weapons/scope';
 import type { TutoView } from '../game/tutorial';
 import type { Advice } from '../game/coach';
@@ -197,6 +197,8 @@ export interface UIInit {
   homeTip?: boolean;
   /** les trois niveaux du registre, et celui qui est chargé */
   levels: LevelEntry[];
+  /** campagnes du menu (groupes de trois cartes) ; absent : une seule campagne, toutes les cartes */
+  campaigns?: { id: CampaignId; title: string; levels: LevelId[] }[];
   level: LevelId;
   /** objectifs du niveau chargé */
   steps: Step[];
@@ -236,12 +238,19 @@ export class UI {
     this.alertTexts = init.alertTexts ?? {};
     const cur = init.levels.find((l) => l.id === init.level)!;
     this.reticle = new Reticle(root);
-    const boardCols = init.levels.map((l) => `<section class="board-col${l.id === init.level ? ' cur' : ''}"><h3>${l.meta.title}</h3><ol class="board" data-board="${l.id}"><li class="none">Aucun score</li></ol></section>`).join('');
+    // campagnes : l'accueil ne montre que les trois cartes de la campagne en cours ; l'écran des scores les montre toutes
+    const camps = init.campaigns?.length ? init.campaigns : [{ id: 'vallee' as CampaignId, title: '', levels: init.levels.map((l) => l.id) }];
+    const camp = camps.find((c) => c.levels.includes(init.level)) ?? camps[0];
+    const inCamp = (c: { levels: LevelId[] }): LevelEntry[] => c.levels.map((id) => init.levels.find((l) => l.id === id)).filter((l): l is LevelEntry => !!l);
+    const boardCol = (l: LevelEntry): string => `<section class="board-col${l.id === init.level ? ' cur' : ''}"><h3>${l.meta.title}${l.meta.name ? `<small>${l.meta.name}</small>` : ''}</h3><ol class="board" data-board="${l.id}"><li class="none">Aucun score</li></ol></section>`;
+    const boardCols = inCamp(camp).map(boardCol).join('');
+    // écran « Scores » : une campagne à la fois (ses trois cartes tiennent sans défiler), un sélecteur passe de l'une à l'autre
+    const allBoards = `${camps.length > 1 ? '<div class="seg boards-camp" data-id="segScoreCamp"></div>' : ''}${camps.map((c) => `<div class="boards-g${c === camp ? '' : ' hidden'}" data-camp="${c.id}">${inCamp(c).map(boardCol).join('')}</div>`).join('')}`;
     root.insertAdjacentHTML(
       'beforeend',
       `
       <div id="hud">
-        <div class="tl obj"><div class="k" data-id="objK"></div><div class="t" data-id="objT"></div><div class="z" data-id="objZ"></div></div>
+        <div class="tl obj"><div class="k" data-id="objK"></div><div class="t" data-id="objT"></div><div class="z" data-id="objZ"></div><div class="x hidden" data-id="objX"></div></div>
         <div class="tr stat">
           <div data-id="alertRow"><span class="lb">${init.alertLabel ?? ''}</span> <span class="gauge" data-id="alertG"><i></i></span></div>
           <div class="scope-ui" data-id="scopeTR">
@@ -298,6 +307,7 @@ export class UI {
         <div class="sub"><span>Tir de précision</span><i> · </i><span>${cur.meta.tagline}</span></div>
         <div class="menu-list${init.fullscreen ? '' : ' no-fs'}">
           <button class="mbtn primary m-start" data-act="start">Commencer</button>
+          ${camps.length > 1 ? '<div class="opt o-camp"><span>Campagne</span><div class="seg" data-id="segCamp"></div></div>' : ''}
           <div class="opt o-diff"><span>Niveau</span><div class="seg" data-id="segLevel"></div></div>
           <div class="opt-note" data-id="diffNote"></div>
           <div class="opt o-qual"><span>Qualité</span><div class="seg" data-id="segQual"></div></div>
@@ -325,8 +335,8 @@ export class UI {
         <div class="row-btn help-back"><button class="mbtn" data-act="closeHelp">Retour</button></div></div></div>
 
       <div class="screen veil-full" id="scores"><div class="card scroll"><div class="kicker">Meilleurs scores<button class="xclose" data-act="closeScores">Retour</button></div>
-        <div class="boards-g">${boardCols}</div>
-        <p class="boards-note">Les cinq premiers de chaque niveau. Classement <span data-mode></span>.</p>
+        ${allBoards}
+        <p class="boards-note">Les cinq premiers de chaque carte. Classement <span data-mode></span>.</p>
         <div class="row-btn help-back"><button class="mbtn" data-act="closeScores">Retour</button></div></div></div>
 
       <div class="screen veil-full" id="pause"><div class="card scroll"><div class="kicker">Pause</div><h2 class="title small"><span class="struck"><s>Fau</s><span class="at"><span class="pin"><em class="fix">Pigeon</em></span></span><s>con</s></span> perché</h2>
@@ -378,7 +388,27 @@ export class UI {
     };
     // choix du niveau : chaque niveau porte sa carte et son préréglage d'aides ; un niveau non livré reste « à venir »
     const lv = this.el.segLevel;
-    lv.innerHTML = init.levels.map((l) => `<button data-k="${l.id}" class="${l.id === init.level ? 'sel' : ''}${l.playable ? '' : ' soon'}"${l.playable ? '' : ' disabled title="À venir"'}>${l.meta.title}${l.playable ? '' : '<small>à venir</small>'}</button>`).join('');
+    lv.innerHTML = inCamp(camp).map((l) => `<button data-k="${l.id}" class="${l.id === init.level ? 'sel' : ''}${l.playable ? '' : ' soon'}"${l.playable ? '' : ' disabled title="À venir"'}>${l.meta.title}${l.playable ? '' : '<small>à venir</small>'}</button>`).join('');
+    if (this.el.segScoreCamp) {
+      seg(this.el.segScoreCamp, camps.map((c) => [c.id, c.title] as [string, string]), camp.id, (k) => {
+        root.querySelectorAll<HTMLElement>('#scores [data-camp]').forEach((g) => g.classList.toggle('hidden', g.dataset.camp !== k));
+      });
+    }
+    // choix de la campagne : on passe à la carte de même difficulté de l'autre campagne (à défaut, sa première carte livrée)
+    const sc = this.el.segCamp;
+    if (sc) {
+      const dest = (c: { levels: LevelId[] }): LevelEntry | undefined => { const ls = inCamp(c); return ls.find((l) => l.playable && l.meta.difficulty === cur.meta.difficulty) ?? ls.find((l) => l.playable); };
+      sc.innerHTML = camps.map((c) => `<button data-k="${c.id}" class="${c === camp ? 'sel' : ''}${c === camp || dest(c) ? '' : ' soon'}"${c === camp || dest(c) ? '' : ' disabled title="À venir"'}>${c.title}</button>`).join('');
+      sc.addEventListener('click', (e) => {
+        const b = (e.target as HTMLElement).closest('button');
+        const c = camps.find((k) => k.id === b?.dataset.k);
+        const to = c && c !== camp ? dest(c) : undefined;
+        if (!b || !to) return;
+        sc.querySelectorAll('button').forEach((x) => x.classList.toggle('sel', x === b));
+        this.el.diffNote.textContent = 'Chargement de la carte…';
+        h.setLevel(to.id);
+      });
+    }
     lv.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest('button');
       if (!b || b.disabled || b.dataset.k === init.level) return;
@@ -387,7 +417,8 @@ export class UI {
       h.setLevel(b.dataset.k as LevelId);
     });
     // la note décrit la carte ; si les aides ont été forcées (?d=), on le dit
-    this.el.diffNote.textContent = init.difficulty === cur.meta.difficulty ? cur.meta.note : `${cur.meta.note} Aides forcées : ${DIFFICULTY_LABEL[init.difficulty].toLowerCase()}. ${DIFFICULTY_NOTE[init.difficulty]}`;
+    const note = cur.meta.name ? `${cur.meta.name}. ${cur.meta.note}` : cur.meta.note;
+    this.el.diffNote.textContent = init.difficulty === cur.meta.difficulty ? note : `${cur.meta.note} Aides forcées : ${DIFFICULTY_LABEL[init.difficulty].toLowerCase()}. ${DIFFICULTY_NOTE[init.difficulty]}`;
     const quals = Object.values(QUALITY).map((q) => [q.name, q.label] as [string, string]);
     seg(this.el.segQual, quals, init.quality, (k) => h.setQuality(k as QualityName));
     seg(this.el.segQual2, quals, init.quality, (k) => h.setQuality(k as QualityName));
@@ -677,6 +708,15 @@ export class UI {
     this.el.tutoC.innerHTML = v.cmd;
     this.el.tutoC.classList.toggle('hidden', !v.cmd);
     return true;
+  }
+
+  /** Ligne propre à la carte sous l'objectif (chronomètre, série en cours…), visible aussi en lunette ; null : effacée. */
+  banner(html: string | null): void {
+    const v = html ?? '';
+    if (this.last.objX === v) return;
+    this.last.objX = v;
+    this.el.objX.innerHTML = v;
+    this.el.objX.classList.toggle('hidden', !v);
   }
 
   toast(text: string, sub = '', seconds = 2.6): void {

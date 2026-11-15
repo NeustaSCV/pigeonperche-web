@@ -48,6 +48,7 @@ Modifications: models were decimated and repacked as GLB with glTF-Transform; tr
 - **Sons** : synthétisés à l'exécution avec Web Audio (`src/audio/`), sauf huit courts enregistrements libres (attaque du coup de feu, culasse, douille), listés à la section « Sons enregistrés ». Le grave, la queue et les échos du tir, l'ambiance, les impacts et le chargeur sont synthétisés.
 - **Relief** : généré par `tools/gen-terrain.mjs` (bruit, érosion hydraulique, sites).
 - **Ruine, village, campement, pont, relais, mirador, personnages, carabines, herbe, lierre, fanions, eau** : géométrie et shaders procéduraux (`src/world/`, `src/player/`, `src/weapons/`).
+- **Cartes « Lieux oubliés »** (La Fête foraine, Le Phare, Le Château d'eau) : aucun asset ajouté. Attractions de foire, terrasses et plates-formes, mer et houle, bouées, caboteur, canot, grue, convoi, signal, vannes, drone, lunette et horloge sont de la géométrie et des shaders procéduraux (`src/levels/fete|phare|plaine/`, `src/game/extra/`, `src/world/sea.ts`) ; les bâtiments viennent de la banque ci-dessous.
 - **Arbres** : les modèles Poly Haven comptent plus de deux millions de triangles ; leur feuillage a été recuit en cartes alpha (`tools/assets/bake_cards.py`) et les troncs décimés avec glTF-Transform (`tools/assets/build-models.mjs`).
 
 ## Banque de bâtiments (`src/buildings/bank/`)

@@ -50,7 +50,7 @@ for (const id of ARMS) {
         const sol = g.testSolution(range, bearing, Math.sin(pitch) * range, wind, windFrom);
         if (!sol) { g.wind.sample = sample0; return { err: 'hors de portée' }; }
         const c = eye.clone().addScaledVector(los, range);
-        const plane = { id: '__plan', active: true, done: false, group: { visible: false }, update() {}, segment(p, q) { const da = p.clone().sub(c).dot(los), db = q.clone().sub(c).dot(los); return da < 0 && db >= 0 ? { t: da / (da - db), part: 'plan' } : null; }, onHit: () => ({ kind: 'steel', success: false }) };
+        const plane = { id: '__plan', active: true, done: false, group: { visible: false }, update() {}, segment(p, q) { const da = p.clone().sub(c).dot(los), db = q.clone().sub(c).dot(los); return da < 0 && db >= 0 ? { t: da / (da - db), part: 'plan' } : null; }, onHit: () => ({ kind: 'steel', success: false }), hitOffset: () => 1, predict: (dt, out) => out.copy(c) };
         const targets0 = g.shots.targets, impact0 = g.shots.onImpact;
         let rep = null;
         g.shots.targets = [plane];

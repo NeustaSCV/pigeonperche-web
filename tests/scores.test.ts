@@ -16,6 +16,15 @@ import { RANGE_LIMIT as rangeAvance } from '../src/levels/avance/map';
 import { STEPS as stepsFacile } from '../src/levels/facile/mission';
 import { STEPS as stepsStandard } from '../src/levels/standard/mission';
 import { STEPS as stepsAvance } from '../src/levels/avance/mission';
+import { meta as metaFete } from '../src/levels/fete/meta';
+import { meta as metaPhare } from '../src/levels/phare/meta';
+import { meta as metaPlaine } from '../src/levels/plaine/meta';
+import { BONUS_MAX as bonusFete, RANGE_LIMIT as rangeFete } from '../src/levels/fete/map';
+import { BONUS_MAX as bonusPhare, RANGE_LIMIT as rangePhare } from '../src/levels/phare/map';
+import { BONUS_MAX as bonusPlaine, RANGE_LIMIT as rangePlaine } from '../src/levels/plaine/map';
+import { STEPS as stepsFete } from '../src/levels/fete/mission';
+import { STEPS as stepsPhare } from '../src/levels/phare/mission';
+import { STEPS as stepsPlaine } from '../src/levels/plaine/mission';
 import {
   BOARD_SIZE, DEFAULT_NAME, GRADES, LEVEL_RULES, SCORES_VERSION, addEntry, cleanName, compareEntries, emptyBoards, escapeHtml, normalizeBoards, normalizeEntry,
   parseBoards, qualifies, rankOf, scoreBounds, serializeBoards, validateSubmission, type ScoreEntry, type ScoreLevel,
@@ -111,7 +120,7 @@ describe('lecture de données enregistrées', () => {
     expect(boards.standard).toEqual([]);
     expect(boards.avance).toHaveLength(BOARD_SIZE);
     expect(boards.avance[0].score).toBe(59);
-    expect(Object.keys(boards)).toEqual(['facile', 'standard', 'avance']);
+    expect(Object.keys(boards)).toEqual(['facile', 'standard', 'avance', 'fete', 'phare', 'plaine']);
   });
   it('champs annexes remis dans leurs bornes', () => {
     const e = normalizeEntry({ name: '', score: 10, grade: '<i>', accuracy: 7, shots: -1, time: 'x', date: 'hier' })!;
@@ -120,27 +129,34 @@ describe('lecture de données enregistrées', () => {
 });
 
 describe('bornes du score par niveau', () => {
-  const levels = { facile: [metaFacile, stepsFacile, rangeFacile], standard: [metaStandard, stepsStandard, rangeStandard], avance: [metaAvance, stepsAvance, rangeAvance] } as const;
+  // [fiche, objectifs, portée, plafond du bonus propre à la carte (0 : aucun)]
+  const levels = {
+    facile: [metaFacile, stepsFacile, rangeFacile, 0], standard: [metaStandard, stepsStandard, rangeStandard, 0], avance: [metaAvance, stepsAvance, rangeAvance, 0],
+    fete: [metaFete, stepsFete, rangeFete, bonusFete], phare: [metaPhare, stepsPhare, rangePhare, bonusPhare], plaine: [metaPlaine, stepsPlaine, rangePlaine, bonusPlaine],
+  } as const;
   it('les règles suivent les données des niveaux et le coefficient de Mission.score', () => {
-    for (const id of Object.keys(levels) as ScoreLevel[]) {
-      const [meta, steps, range] = levels[id];
+    for (const id of Object.keys(levels) as (keyof typeof levels)[]) {
+      const [meta, steps, range, bonus] = levels[id];
       const m = new Mission(new Map(), steps as any, null);
       m.difficulty = meta.difficulty;
       m.stats = [{ shots: 1, hits: 1, time: 1, distance: 0, weapon: '', points: 1000 }];
       // coefficient : score d'un seul objectif à 1 000 points, sans discrétion (alerte donnée)
       m.alarm = true;
-      expect(LEVEL_RULES[id]).toEqual({ steps: steps.length, factor: m.score().total / 1000, range });
+      expect(LEVEL_RULES[id]).toEqual({ steps: steps.length, factor: m.score().total / 1000, range, ...(bonus ? { bonus } : {}) });
     }
   });
   it('un score parfait à portée maximale tient dans les bornes, un score au-delà est refusé', () => {
-    for (const id of Object.keys(levels) as ScoreLevel[]) {
-      const [meta, steps, range] = levels[id];
+    for (const id of Object.keys(levels) as (keyof typeof levels)[]) {
+      const [meta, steps, range, bonus] = levels[id];
       const m = new Mission(new Map(), steps as any, null);
       m.difficulty = meta.difficulty;
       // meilleur cas : chaque objectif en un tir instantané à la portée maximale de la carte, aucune alerte
       m.stats = steps.map(() => ({ shots: 1, hits: 1, time: 0, distance: range, weapon: '', points: Math.round(1000 + 600 + 300 + range * 0.5) }));
       // et tous les tirs d'adresse possibles (plafond par objectif)
       m.addSkill(1e9);
+      // et tout le bonus propre à la carte
+      m.bonusMax = bonus;
+      m.addBonus(1e9);
       const best = m.score().total;
       const b = scoreBounds(id)!;
       expect(best).toBeLessThanOrEqual(b.max);

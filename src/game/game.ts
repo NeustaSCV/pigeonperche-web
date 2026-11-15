@@ -32,7 +32,8 @@ import { Sky } from '../world/sky';
 import { Terrain } from '../world/terrain';
 import { Vegetation, type VegetationSpec } from '../world/vegetation';
 import { Wind, type WindSample } from '../world/wind';
-import { LEVELS, checkLevel, switchLevel } from '../levels';
+import { CAMPAIGNS, LEVELS, checkLevel, switchLevel } from '../levels';
+import type { LevelRuntime } from '../levels/runtime';
 import { lotOf } from '../levels/building-lots';
 import { placeBuildings, type BuildingSet } from '../levels/buildings';
 import type { Level, LevelData, LevelHost, LevelPhysics, LevelScene } from '../levels/types';
@@ -279,7 +280,7 @@ export class Game {
       },
       {
         difficulty: this.difficulty, quality, volume: this.volume, touch: this.touch, tutorial: this.tutoPref === null || this.tutoPref === 'on', coach: this.coachPref !== 'off', fullscreen: this.touch && canFullscreen(), homeTip: this.touch && needsHomeScreenTip(params),
-        levels: LEVELS, level: this.data.id, steps: this.data.steps, weapons: this.weapons, hasTutorial: !!this.data.tutorial,
+        levels: LEVELS, campaigns: CAMPAIGNS, level: this.data.id, steps: this.data.steps, weapons: this.weapons, hasTutorial: !!this.data.tutorial,
         alertLabel: this.data.alertZone ? this.data.alertLabel : null, alertTexts: this.data.alertTexts, failNote: this.data.failNote,
       },
     );
@@ -593,6 +594,8 @@ export class Game {
     this.shots.onImpact = (r) => this.onImpact(r);
     this.mission = new Mission(this.targets, this.data.steps, this.data.alertZone);
     this.mission.difficulty = this.difficulty;
+    this.mission.bonusMax = this.data.bonusMax ?? 0;
+    if (this.data.alertDecay !== undefined) this.mission.alertDecay = this.data.alertDecay;
     this.mission.onStepDone = (step, s) => {
       this.coach.clear();
       this.ui.coach(null);
@@ -602,7 +605,8 @@ export class Game {
       this.scope.exit();
       // le premier objectif validé clôt le tutoriel, même inachevé
       if (this.tutorial && !this.tutorial.finished) { this.tutorial.skip(); this.setTutoPref('done'); this.ui.tuto(null, 'brief'); }
-      if (this.mission.finished) this.endMission();
+      // dernier objectif : la carte accorde ses derniers bonus (objectif sans faute, mission sans faute) avant le bilan
+      if (this.mission.finished) { this.scene.frame?.(this.runtime(0)); this.endMission(); }
       else { this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, this.prevStep); this.setState('brief'); }
     };
     this.mission.onFail = (reason) => {
@@ -635,7 +639,8 @@ export class Game {
   private endMission(): void {
     const m = this.mission, sc = m.score();
     const level = this.data.id;
-    const title = LEVELS.find((l) => l.id === level)?.meta.title ?? level;
+    const lm = LEVELS.find((l) => l.id === level)?.meta;
+    const title = lm ? (lm.name ? `${lm.name} (${lm.title.toLowerCase()})` : lm.title) : level;
     this.endResult = { score: sc.total, grade: sc.grade, accuracy: sc.accuracy, shots: m.totalShots, time: Math.floor(m.elapsed) };
     const ranked = this.rankedGame();
     this.ui.end(m, { title, ranked, board: this.scores.boards[level], online: this.scores.online, lastName: this.scores.lastName(), result: this.endResult });
@@ -817,6 +822,7 @@ export class Game {
     this.audio.shot(def);
     this.scope.recoil(def, shotFxParams(def).scopeJump);
     this.mission.onShot(def);
+    this.scene.onShot?.(def, this.mission.step.id);
     this.player.heartRate = Math.min(150, this.player.heartRate + 2 + def.chargeGr * 0.05);
     this.fx.clearTrail();
     // flamme, fumée, poussière soulevée, recul visible, voile de lunette : src/world/shotfx.ts
@@ -1302,6 +1308,8 @@ export class Game {
     for (const b of this.shots.bullets) if (b.alive) this.fx.trailPoint(b.pos);
     for (const t of this.targets.values()) t.update(dt, this.ctx);
     this.mission.update(dt);
+    // mécaniques propres à la carte (série chronométrée, bonus, fenêtre de tir, changement d'étage) : src/levels/runtime.ts
+    if (this.scene.frame) this.scene.frame(this.runtime(dt));
     this.sky.follow(cam.position);
     const off = e.atmosphere.u('uWindOff').value;
     off.x -= this.wind.dir.x * this.wind.speedNow * dt * 3;
@@ -1500,6 +1508,26 @@ export class Game {
       if (sc.active && !r.chambered && r.mag === 0 && r.reloadT <= 0 && r.boltT <= 0) f.halo = [...f.halo, 'reload'];
       this.touchCtl.update(f);
     }
+  }
+
+  private rt: LevelRuntime | null = null;
+  /** ce que le jeu prête à la carte à chaque image (`LevelScene.frame`) */
+  private runtime(dt: number): LevelRuntime {
+    const m = this.mission;
+    const rt = (this.rt ??= {
+      dt: 0, time: 0, state: this.state, playing: false, mission: m, stepId: '', targets: this.targets, player: this.player, inScope: false, audio: this.audio,
+      toast: (text, sub, sec) => this.ui.toast(text, sub ?? '', sec ?? 2.6),
+      banner: (html) => this.ui.banner(html),
+      fail: (reason) => m.failStep(reason),
+      fade: () => { this.fade = 1; },
+    });
+    rt.dt = dt;
+    rt.time = this.gameTime;
+    rt.state = this.state;
+    rt.playing = this.state === 'play' && m.running && !m.finished && !m.failed;
+    rt.stepId = m.step.id;
+    rt.inScope = this.scope.active;
+    return rt;
   }
 
   /** distance du joueur au râtelier (m) */

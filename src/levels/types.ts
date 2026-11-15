@@ -14,8 +14,12 @@ import type { Fx } from '../world/fx';
 import type { Terrain } from '../world/terrain';
 import type { VegetationSpec } from '../world/vegetation';
 import type { Wind } from '../world/wind';
+import type { LevelRuntime } from './runtime';
+import type { WeaponDef } from '../config/weapons';
 
-export type LevelId = 'facile' | 'standard' | 'avance';
+export type LevelId = 'facile' | 'standard' | 'avance' | 'fete' | 'phare' | 'plaine';
+/** Campagne : un groupe de trois cartes, une par difficulté (menu). */
+export type CampaignId = 'vallee' | 'lieux';
 /** Aides au tir : assist = télémètre continu + impact prédit ; standard = télémètre + vent ; real = aucune aide. */
 export type Difficulty = 'assist' | 'standard' | 'real';
 
@@ -32,6 +36,10 @@ export interface LevelMeta {
   difficulty: Difficulty;
   /** faux tant que la carte n'est pas livrée : le bouton reste « à venir » */
   ready: boolean;
+  /** campagne du menu (défaut : 'vallee', les trois cartes d'origine) */
+  campaign?: CampaignId;
+  /** nom propre de la carte (« La Fête foraine »), affiché sous le bouton de difficulté et en tête du classement */
+  name?: string;
 }
 
 /** Poste de tir nommé. Le site de tir est à l'origine ; `y` = plancher au-dessus du sol du site, `ground` = sol propre. */
@@ -408,6 +416,14 @@ export interface LevelData {
   };
   /** phrase de l'écran d'échec, sous le motif */
   failNote: string;
+  /**
+   * Plafond des points de bonus propres à la carte (enchaînements, rapidité : `Mission.addBonus`), avant le
+   * coefficient de difficulté. Doit valoir `LEVEL_RULES[id].bonus` (src/shared/scores-core.mjs) : le serveur borne
+   * les scores avec. Absent : pas de bonus.
+   */
+  bonusMax?: number;
+  /** vitesse à laquelle l'alerte retombe, points par seconde (défaut 0,12) ; 0 : elle ne retombe jamais */
+  alertDecay?: number;
   tutorial: TutorialSpec | null;
   testPlan: TestStep[];
   /** e2e/walk.mjs : trajet de retour réaliste de chaque poste vers le départ (points x, z ; le départ est ajouté) */
@@ -477,6 +493,13 @@ export interface LevelScene {
    * `stepId` : objectif en cours.
    */
   onImpact?(r: ImpactReport, stepId: string, audio: AudioEngine): string | null;
+  /**
+   * Appelé à chaque image une fois la carte chargée (menu compris) : mécaniques propres à la carte — série
+   * chronométrée, bonus d'enchaînement, fenêtre de tir, alerte, passage d'un étage à l'autre. Voir runtime.ts.
+   */
+  frame?(rt: LevelRuntime): void;
+  /** Un coup vient de partir (avant tout impact) : `stepId` est l'objectif en cours. */
+  onShot?(def: WeaponDef, stepId: string): void;
   /** Remise en état après un échec ; renvoie les cibles remplacées (ajoutées / retirées de la scène par le jeu). */
   retry?(h: LevelHost, fx: Fx): { remove: Target[]; add: Target[] } | null;
   /**

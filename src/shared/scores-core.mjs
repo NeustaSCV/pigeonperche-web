@@ -4,7 +4,7 @@
 
 /** version du format enregistré (fichier du serveur, localStorage) */
 export const SCORES_VERSION = 1;
-export const SCORE_LEVELS = ['facile', 'standard', 'avance'];
+export const SCORE_LEVELS = ['facile', 'standard', 'avance', 'fete', 'phare', 'plaine'];
 /** scores conservés par niveau (écran de fin) et scores montrés à l'accueil */
 export const BOARD_SIZE = 20;
 export const HOME_SIZE = 5;
@@ -15,7 +15,9 @@ export const GRADES = ['Tireur d’élite', 'Tireur de précision', 'Tireur conf
 
 /**
  * Ce qui borne un score, par niveau : nombre d'objectifs, coefficient du préréglage d'aides (Mission.score) et
- * portée maximale de la carte. tests/scores.test.ts vérifie ces valeurs contre les données des niveaux.
+ * portée maximale de la carte. `bonus` (facultatif) : plafond des points de bonus propres à la carte (enchaînements,
+ * rapidité : `LevelData.bonusMax`, voir Mission.addBonus). tests/scores.test.ts vérifie ces valeurs contre les
+ * données des niveaux.
  */
 /** Tirs d'adresse (src/game/skill.ts) : points d'un tir en plein centre, d'un tir sur cible en mouvement, plafond par objectif. */
 export const SKILL_CENTRE = 250;
@@ -26,17 +28,20 @@ export const LEVEL_RULES = {
   facile: { steps: 8, factor: 1, range: 1500 },
   standard: { steps: 10, factor: 1.2, range: 2600 },
   avance: { steps: 9, factor: 1.5, range: 3200 },
+  fete: { steps: 6, factor: 1, range: 700, bonus: 6000 },
+  phare: { steps: 7, factor: 1.2, range: 1800, bonus: 3000 },
+  plaine: { steps: 7, factor: 1.5, range: 3000, bonus: 3000 },
 };
 
 /**
  * Bornes d'un score de mission terminée (voir Mission.complete et Mission.score) : chaque objectif vaut de 1 000 à
  * 1 000 + 600 (précision) + 300 (rapidité) + 0,5 point par mètre ; la discrétion ajoute de 0 à 2 000 ; le tout est
- * multiplié par le coefficient du niveau.
+ * multiplié par le coefficient du niveau. Les points de bonus d'une carte (plafonnés) s'ajoutent avant le coefficient.
  */
 export function scoreBounds(level) {
   const r = LEVEL_RULES[level];
   if (!r) return null;
-  return { min: Math.floor(r.steps * 1000 * r.factor), max: Math.ceil((r.steps * (1900 + SKILL_PER_STEP + r.range * 0.5) + 2000) * r.factor) };
+  return { min: Math.floor(r.steps * 1000 * r.factor), max: Math.ceil((r.steps * (1900 + SKILL_PER_STEP + r.range * 0.5) + 2000 + (r.bonus ?? 0)) * r.factor) };
 }
 
 /**
@@ -56,7 +61,7 @@ const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;
 export const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ESC[c]);
 
 export function emptyBoards() {
-  return { facile: [], standard: [], avance: [] };
+  return { facile: [], standard: [], avance: [], fete: [], phare: [], plaine: [] };
 }
 
 /** score décroissant, puis date croissante : à score égal, le premier inscrit reste devant */
@@ -84,7 +89,7 @@ export function normalizeEntry(raw) {
   };
 }
 
-/** Classements relus d'un objet quelconque : toujours les trois niveaux, triés, 20 lignes au plus. `ok` : le format était le bon. */
+/** Classements relus d'un objet quelconque : toujours tous les niveaux, triés, 20 lignes au plus. `ok` : le format était le bon. */
 export function normalizeBoards(raw) {
   const boards = emptyBoards();
   const ok = !!raw && typeof raw === 'object' && raw.v === SCORES_VERSION && !!raw.levels && typeof raw.levels === 'object';

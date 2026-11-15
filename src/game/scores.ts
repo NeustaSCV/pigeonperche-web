@@ -3,7 +3,7 @@
 // - « local » : pas d'API (site servi en statique simple, hors ligne) ; les scores restent dans le navigateur
 //   (localStorage), sur cet appareil seulement.
 // Rien ici ne lève d'erreur : stockage indisponible (navigation privée), données abîmées ou réseau coupé sont tolérés.
-import { DEFAULT_NAME, addEntry, cleanName, emptyBoards, normalizeBoards, normalizeEntry, parseBoards, serializeBoards, type ScoreBoards, type ScoreEntry, type ScoreLevel, type ScoreResult } from '../shared/scores-core.mjs';
+import { DEFAULT_NAME, SCORE_LEVELS, addEntry, cleanName, emptyBoards, normalizeBoards, normalizeEntry, parseBoards, serializeBoards, type ScoreBoards, type ScoreEntry, type ScoreLevel, type ScoreResult } from '../shared/scores-core.mjs';
 
 export * from '../shared/scores-core.mjs';
 
@@ -69,7 +69,7 @@ export class ScoreService {
   /** nombre de scores enregistrés dans ce navigateur (classement de repli) */
   localCount(): number {
     const b = this.readLocal();
-    return b.facile.length + b.standard.length + b.avance.length;
+    return SCORE_LEVELS.reduce((n, id) => n + (b[id]?.length ?? 0), 0);
   }
   /** vide le classement local de ce navigateur ; le classement du serveur n'est pas concerné */
   clearLocal(): void {

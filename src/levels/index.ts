@@ -1,15 +1,25 @@
 // Registre des niveaux. Un dossier src/levels/<id>/ est reconnu tout seul : sa fiche (meta.ts) est chargée d'emblée
 // pour le menu, son module (index.ts) seulement quand on joue ce niveau. Aucun fichier commun à modifier pour
 // livrer une carte : il suffit que sa fiche porte `ready: true`.
-import type { Level, LevelId, LevelMeta } from './types';
+import type { CampaignId, Level, LevelId, LevelMeta } from './types';
 
-export const LEVEL_IDS: LevelId[] = ['facile', 'standard', 'avance'];
+export const LEVEL_IDS: LevelId[] = ['facile', 'standard', 'avance', 'fete', 'phare', 'plaine'];
+
+/** Campagnes du menu : trois cartes chacune, de la plus facile à la plus difficile. */
+export const CAMPAIGNS: { id: CampaignId; title: string; levels: LevelId[] }[] = [
+  { id: 'vallee', title: 'La vallée', levels: ['facile', 'standard', 'avance'] },
+  { id: 'lieux', title: 'Lieux oubliés', levels: ['fete', 'phare', 'plaine'] },
+];
+export const campaignOf = (id: LevelId): CampaignId => CAMPAIGNS.find((c) => c.levels.includes(id))?.id ?? 'vallee';
 
 /** Fiches provisoires des niveaux dont le dossier n'est pas encore livré. */
 const SOON: Record<LevelId, LevelMeta> = {
   facile: { id: 'facile', title: 'Facile', tagline: 'Tir de précision', note: 'Carte d’initiation, aides au tir complètes. À venir.', difficulty: 'assist', ready: false },
   standard: { id: 'standard', title: 'Standard', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'standard', ready: false },
   avance: { id: 'avance', title: 'Avancé', tagline: 'Tir de précision', note: 'Tirs jusqu’à 2 500 m, aucune aide. À venir.', difficulty: 'real', ready: false },
+  fete: { id: 'fete', title: 'Facile', name: 'La Fête foraine', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'assist', ready: false },
+  phare: { id: 'phare', title: 'Standard', name: 'Le Phare', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'standard', ready: false },
+  plaine: { id: 'plaine', title: 'Avancé', name: 'Le Château d’eau', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'real', ready: false },
 };
 
 const metas = import.meta.glob<{ meta: LevelMeta }>('./*/meta.ts', { eager: true });

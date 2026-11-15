@@ -1,6 +1,6 @@
 # Niveaux
 
-Un niveau = un dossier `src/levels/<id>/` (`facile`, `standard`, `avance`) qui contient tout ce qui est propre à une
+Un niveau = un dossier `src/levels/<id>/` (`facile`, `standard`, `avance`, `fete`, `phare`, `plaine`) qui contient tout ce qui est propre à une
 carte. Le moteur, le joueur, les types de cibles, le HUD et les constructeurs sont communs et lisent ces données.
 Le registre (`index.ts`) reconnaît le dossier tout seul : **aucun fichier commun à modifier pour livrer une carte**.
 Modèle à suivre : `standard/`. Types : `types.ts`.
@@ -418,3 +418,132 @@ export const nav: SiteNav = { allowed, limit: (x, z) => roam?.limit(x, z) ?? nul
   Totaux : `facile` 21/21, `standard` 89/89, `avance` 17/17.
 - `node e2e/routes.mjs --level <id>` : captures de chaque bâtiment avec sa voie (vue plongeante, arrivée, lunette),
   des cours d'eau et des ponts, dans `e2e/out/routes/`.
+
+## Campagnes, mécaniques de carte, mer (2026-11-15)
+
+Tout est rétrocompatible : champs et crochets facultatifs, défaut = comportement d'avant.
+
+### Six cartes, deux campagnes
+
+`LevelId` : `facile`, `standard`, `avance` (campagne « La vallée ») et `fete`, `phare`, `plaine` (campagne « Lieux
+oubliés »). Les campagnes sont dans `CAMPAIGNS` (`src/levels/index.ts`) : trois cartes chacune, de la plus facile à la
+plus difficile. Dans `meta.ts`, `campaign` rattache la carte à sa campagne (défaut `'vallee'`), `title` reste le nom
+du bouton de difficulté (« Facile ») et `name` le nom propre de la carte (« La Fête foraine »), montré dans la note du
+menu, en tête de son classement et sur l'écran de fin. Le menu a une rangée « Campagne » au-dessus de « Niveau » :
+changer de campagne mène à la carte de même difficulté de l'autre. Ajouter une septième carte demande, cette fois,
+de toucher au socle : `LevelId` et `LEVEL_IDS`, `CAMPAIGNS`, et les règles de score (ci-dessous).
+
+### Crochets d'une carte (`LevelScene.frame`, `onShot`) et `LevelRuntime`
+
+`frame(rt)` est appelé à chaque image une fois la carte chargée ; `rt` (`src/levels/runtime.ts`) prête à la carte :
+
+| champ | usage |
+| --- | --- |
+| `dt`, `time` | temps de jeu de l'image et cumulé (celui de `TargetCtx.time` ; 0 et figé en pause) |
+| `playing`, `state`, `stepId` | l'objectif en cours se joue-t-il, état du jeu, identifiant de l'objectif |
+| `mission`, `targets`, `player`, `inScope`, `audio` | accès directs |
+| `toast(titre, sous-titre, s)` | message central |
+| `banner(html \| null)` | ligne sous le titre de l'objectif, visible aussi en lunette (chronomètre, série) ; à rappeler chaque image |
+| `fail(motif)` | échec de l'objectif en cours ; `LevelScene.retry` remet ensuite la scène en état |
+| `fade()` | fondu au noir bref (changement d'étage par `player.teleport`) |
+
+`onShot(def, stepId)` signale le départ d'un coup. `onImpact(r, stepId, audio)` (déjà là) reçoit chaque impact,
+tir manqué compris (`r.target` nul).
+
+`Mission` offre aux cartes : `addBonus(points)` (bonus ajouté au score avant le coefficient de difficulté, plafonné
+par `data.bonusMax`), `raiseAlert(points)`, `failStep(motif)`, et `data.alertDecay` règle la vitesse à laquelle
+l'alerte retombe (0,12 point par seconde par défaut ; 0 : jamais). `retryStep` ne remet pas `mission.alarm` à faux :
+une carte qui fait de l'alerte pleine un échec le fait dans son `retry()`.
+
+### Tirer du haut d'un bâtiment
+
+`site.baseY` est le sol du site pour tout le socle. Pour un poste sur une terrasse, une galerie ou une plate-forme :
+poser le bâtiment à l'origine, donner à `site.baseY` l'altitude de son plancher, ajouter une surface de marche
+(`h.col.surfaces`) à cette hauteur et des garde-corps (`h.col.segs`), borner la zone par `nav.allowed`. Un poste plus
+bas déclare son propre `ground`. Pour passer d'un étage à l'autre sans escalier jouable : une zone où rester une
+demi-seconde déclenche `rt.fade()` puis `rt.player.teleport(…)` (clavier et doigt).
+
+### Mer et houle (`src/world/sea.ts`)
+
+```ts
+const swell = new Swell([{ toward: 110, length: 64, amp: 0.55 }, { toward: 150, length: 38, amp: 0.22 }]);
+const sea = buildSea(engine, group, { level: 0, x: 0, z: -900, w: 3200, d: 2600, swell });   // dans buildScenery
+sea.setTime(rt.time);                                                                         // dans frame
+const y = level + swell.height(x, z, ctx.time);                                               // dans une cible
+```
+
+Le shader déplace les sommets de la nappe avec les mêmes ondes que `Swell.height` : ce qui flotte suit l'eau
+dessinée ; `Swell.slope` donne roulis et tangage. Autour de la nappe animée, un plan d'eau va jusqu'à l'horizon.
+`swell: null` : nappe plane. Déclarer `terrain.waterLevel` au même niveau (gerbes des balles), et creuser le fond
+dans `terrain.gen.mjs`.
+
+### Scores
+
+`src/shared/scores-core.mjs` : `SCORE_LEVELS` et `LEVEL_RULES[id] = { steps, factor, range, bonus? }` bornent ce que
+le serveur accepte ; `bonus` doit valoir `data.bonusMax`. `tests/scores.test.ts` compare ces règles aux données de
+chaque carte (`STEPS.length`, `RANGE_LIMIT`, `bonusMax`, coefficient de `Mission.score`).
+
+### Mécaniques de cible réutilisables (`src/game/extra/`)
+
+Règle de conception : **au plus une cible réellement mobile par carte, avec des arrêts francs de plusieurs secondes**
+(grande roue de `fete` : 6 s d'arrêt ; canot de `phare` : 7 à 12 s à chaque bouée ; convoi de `plaine` : il
+s'immobilise pour de bon). Le joueur n'est jamais obligé de tirer sur une cible en mouvement. `predict(dt)` doit être
+exact et renvoyer une position fixe à l'arrêt (le bonus « cible en mouvement » du socle lit la vitesse par
+`predict(0.2)` contre `predict(0)`).
+
+**Mécaniques de fête foraine (`src/game/extra/fair.ts`)**, sans dépendance à une carte. `StepRotation(arrêts, move,
+hold)` et `SteadyRotation(vitesse)` donnent l'angle d'une attraction en fonction du temps de jeu (`angle(t)`,
+`holdLeft(t)`). `FairWheel` (décor : `group` à ajouter à la scène, `setTime(t)`) et `WheelPlate` (plaque sous une
+nacelle) ; `FairCarousel` (à l'arrêt sans `rotation`) et `CarouselFigure` (`'duck' | 'star' | 'disc'`, placée par son
+azimut) ; `OrderedSeries` et `FairBulb` (globes à éteindre dans l'ordre, le bon clignote, un autre vacille sans rien
+coûter) ; `StrikerBell` (tape-fort, impact `bell`, énergie minimale) ; `FairBalloon` (identifiant libre, couleur).
+Les cibles mobiles calculent leur place à partir de `ctx.time` : `predict(dt)` est exact, et fixe pendant un arrêt
+(le bonus « cible en mouvement » du socle ne se déclenche pas à tort). Pour `testReady`, `wheel.holding(t, 2.5)` dit
+si l'arrêt dure encore assez. `SeriesTracker` suit une série chronométrée : `begin(règle)` au changement d'objectif,
+`shot(t)` dans `onShot`, `hit(t)` par touche utile (rang d'enchaînement, points, bonus de rapidité à la dernière),
+`banner(t)` pour `rt.banner` ; c'est la carte qui accorde les points par `rt.mission.addBonus` et les annonce par
+`rt.toast` (voir `fete/index.ts` : les crochets `onShot` / `onImpact` comptent, `frame` traite).
+À savoir pour une carte de bord de mer plat : le relief mouille le sol jusqu'à 1,6 m au-dessus de
+`terrain.waterLevel`, et ne plante aucun arbre à moins de 9,5 m au-dessus de `atmosphere.valleyY` dès qu'un niveau
+d'eau est déclaré (`fete` déclare −1,6 et −12, et redessine la gerbe à la surface). En portrait, le HUD place
+la ligne de `rt.banner` sous la boussole (sous les tourelles en lunette) : garder un texte court.
+
+**Cibles de mer (`src/game/extra/sea-targets.ts`).** `Floater` est un porteur posé sur une nappe de `world/sea.ts` :
+il suit `Swell.height` et penche avec `Swell.slope`, dans la proportion `follow` (0 = fixé, 1 = flotte librement) ;
+avec `swell: null` c'est un simple support fixe. `Runner` est une embarcation qui suit une route en ligne brisée à
+vitesse constante, avec un arrêt franc par point (`wait`) ; sa position est une fonction du temps, sans état, donc
+exacte à tout instant : `start(t)`, `halt(t)`, `reset()`, `stoppedAt(t)`, `waitLeft(t)`, `timeLeft(t)`,
+`arrivedAt(t)`, `duration`. `CarriedTarget` est une cible portée (boîte ou sphère, énergie minimale, objet qui
+s'éteint) : elle se place sur son porteur à chaque image et son `predict(dt)` est exact, houle et route comprises.
+Le porteur n'est pas une cible : ajouter son `group` à un groupe de la scène depuis `buildTargets` (le groupe du décor
+gardé depuis `buildScenery`). Dans `frame`, appeler `sea.setTime(rt.time)` et lancer la route par
+`runner.start(rt.time)` quand l'objectif se joue ; dans `retry`, `runner.reset()`. `buoyGeometry`, `hullGeometry` et
+`skiffGeometry` donnent une bouée, un caboteur et un canot en un maillage chacun. **Poste sous le site** : un poste
+bas déclare `ground` ; `player.teleport(x, z, cap, posture, 0)` l'atteint tant qu'une surface de marche y est posée.
+Sur un anneau étroit, `nav.waypoint` doit faire le tour (un point de passage tous les 35° environ), sinon le guide
+envoie le joueur dans la lanterne. Une cible flottante « immobile » doit rester sous 0,3 m/s, seuil du bonus
+« cible en mouvement ».
+
+**Mécaniques de sabotage (`src/game/extra/sabotage.ts`)**, sans dépendance vers une carte :
+- `Track` (polyligne parcourue par abscisse curviligne : `at`, `nearest`) et `Train` (convoi qui fait la navette au
+  pas, puis `halt(s)` : il range son wagon marqué à l'abscisse `s` et ne bouge plus ; `stopped`, `remaining`,
+  `release()`). La plaque du wagon marqué est la cible, à tirer à l'arrêt ; les caisses arrêtent les balles.
+  `predict` déroule la marche au même pas fixe que `update` et renvoie une position fixe à l'arrêt.
+- `RailSignal` (cible sur mât, qui se décroche : `down`), `Valve` (volant qui saute, jet de vapeur : un indice de
+  vent), `HoverDrone` (point fixe strictement immobile), `ClockFace` (cadran, impact `bell`, zone utile = le disque),
+  `GlintScope` (lunette adverse sur trépied : éclat de taille constante à l'écran, `arm(s)` / `tick(dt)` / `left`
+  pour un délai, `frozen` pour les essais).
+- `Stealth` : alerte « au tir manqué ». Brancher `frame(mission)` dans `LevelScene.frame`, `shot(def)` dans
+  `onShot`, `impact(r)` dans `onImpact`, `retry()` dans `retry`. Elle ramène la détonation comptée d'office par le
+  socle à un coût fixe, plafonne la jauge sous 100 tant que l'alerte n'est pas donnée, et laisse la carte décider de
+  ce que vaut une alerte pleine (`frame` renvoie vrai : `rt.fail(...)` ou simple perte de bonus). Pour une jauge
+  propre à la carte, placer `alertZone` hors de la carte : les règles de campement ne s'y ajoutent plus.
+- **Profondeur à grande distance** : depuis un poste entouré d'un garde-corps, le plan proche de la lunette reste
+  court et le tampon ne sépare pas deux surfaces à moins de 20 cm l'une de l'autre à 1 500 m. Une plaque devant son
+  cadre, un cadran devant sa lunette, une plaque à 15 cm d'une citerne : donner à la surface de devant un
+  `polygonOffset` (fonction `front` du fichier), sinon c'est le fond qui s'affiche.
+- **Poste au sommet d'un modèle sans plancher** (château d'eau : toit conique) : construire le plancher dans
+  `buildSite`, garde-corps en `col.segs` mais hors du BVH des balles (un potelet dans l'axe d'un tir couché
+  l'arrêterait) avec des sphères `col.soft`, `nav.waypoint` pour contourner un obstacle central.
+- **Cible fine sur un bâtiment** : le décor fixe qui l'entoure (mât, panneau) va dans `scenery.ts` pour entrer dans
+  les collisions ; `h.buildings` n'y existe pas encore, l'altitude se recalcule (sol + marge de `buildings.ts`).

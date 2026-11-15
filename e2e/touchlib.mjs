@@ -154,6 +154,9 @@ export const layoutReport = (page, notch) => page.evaluate((n) => {
     if (kind === 'hud') {
       const rg = document.createRange();
       rg.selectNodeContents(e);
+      // la ligne propre à la carte (.obj .x) sort du bloc en portrait (position fixe) : elle est mesurée à part
+      const own = e.querySelector?.(':scope > .obj .x, :scope .x');
+      if (own && getComputedStyle(own).position === 'fixed') rg.setEndBefore(own);
       const rb = rg.getBoundingClientRect();
       if (rb.width > 0) b = rb;
     }
@@ -165,8 +168,10 @@ export const layoutReport = (page, notch) => page.evaluate((n) => {
   document.querySelectorAll('#touch .tl-row small').forEach((e, i) => add('libellé tourelle ' + i, e, 'hud'));
   const hud = document.getElementById('hud');
   if (hud.classList.contains('on')) {
-    for (const [name, sel] of [['objectif', '.tl'], ['état (haut droit)', '.tr'], ['arme', '.bl'], ['pouls et souffle', '.br'], ['invite', '.bc .prompt'], ['boussole', '.compass .way'], ['tutoriel', '.tuto']]) {
-      add(name, hud.querySelector(sel), sel === '.tuto' ? 'btn' : 'hud');
+    for (const [name, sel] of [['objectif', '.tl'], ['ligne de la carte', '.obj .x'], ['état (haut droit)', '.tr'], ['arme', '.bl'], ['pouls et souffle', '.br'], ['invite', '.bc .prompt'], ['boussole', '.compass .way'], ['tutoriel', '.tuto']]) {
+      const el = hud.querySelector(sel);
+      if (sel === '.obj .x' && (!el || getComputedStyle(el).position !== 'fixed')) continue;
+      add(name, el, sel === '.tuto' ? 'btn' : 'hud');
     }
     const tape = hud.querySelector('.compass .tape');
     if (vis(tape) && !hud.querySelector('.compass').classList.contains('off')) { const b = tape.getBoundingClientRect(); items.push({ name: 'ruban de boussole', kind: 'hud', l: b.left + b.width * 0.18, t: b.top, r: b.right - b.width * 0.18, b: b.bottom }); }

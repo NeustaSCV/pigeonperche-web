@@ -16,7 +16,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { LEVEL } from './levellib.mjs';
 import { Fingers, NONE, center, launch, screenReport } from './touchlib.mjs';
-import { BOARD_SIZE, GRADES, HOME_SIZE, parseBoards, scoreBounds, serializeBoards, emptyBoards, SCORE_LEVELS } from '../src/shared/scores-core.mjs';
+import { BOARD_SIZE, GRADES, HOME_SIZE, parseBoards, scoreBounds, serializeBoards, emptyBoards, SCORE_LEVELS, LEVEL_RULES } from '../src/shared/scores-core.mjs';
 
 const QUICK = process.argv.includes('--quick');
 const DIST = resolve(process.env.HR_DIST || 'dist');
@@ -80,6 +80,8 @@ const menuBoards = (page, root = '#menu .boards') => page.evaluate((root) => {
   document.querySelectorAll(root + ' [data-board]').forEach((ol) => { out.levels[ol.dataset.board] = [...ol.querySelectorAll('li')].map((li) => (li.classList.contains('none') ? 'vide' : [...li.children].map((c) => c.textContent).join('|'))); });
   return out;
 }, root);
+/** cartes montrées à l'accueil : les trois de la campagne de la carte chargée (l'écran « Scores » passe de l'une à l'autre) */
+const HOME = (mb) => Object.keys(mb.levels);
 /** écran de fin : message, formulaire, liste */
 const endState = (page) => page.evaluate(() => {
   const c = document.querySelector('#end [data-id=endCard]');
@@ -102,6 +104,8 @@ const finish = (page, o) => page.evaluate((o) => {
   if (g.state === 'menu') g.startMission();
   m.stats = m.steps.map(() => ({ shots: o.shotsPer ?? 1, hits: 1, time: 45, distance: 300, weapon: g.rifle.def.caliber, points: o.points }));
   m.totalShots = n * (o.shotsPer ?? 1); m.totalHits = n; m.elapsed = 45 * n + 7; m.alert = 0; m.alarm = !!o.alarm;
+  // bilan simulé : la carte n'y ajoute pas ses bonus de fin (objectif ou mission sans faute), le score visé reste exact
+  m.bonusMax = m.bonus;
   m.index = n; m.finished = true; m.running = false;
   m.onStepDone(m.steps[n - 1], m.stats[n - 1]);
   return m.score().total;
@@ -136,12 +140,12 @@ try {
   console.log(`\n— classement partagé (API du serveur), niveau ${LEVEL} —`);
   let srv = await startServer({ SCORES_PER_MINUTE: '60' });
   let r = await (await api(srv)).json();
-  check('GET api/scores : trois classements vides au départ', r.v === 1 && SCORE_LEVELS.every((l) => Array.isArray(r.levels[l]) && r.levels[l].length === 0), JSON.stringify(r).slice(0, 120));
+  check('GET api/scores : un classement vide par carte au départ', r.v === 1 && SCORE_LEVELS.every((l) => Array.isArray(r.levels[l]) && r.levels[l].length === 0), JSON.stringify(r).slice(0, 120));
 
   const Q = 'test&play&scores=1&q=low&dr=0';
   let p1 = await open(srv, Q.replace('&play', ''));
   let mb = await menuBoards(p1.page);
-  check('accueil (ordinateur), classement vide : « Aucun score » pour chaque niveau, mode « en ligne »', SCORE_LEVELS.every((l) => mb.levels[l].length === 1 && mb.levels[l][0] === 'vide') && mb.mode === 'en ligne', JSON.stringify(mb));
+  check('accueil (ordinateur), classement vide : « Aucun score » pour chaque niveau, mode « en ligne »', HOME(mb).length === 3 && HOME(mb).includes(LEVEL) && HOME(mb).every((l) => mb.levels[l].length === 1 && mb.levels[l][0] === 'vide') && mb.mode === 'en ligne', JSON.stringify(mb));
   await shot(p1.page, 'ordinateur-menu-vide');
   const rules = await p1.page.evaluate(() => ({ steps: window.hr.level.steps.length, factor: (() => { const m = window.hr.game.mission; return m.difficulty === 'real' ? 1.5 : m.difficulty === 'standard' ? 1.2 : 1; })() }));
   const pts = (target) => pointsFor(target, rules.steps, rules.factor);
@@ -203,7 +207,7 @@ try {
   const p2 = await open(srv, Q.replace('&play', ''));
   mb = await menuBoards(p2.page);
   const top5 = seeded.slice(0, HOME_SIZE).map((x) => x.name);
-  check('second joueur (autre contexte) : l’accueil montre les cinq premiers de chaque niveau', mb.levels[LEVEL].length === HOME_SIZE && mb.levels[LEVEL].every((row, i) => row.startsWith(`${i + 1}|${top5[i]}|`)) && SCORE_LEVELS.every((l) => mb.levels[l].length <= HOME_SIZE), JSON.stringify(mb.levels));
+  check('second joueur (autre contexte) : l’accueil montre les cinq premiers de chaque niveau', mb.levels[LEVEL].length === HOME_SIZE && mb.levels[LEVEL].every((row, i) => row.startsWith(`${i + 1}|${top5[i]}|`)) && HOME(mb).every((l) => mb.levels[l].length <= HOME_SIZE), JSON.stringify(mb.levels));
   let geo = await p2.page.evaluate(() => {
     const bx = (s) => { const b = document.querySelector(s).getBoundingClientRect(); return { l: b.left, t: b.top, r: b.right, b: b.bottom, w: b.width, h: b.height }; };
     const a = bx('#menu .boards'), h1 = bx('#menu h1'), start = bx('#menu .m-start');
@@ -273,7 +277,7 @@ try {
   await p2.page.click('#end .rank-skip'); await p2.page.waitForTimeout(250);
   e = await endState(p2.page);
   check('« Passer » : score non inscrit, plus de ligne provisoire, fichier inchangé', !e.form && /Score non inscrit/.test(e.msg) && e.me === null && readFileSync(FILE, 'utf8') === before, e.msg);
-  for (const [q, why] of [['test&play&q=low&dr=0', 'mode test (scripts automatisés)'], [`test&play&scores=1&q=low&dr=0&d=${LEVEL === 'avance' ? 'assist' : 'real'}`, 'aides forcées par ?d='], ['test&play&scores=1&q=low&dr=0&step=1', 'objectifs sautés par ?step=']]) {
+  for (const [q, why] of [['test&play&q=low&dr=0', 'mode test (scripts automatisés)'], [`test&play&scores=1&q=low&dr=0&d=${LEVEL_RULES[LEVEL].factor === 1.5 ? 'assist' : 'real'}`, 'aides forcées par ?d='], ['test&play&scores=1&q=low&dr=0&step=1', 'objectifs sautés par ?step=']]) {
     const t = await open(srv, q, { ctx: p2.ctx });
     await finish(t.page, { points: 1500, shotsPer: 1 });
     await t.page.waitForTimeout(500);
@@ -309,7 +313,7 @@ try {
     check('accueil : tout tient sans défiler, bouton « Scores » sur la rangée de « Commandes », ≥ 44 px, sans chevauchement', /\bportrait\b/.test(s.cls) && s.sc <= 1 && s.panel === 'none' && !!s.scores && rowOk && s.start[2] - s.start[0] > s.W * 0.8, JSON.stringify(s));
     await shot(page, `${tag}-menu`);
     await tap('#menu .m-scores');
-    s = await page.evaluate(() => { const scr = document.querySelector('.screen.on'), card = scr.querySelector('.card'), c = card.getBoundingClientRect(); const cols = [...scr.querySelectorAll('.board-col')].map((x) => ({ t: x.querySelector('h3').textContent, n: x.querySelectorAll('li:not(.none)').length, cur: x.classList.contains('cur'), b: x.getBoundingClientRect().bottom })); return { id: scr.id, cols, mode: scr.querySelector('[data-mode]').textContent, fits: card.scrollHeight <= card.clientHeight + 1 && c.bottom <= innerHeight && c.top >= 0, clipped: [...scr.querySelectorAll('.nm')].filter((n) => n.scrollWidth > n.clientWidth + 0.5).length }; });
+    s = await page.evaluate(() => { const scr = document.querySelector('.screen.on'), card = scr.querySelector('.card'), c = card.getBoundingClientRect(); const cols = [...scr.querySelectorAll('.board-col')].filter((x) => x.offsetParent !== null).map((x) => ({ t: x.querySelector('h3').textContent, n: x.querySelectorAll('li:not(.none)').length, cur: x.classList.contains('cur'), b: x.getBoundingClientRect().bottom })); return { id: scr.id, cols, mode: scr.querySelector('[data-mode]').textContent, fits: card.scrollHeight <= card.clientHeight + 1 && c.bottom <= innerHeight && c.top >= 0, clipped: [...scr.querySelectorAll('.nm')].filter((n) => n.scrollWidth > n.clientWidth + 0.5).length }; });
     check('écran « Scores » : les trois niveaux, cinq lignes au plus chacun, niveau choisi mis en avant, tout visible sans défiler', s.id === 'scores' && s.cols.length === 3 && s.cols.every((c) => c.n >= 1 && c.n <= HOME_SIZE) && s.cols.find((c) => c.cur)?.n === HOME_SIZE && s.fits && s.clipped === 0 && s.mode === 'en ligne', JSON.stringify(s));
     let sr = await screenReport(page, NONE);
     check('écran « Scores » : carte dans la zone sûre, cibles tactiles ≥ 44 px, aucune touche clavier mentionnée', sr.inSafe && sr.small.length === 0 && sr.clipped.length === 0 && sr.keys.length === 0, JSON.stringify(sr));
@@ -408,7 +412,7 @@ try {
     const where = mobile ? `portrait ${mobile.width}` : 'ordinateur';
     if (mobile) { const c = await center(page, '#menu .m-scores'); await t.fingers.tap(c.x, c.y); await page.waitForTimeout(350); }
     mb = await menuBoards(page, mobile ? '#scores' : '#menu .boards');
-    check(`${where}, sans API : classement vide, mode « local à cet appareil », aucune erreur bloquante`, SCORE_LEVELS.every((l) => mb.levels[l][0] === 'vide') && mb.mode === 'local à cet appareil' && (await page.evaluate(() => window.hr.game.scores.online)) === false, JSON.stringify(mb));
+    check(`${where}, sans API : classement vide, mode « local à cet appareil », aucune erreur bloquante`, HOME(mb).every((l) => mb.levels[l][0] === 'vide') && mb.mode === 'local à cet appareil' && (await page.evaluate(() => window.hr.game.scores.online)) === false, JSON.stringify(mb));
     await shot(page, mobile ? `portrait-${mobile.width}-scores-vides` : 'ordinateur-menu-vide-local');
     if (mobile) { const c = await center(page, '#scores .xclose'); await t.fingers.tap(c.x, c.y); await page.waitForTimeout(350); await shot(page, `portrait-${mobile.width}-menu-vide`); }
     if (mobile?.width === 430) { await t.ctx.close(); continue; }

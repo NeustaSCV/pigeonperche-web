@@ -1,6 +1,6 @@
 # ~~Faucon~~ Pigeon perché
 
-Jeu de tir de précision à la troisième personne, dans le navigateur. Trois cartes, de 65 m à 2 500 m, dix-sept carabines réelles et une balistique calculée (traînée G1/G7, vent, Coriolis, dérive gyroscopique). Se joue sur ordinateur et sur téléphone tenu à la verticale.
+Jeu de tir de précision à la troisième personne, dans le navigateur. Six cartes en deux campagnes, de 65 m à 2 500 m, dix-sept carabines réelles et une balistique calculée (traînée G1/G7, vent, Coriolis, dérive gyroscopique). Se joue sur ordinateur et sur téléphone tenu à la verticale.
 
 ![Menu du jeu](docs/captures/menu.jpg)
 
@@ -9,7 +9,7 @@ Aucune effusion de sang : les cibles sont des plaques, des ballons, des silhouet
 ## Sommaire
 
 - [Installation](#installation)
-- [Les trois niveaux](#les-trois-niveaux)
+- [Les six cartes](#les-six-cartes)
 - [Commandes](#commandes)
 - [Scores et classements](#scores-et-classements)
 - [Sur téléphone](#sur-téléphone)
@@ -77,11 +77,13 @@ Les tests unitaires n'ont besoin de rien de plus. Les tests de bout en bout pilo
 npm run e2e:install
 ```
 
-## Les trois niveaux
+## Les six cartes
 
-Le niveau se choisit au menu. Chaque niveau est une carte distincte, avec son relief, son site de tir, ses cibles et ses aides. `?level=facile`, `?level=standard` ou `?level=avance` dans l'adresse ouvre directement une carte.
+Le menu propose deux campagnes de trois cartes, une par difficulté : « La vallée » (`facile`, `standard`, `avance`) et « Lieux oubliés » (`fete`, `phare`, `plaine`). Chaque carte a son relief, son site de tir, ses cibles, ses aides et son classement. `?level=<identifiant>` dans l'adresse ouvre directement une carte.
 
-### Facile : le Guet
+### La vallée
+
+#### Facile : le Guet
 
 ![Le Guet, vue depuis la plate-forme](docs/captures/facile-vue.jpg)
 
@@ -89,19 +91,35 @@ Une ferme close sur un coteau bocager, face à un bourg abandonné. Huit objecti
 
 ![Le timbre de l'horloge à 387 m](docs/captures/facile-lunette.jpg)
 
-### Standard : la haute ruine
+#### Standard : la haute ruine
 
 ![Le village vu de la ruine](docs/captures/standard-lunette.jpg)
 
 Une ruine au sommet d'une montagne, une vallée, un village, un campement. Dix objectifs et onze cibles de 87 m à 1 251 m, dont un drone, un véhicule en patrouille et une sentinelle. Télémètre disponible, vent à lire.
 
-### Avancé : le Rebord
+#### Avancé : le Rebord
 
 ![Le Rebord, poste d'observation](docs/captures/avance-vue.jpg)
 
 Un poste d'observation au bord d'un haut plateau à 900 m d'altitude, au-dessus d'une plaine industrielle. Neuf objectifs de 800 m à 2 500 m, dont le mile (1 609 m), dans l'esprit des compétitions de tir à très longue distance. Aucune aide, tous les effets balistiques actifs : le carnet de tir devient indispensable.
 
 ![Plaque à 2 500 m, grossissement ×25](docs/captures/avance-lunette.jpg)
+
+### Lieux oubliés
+
+Trois lieux abandonnés de la banque de bâtiments, vus d'en haut. Les missions y sont plus joueuses : séries chronométrées, objectifs à tirer dans l'ordre, compte à rebours, alerte. Une seule cible se déplace par carte, et elle marque toujours l'arrêt : on ne tire jamais obligatoirement sur une cible en mouvement. Chaque carte accorde ses propres points de bonus, en plus du score habituel.
+
+#### Facile : La Fête foraine
+
+Fin de journée sur une station balnéaire. Vous êtes sur une terrasse de bois, au sommet du Grand Hôtel, et la fête fermée s'étend à vos pieds le long de la mer : c'est un stand de tir géant. Six séries, de 68 à 420 m : deux plaques pour régler la lunette, six ballons au-dessus des baraques, les plaques de la grande roue (elle tourne par à-coups et s'arrête six secondes à chaque nacelle), les canards et les étoiles du manège, la cloche du tape-fort, puis la guirlande, à éteindre globe après globe, de gauche à droite. Toutes les aides sont là et il n'y a presque pas de vent. Le chrono part à votre premier tir : enchaîner les touches et finir vite rapporte des points, prendre son temps n'en retire aucun.
+
+#### Standard : Le Phare
+
+Vous êtes sur la galerie d'un phare, 34 m au-dessus de la mer. Dans la crique, un caboteur finit de charger : rien ne doit en sortir. Sept objectifs de 260 à 1 200 m, tous sur du matériel — la plaque de réglage sur son îlot, les feux des bouées du chenal, le boîtier du treuil de la grue, la radio et le projecteur du caboteur, le bidon de la barge de ravitaillement, le moteur du canot, la lanterne de la tourelle de la passe. Le tir est plongeant et le vent de mer souffle en rafales : lisez les fanions et tirez dans une accalmie. Pour la barge, il faut descendre au musoir de la digue par la trappe de la galerie, et tirer au ras de l'eau. Le canot est la seule cible qui se déplace : il s'arrête plusieurs secondes à chaque bouée de sa route, et vous avez un peu moins de quatre minutes avant qu'il ne passe la pointe. Bonus pour chaque objectif réussi sans balle perdue et pour un canot arrêté tôt.
+
+#### Avancé : Le Château d'eau
+
+Vous êtes allongé sur la plate-forme d'un château d'eau, trente mètres au-dessus d'une plaine de champs et d'usines, et tout ce qui compte est autour de vous : tournez-vous. Sept sabotages à enchaîner de 900 à 2 400 m — l'émetteur d'un relais, les vannes d'une usine, un signal de chemin de fer, la citerne du convoi qu'il arrête, un drone au-dessus d'une villa, une lunette de surveillance dont le reflet vous trahit, et pour finir l'horloge de la gare. Aucune aide : la distance se vérifie au réticule, le vent se lit aux fanions, aux fumées et à la vapeur des vannes, la balistique est complète. Et la plaine écoute : chaque tir perdu fait monter l'alerte ; au quatrième d'affilée, l'objectif est à reprendre. Rien ne se tire en mouvement.
 
 ## Commandes
 
@@ -136,7 +154,7 @@ Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble de
 
 ## Scores et classements
 
-À la fin d'une mission réussie, le jeu affiche les vingt meilleurs scores du niveau joué. Si le score y entre, le joueur inscrit son nom : huit caractères au plus, lettres, chiffres, espace et tiret, en majuscules comme sur une borne d'arcade. Le dernier nom utilisé est proposé d'emblée ; « Passer » termine sans s'inscrire. L'accueil montre les cinq premiers de chaque niveau (sur téléphone : bouton « Scores »).
+À la fin d'une mission réussie, le jeu affiche les vingt meilleurs scores du niveau joué. Si le score y entre, le joueur inscrit son nom : huit caractères au plus, lettres, chiffres, espace et tiret, en majuscules comme sur une borne d'arcade. Le dernier nom utilisé est proposé d'emblée ; « Passer » termine sans s'inscrire. L'accueil montre les cinq premiers de chaque carte de la campagne en cours (l'écran « Scores » passe d'une campagne à l'autre) (sur téléphone : bouton « Scores »).
 
 - **Tri** : score décroissant ; à score égal, le premier inscrit reste devant. Vingt lignes par niveau.
 - **En ligne** : quand le jeu est servi par son serveur (`npm start`, Docker, mais aussi `npm run dev` et `npm run preview`), le classement est commun à tous les joueurs et enregistré dans un fichier du serveur. L'écran l'indique : « en ligne ».
@@ -289,14 +307,15 @@ server/        serveur de production : fichiers statiques et API du classement
 Dockerfile, docker-compose.yml  image et lancement sur un serveur
 src/
   core/        moteur de rendu, post-traitement, entrées, chargement des assets
-  levels/      un dossier par carte (facile, standard, avance) + le contrat dans README.md
-  world/       relief, végétation, ciel, vent, eau, maçonnerie
+  levels/      un dossier par carte (facile, standard, avance, fete, phare, plaine) + le contrat dans README.md
+  world/       relief, végétation, ciel, vent, eau, mer et houle, maçonnerie
   buildings/   adaptateur et banque de bâtiments
   ballistics/  solveur, environnement, vol, solution de tir
   config/      fiches des armes
   weapons/     mécanique de la carabine, lunette, modèles 3D
   player/      déplacements et personnage
   game/        boucle de jeu, tirs, cibles, mission, tutoriel, classements, conseils
+  game/extra/  mécaniques de cible des cartes « Lieux oubliés » (fête foraine, mer, sabotage)
   shared/      cœur du classement, commun au jeu et au serveur
   audio/       moteur sonore synthétisé ; tir hybride (attaque enregistrée, shot-*.ts)
   ui/          interface, commandes tactiles, styles
@@ -307,7 +326,7 @@ e2e/           tests de bout en bout (Playwright)
 docs/captures/ images de ce README
 ```
 
-Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier, reconnu sans toucher aux fichiers communs.
+Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier ; son identifiant, sa campagne et ses règles de score se déclarent dans le socle (`src/levels/index.ts`, `src/shared/scores-core.mjs`).
 
 ## Licences
 

@@ -156,9 +156,9 @@ for (const key of Object.keys(LV.posts)) {
 // On doit s'arrêter sur une limite lisible — obstacle des collisions (mur, clôture, rocher), ou rupture de pente
 // (le rebord) — jamais en terrain plat ; ne jamais passer sous le sol ni dévaler la pente ; et pouvoir revenir.
 {
-  const origins = [['départ', START[0], START[1], 0], ...Object.entries(LV.posts).map(([k, p]) => [`poste ${k}`, p.x, p.z, p.y ?? 0])];
-  for (const [name, ox, oz, oy] of origins) {
-    const r = await ev(([ox, oz, oy]) => {
+  const origins = [['départ', START[0], START[1], 0], ...Object.entries(LV.posts).map(([k, p]) => [`poste ${k}`, p.x, p.z, p.y ?? 0, p.ground ?? null])];
+  for (const [name, ox, oz, oy, og] of origins) {
+    const r = await ev(([ox, oz, oy, og]) => {
       const W = window.W, g = window.hr.game, p = g.player, t = g.terrain, H0 = window.hr.level.site.baseY;
       const slope = (x, z) => Math.hypot(t.heightAt(x + 0.6, z) - t.heightAt(x - 0.6, z), t.heightAt(x, z + 0.6) - t.heightAt(x, z - 0.6)) / 1.2;
       const out = [], ends = [];
@@ -168,7 +168,8 @@ for (const key of Object.keys(LV.posts)) {
         const far = [ox + Math.sin(yaw) * 400, oz - Math.cos(yaw) * 400];
         const bad = W.push(far, 40, ['KeyW', 'ShiftLeft']);
         if (bad) { out.push(`cap ${d * 45}° : ${bad}`); continue; }
-        const y = p.pos.y - H0, r = Math.hypot(p.pos.x, p.pos.z);
+        // (un poste qui a son propre sol — `ground`, ex. une digue sous une galerie — se compare à ce sol)
+        const y = p.pos.y - (og ?? H0), r = Math.hypot(p.pos.x, p.pos.z);
         if (y < -5) out.push(`cap ${d * 45}° : descendu à ${y.toFixed(1)} m sous le site en ${W.pos()}`);
         // pourquoi s'est-on arrêté ? (un pas de plus dans l'axe)
         const cause = W.cause(Math.atan2(far[0] - p.pos.x, -(far[1] - p.pos.z)));
@@ -180,7 +181,7 @@ for (const key of Object.keys(LV.posts)) {
         ends.push(`${d * 45}° ${kind} à ${r.toFixed(0)} m`);
       }
       return { ok: out.length === 0, why: out.join(' ; '), ends };
-    }, [ox, oz, oy]);
+    }, [ox, oz, oy, og ?? null]);
     add(`terrain libre depuis ${name} : huit caps, arrêt sur obstacle ou rebord, pas de chute`, r, r.ends?.join(', '));
   }
 }
