@@ -18,6 +18,8 @@ COPY server ./server
 COPY src ./src
 COPY tests ./tests
 RUN npm run build
+# Brotli une fois pour toutes : le serveur envoie les .br tout prêts
+RUN node server/precompress.mjs dist
 
 FROM node:24-alpine
 ENV NODE_ENV=production \

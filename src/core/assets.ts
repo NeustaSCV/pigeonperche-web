@@ -16,7 +16,10 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mulberry32 } from './noise';
 
 const BASE = import.meta.env.BASE_URL;
-export const assetUrl = (p: string): string => BASE + p;
+/** empreinte du contenu de public/ (vite.config.ts) : tant qu'elle ne change pas, le navigateur garde les fichiers sans redemander */
+declare const __ASSETS_VERSION__: string | undefined;
+const VERSION = typeof __ASSETS_VERSION__ === 'string' && __ASSETS_VERSION__ ? '?v=' + __ASSETS_VERSION__ : '';
+export const assetUrl = (p: string): string => BASE + p + VERSION;
 
 /** Côté maximal des textures (0 = sans limite). Sur téléphone, la mémoire graphique est comptée : 512. */
 let texLimit = 0;

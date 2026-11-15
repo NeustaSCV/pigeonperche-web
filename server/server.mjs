@@ -62,7 +62,7 @@ function resolveFile(urlPath) {
   return file;
 }
 
-async function serveStatic(req, res, urlPath) {
+async function serveStatic(req, res, urlPath, versioned = false) {
   if (req.method !== 'GET' && req.method !== 'HEAD') return plain(res, 405, 'Méthode non permise', { Allow: 'GET, HEAD' });
   let file = resolveFile(urlPath);
   if (!file) return plain(res, 400, 'Chemin refusé');
@@ -71,8 +71,9 @@ async function serveStatic(req, res, urlPath) {
   if (!st?.isFile()) return plain(res, 404, 'Introuvable');
   const ext = extname(file).toLowerCase();
   const etag = `W/"${st.size.toString(16)}-${Math.floor(st.mtimeMs).toString(16)}"`;
-  // les fichiers de assets/ portent une empreinte dans leur nom (Vite) : cache long ; le reste est revalidé
-  const hashed = /[\\/]assets[\\/][^\\/]*-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(file);
+  // cache long pour ce qui ne peut pas changer sous la même adresse : fichiers de assets/ dont le nom porte une
+  // empreinte (Vite), et fichiers demandés avec ?v=<empreinte des assets> (src/core/assets.ts) ; le reste est revalidé
+  const hashed = (versioned && ext !== '.html') || /[\\/]assets[\\/][^\\/]*-[A-Za-z0-9_-]{8,}\.[a-z0-9]+$/.test(file);
   const head = {
     'Content-Type': MIME[ext] ?? 'application/octet-stream',
     'Cache-Control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
@@ -82,6 +83,19 @@ async function serveStatic(req, res, urlPath) {
   };
   if (req.headers['if-none-match'] === etag) { res.writeHead(304, head); return res.end(); }
   const accept = String(req.headers['accept-encoding'] ?? '');
+  // version compressée à l'avance (server/precompress.mjs), plus récente que l'original : envoyée telle quelle
+  if (/\bbr\b/.test(accept)) {
+    const pre = await stat(file + '.br').catch(() => null);
+    if (pre?.isFile() && pre.mtimeMs >= st.mtimeMs) {
+      head['Content-Encoding'] = 'br';
+      head['Content-Length'] = pre.size;
+      res.writeHead(200, head);
+      if (req.method === 'HEAD') return res.end();
+      const pres = createReadStream(file + '.br');
+      pres.on('error', () => res.destroy());
+      return pres.pipe(res);
+    }
+  }
   const zip = COMPRESSIBLE.has(ext) && st.size > 1024 ? (/\bbr\b/.test(accept) ? 'br' : /\bgzip\b/.test(accept) ? 'gzip' : '') : '';
   if (zip) head['Content-Encoding'] = zip; else head['Content-Length'] = st.size;
   res.writeHead(200, head);
@@ -96,12 +110,12 @@ async function serveStatic(req, res, urlPath) {
 const server = createServer(async (req, res) => {
   for (const [k, v] of Object.entries(SECURITY)) res.setHeader(k, v);
   try {
-    let path;
-    try { path = new URL(req.url ?? '/', 'http://x').pathname; } catch { return plain(res, 400, 'Requête invalide'); }
+    let path, versioned;
+    try { const u = new URL(req.url ?? '/', 'http://x'); path = u.pathname; versioned = /^[0-9a-f]{8,40}$/.test(u.searchParams.get('v') ?? ''); } catch { return plain(res, 400, 'Requête invalide'); }
     if (path === '/healthz') return plain(res, 200, 'ok');
     if (api && (await api.handle(req, res))) return;
     if (path.startsWith('/api/')) return plain(res, 404, 'Introuvable');
-    await serveStatic(req, res, path);
+    await serveStatic(req, res, path, versioned);
   } catch (e) {
     console.error(e);
     if (!res.headersSent) plain(res, 500, 'Erreur du serveur'); else res.destroy();

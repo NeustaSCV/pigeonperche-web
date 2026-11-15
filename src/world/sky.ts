@@ -112,7 +112,7 @@ export class Sky {
     let px: (i: number) => number = () => 0;
     const loader = new HDRLoader();
     loader.setDataType(HalfFloatType);
-    for (const f of [engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_4k.hdr', 'sky_1k.hdr']) {
+    for (const f of [engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_2k.hdr', 'sky_1k.hdr']) {
       try {
         const t = await loader.loadAsync(assetUrl('assets/sky/' + f));
         const d = t.image.data as Uint16Array;

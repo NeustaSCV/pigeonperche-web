@@ -4,7 +4,7 @@ All third-party assets below are released under **CC0 1.0 Universal** (public do
 
 | In-game asset | Original title | Source id | Author(s) | Source | Licence |
 |---|---|---|---|---|---|
-| Sky HDRI (sky_4k.hdr, sky_1k.hdr) | Table Mountain 1 (Pure Sky) | `table_mountain_1_puresky` | Greg Zaal, Jarod Guest | https://polyhaven.com/a/table_mountain_1_puresky | CC0 1.0 |
+| Sky HDRI (sky_2k.hdr, sky_1k.hdr) | Table Mountain 1 (Pure Sky) | `table_mountain_1_puresky` | Greg Zaal, Jarod Guest | https://polyhaven.com/a/table_mountain_1_puresky | CC0 1.0 |
 | Texture `grass` (tex/grass_*.jpg) | Forest Ground 01 | `forrest_ground_01` | Rob Tuytel | https://polyhaven.com/a/forrest_ground_01 | CC0 1.0 |
 | Texture `rock` (tex/rock_*.jpg) | Marble Cliff 05 | `marble_cliff_05` | Amal Kumar | https://polyhaven.com/a/marble_cliff_05 | CC0 1.0 |
 | Texture `scree` (tex/scree_*.jpg) | Rocks Ground 01 | `rocks_ground_01` | Rob Tuytel | https://polyhaven.com/a/rocks_ground_01 | CC0 1.0 |

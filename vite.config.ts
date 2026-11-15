@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite';
-import { appendFileSync, mkdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { createHash } from 'node:crypto';
+import { appendFileSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 import { createScoresApi } from './server/scores-api.mjs';
 
 /** Reçoit les messages de src/core/diag.ts (téléphone en cours d'essai) et les écrit dans e2e/out/device.log. */
@@ -35,8 +36,28 @@ const scoresApi = (): Plugin => {
   return { name: 'hr-scores-api', configureServer: (server) => use(server.middlewares), configurePreviewServer: (server) => use(server.middlewares) };
 };
 
+/**
+ * Empreinte du contenu de public/ (textures, modèles, ciel, reliefs, sons), ajoutée à leurs adresses (?v=…) : le
+ * serveur peut alors les marquer « à garder un an », et une mise à jour qui change un seul de ces fichiers change
+ * l'empreinte, donc les adresses. Une mise à jour du code seul la laisse intacte : rien n'est retéléchargé.
+ */
+function assetsVersion(): string {
+  const h = createHash('sha1');
+  const walk = (dir: string): void => {
+    for (const name of readdirSync(dir).sort()) {
+      if (name.startsWith('.')) continue;
+      const f = join(dir, name);
+      if (statSync(f).isDirectory()) walk(f);
+      else { h.update(f); h.update(readFileSync(f)); }
+    }
+  };
+  try { walk('public'); } catch { return ''; }
+  return h.digest('hex').slice(0, 12);
+}
+
 export default defineConfig({
   base: './',
+  define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()) },
   plugins: [deviceLog(), scoresApi()],
   server: { port: 5173, host: '127.0.0.1' },
   build: { target: 'es2022', chunkSizeWarningLimit: 4000 },
