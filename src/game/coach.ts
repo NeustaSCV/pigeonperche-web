@@ -81,6 +81,10 @@ export class CoachTracker {
   dismiss(): void {
     this.visible = false;
   }
+  /** le joueur rouvre le conseil qu'il avait refermé (bouton « Conseil ») */
+  reopen(): void {
+    this.visible = true;
+  }
   /** objectif validé, mission relancée : le suivi de la cible en cours repart de zéro */
   clear(): void {
     this.visible = false;

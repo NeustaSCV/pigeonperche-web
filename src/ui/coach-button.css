@@ -1,0 +1,11 @@
+/* Bouton « Conseil » (src/ui/coach-button.ts) : à la place du conseil refermé sur ordinateur ; au bord de la lunette
+   ou sous la boussole sur téléphone. */
+.coach-again { position: fixed; z-index: 5; left: 30px; top: 150px; pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 7px 12px; background: rgba(14, 14, 12, 0.72); border: 1px solid var(--gold); color: var(--gold); font: inherit; font-size: 10.5px; letter-spacing: 0.2em; text-transform: uppercase; }
+.coach-again:hover { background: rgba(231, 181, 101, 0.16); }
+.coach-again i { font-style: normal; color: var(--faint); letter-spacing: 0.14em; font-size: 10px; }
+.coach-again i b { color: var(--dim); font-weight: 500; border: 1px solid var(--line); padding: 0 4px; }
+#hud.in-scope ~ .coach-again { top: 112px; }
+html.touch .coach-again { left: 50%; top: calc(var(--sat) + 112px); transform: translateX(-50%); min-height: 40px; padding: 0 16px; font-size: 11px; border-radius: 20px; }
+html.touch.portrait .coach-again { top: calc(var(--sat) + 150px); }
+/* téléphone, en lunette : au bord bas droit du champ, en miroir du bouton de briefing */
+html.touch.portrait #hud.in-scope ~ .coach-again { left: auto; right: calc(var(--sar) + 6px); top: calc(var(--scy) + var(--scr) - 44px); transform: none; }

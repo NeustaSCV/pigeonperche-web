@@ -11,6 +11,7 @@ import { Engine, REF_FOV, REF_SCOPE_R, type QualityName, type View } from '../co
 import { Input } from '../core/input';
 import { report, showError } from '../core/diag';
 import { Praise } from '../ui/praise';
+import { CoachButton } from '../ui/coach-button';
 import { assessHit, skillDetail } from './skill';
 import { Preloader, meteredConnection, preloadList } from '../core/preload';
 import { showBackdrop } from '../ui/backdrop';
@@ -266,7 +267,7 @@ export class Game {
         turret: (k, n) => { if (k === 'elev') this.rifle.clickElev(n); else this.rifle.clickWind(n); this.ui.bookTurrets(this.rifle.elevMil, this.rifle.windMil); },
         continueBrief: () => this.continueBrief(),
         hover: () => this.audio.ui('hover'),
-        setCoach: (on) => { this.coachPref = on ? 'on' : 'off'; try { localStorage.setItem('hr.coach', this.coachPref); } catch { /* stockage indisponible */ } if (!on) this.closeCoach(); },
+        setCoach: (on) => { this.coachPref = on ? 'on' : 'off'; try { localStorage.setItem('hr.coach', this.coachPref); } catch { /* stockage indisponible */ } if (!on) { this.closeCoach(); this.forgetCoach(); } },
         closeCoach: () => this.closeCoach(),
         submitScore: async (name) => {
           if (!this.endResult || !this.rankedGame()) return { status: 'refused', message: 'Partie d’essai : score non classé.' };
@@ -595,6 +596,7 @@ export class Game {
     this.mission.onStepDone = (step, s) => {
       this.coach.clear();
       this.ui.coach(null);
+      this.forgetCoach();
       this.prevStep = { step, s };
       this.audio.ui('success');
       this.scope.exit();
@@ -606,6 +608,7 @@ export class Game {
     this.mission.onFail = (reason) => {
       this.coach.clear();
       this.ui.coach(null);
+      this.forgetCoach();
       this.audio.ui('fail');
       setTimeout(() => { this.scope.exit(); this.ui.fail(reason); this.setState('fail'); }, this.testMode ? 0 : 2600);
     };
@@ -689,6 +692,7 @@ export class Game {
   setState(s: State): void {
     const prev = this.state;
     this.state = s;
+    this.syncCoachBtn();
     const ui = this.ui;
     if (s === 'play') {
       ui.show(null);
@@ -870,8 +874,37 @@ export class Game {
     return this.coachPref !== 'off';
   }
   closeCoach(): void {
+    const was = this.coach.visible;
     this.coach.dismiss();
     this.ui.coach(null);
+    // le conseil refermé reste à portée de main : un bouton « Conseil » le rouvre
+    if (was && this.coachLast && this.coachWanted()) { this.coachClosed = true; this.syncCoachBtn(); }
+  }
+  /** dernier conseil affiché, pour le bouton « Conseil » ; null dès que la cible change ou tombe */
+  private coachLast: { target: Target; reason: 'miss' | 'weak' } | null = null;
+  /** le joueur a refermé le conseil : le bouton est proposé, en jeu seulement (pas sur le briefing, la pause, le carnet) */
+  private coachClosed = false;
+  private syncCoachBtn(): void {
+    const on = this.coachClosed && !!this.coachLast && !this.coach.visible && this.state === 'play';
+    if (on) this.coachBtn.show(true); else this.coachBtnEl?.show(false);
+  }
+  private coachBtnEl: CoachButton | null = null;
+  private get coachBtn(): CoachButton {
+    return (this.coachBtnEl ??= new CoachButton(document.getElementById('ui') ?? document.body, this.touch, () => this.reopenCoach()));
+  }
+  /** Rouvre le conseil refermé, recalculé pour l'arme en main et le vent du moment. */
+  reopenCoach(): void {
+    const last = this.coachLast;
+    if (!last || this.coach.visible || last.target.done || !this.coachWanted()) { this.forgetCoach(); return; }
+    this.coach.reopen();
+    this.openCoach(last.target, last.reason, true);
+    this.audio.ui('hover');
+  }
+  /** Oublie le conseil en cours (objectif validé, cible tombée, conseils coupés). */
+  private forgetCoach(): void {
+    this.coachLast = null;
+    this.coachClosed = false;
+    this.coachBtnEl?.show(false);
   }
   /** largeur utile d'une cible, m : la plus grande de ses zones touchables */
   private targetWidth(t: Target): number {
@@ -917,11 +950,14 @@ export class Game {
       sig = this.coach.record({ kind: 'miss', target: target.id, offset: { up: best.up, right: best.right } });
     }
     if (!sig) return;
-    if ('hide' in sig) { this.ui.coach(null); return; }
+    if ('hide' in sig) { this.ui.coach(null); this.forgetCoach(); return; }
     this.openCoach(target, sig.show, sig.reminder);
   }
   /** Compose et affiche le conseil : solution de tir de l'arme en main sur la cible, par le vent du moment (calcul gardé en cache). */
   private openCoach(target: Target, reason: 'miss' | 'weak', reminder: boolean): void {
+    this.coachLast = { target, reason };
+    this.coachClosed = false;
+    this.coachBtnEl?.show(false);
     const def = this.rifle.def;
     const eye = this.player.eye(new Vector3());
     const aim = target.aimPoint(new Vector3());
@@ -1214,7 +1250,7 @@ export class Game {
         if (inp.hit('KeyB')) { sc.exit(); this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, null); this.setState('brief'); }
         if (inp.hit('KeyH')) this.showFps = !this.showFps;
         if (inp.hit('KeyP')) this.skipTutorial();
-        if (this.coach.visible && (inp.hit('Enter') || inp.hit('NumpadEnter'))) this.closeCoach();
+        if (inp.hit('Enter') || inp.hit('NumpadEnter')) { if (this.coach.visible) this.closeCoach(); else if (this.coachBtnEl?.visible) this.reopenCoach(); }
       }
       pl.update(dt, inp, sc.active);
       const stab = pl.stance === 'prone' ? 1 : pl.supported ? 1.9 : 4.2;
