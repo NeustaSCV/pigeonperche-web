@@ -622,8 +622,8 @@ export class UI {
   tutoRev = 0;
   /** hauteur de la carte logée au-dessus du champ de la lunette (tutoriel, ou conseil), en pixels CSS ; 0 s'il n'y en a pas */
   tutoHeight(): number {
-    if (!this.el.tuto.classList.contains('hidden')) return this.el.tuto.offsetHeight;
-    return this.el.coach.classList.contains('hidden') ? 0 : this.el.coach.offsetHeight;
+    // seul le tutoriel réserve de la place au-dessus du champ : le conseil, lui, s'affiche par-dessus la lunette
+    return this.el.tuto.classList.contains('hidden') ? 0 : this.el.tuto.offsetHeight;
   }
 
   /**

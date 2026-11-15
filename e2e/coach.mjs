@@ -73,6 +73,7 @@ const coach = (page) => page.evaluate(() => {
   return {
     shown, state: g.state, scope: g.scope.active, tracker: g.coach.visible, streak: g.coach.streak, rect: [b.left, b.top, b.right, b.bottom].map(Math.round), W: innerWidth, H: innerHeight,
     title: txt('coachT'), short: txt('coachS'), diag: txt('coachD'), why: txt('coachW'), steps: [...c.querySelectorAll('ol li')].filter(vis).map((li) => li.innerText.trim()), calibre: txt('coachC'), close: c.querySelector('[data-id=coachClose]')?.innerText ?? '',
+    all: shown ? c.innerText : '', scrolls: getComputedStyle(c).overflowY === 'auto', closeBtn: (() => { const x = c.querySelector('.coach-x'); if (!x || !vis(x)) return null; const r = x.getBoundingClientRect(); return [Math.round(r.left), Math.round(r.top), Math.round(r.right), Math.round(r.bottom)]; })(), fieldBottom: Math.round(v.cy + v.R),
     over, inField: hud.contains('in-scope') ? Math.hypot(dx, dy) < v.R - 1 : false, fieldTop: Math.round(v.cy - v.R), clipped: c.scrollHeight > c.clientHeight + 1 && getComputedStyle(c).overflowY === 'hidden',
     elev: g.rifle.elevMil, wind: g.rifle.windMil, time: g.gameTime,
   };
@@ -102,6 +103,10 @@ const single = (c, where) => { const o = orders(c); check(`${where} : au plus un
 const fr1 = (n) => n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const exitScope = (page) => page.evaluate(() => window.hr.game.scope.exit()).then(() => sleep(700));
 const enterScope = (page, id) => page.evaluate((id) => { const g = window.hr.game; g.scope.enter(g.player.yaw, 0); g.autoAim(id); }, id).then(() => sleep(700));
+/** téléphone, en lunette : le conseil complet recouvre le champ, entre les boutons du haut et du bas de la lunette */
+const overField = (c, where) => check(`${where} : conseil complet par-dessus le champ, dans l’écran, sans recouvrir un bouton, défilable, « Fermer » atteignable`,
+  c.shown && c.inField && c.steps.length > 0 && c.title.length > 3 && c.rect[0] >= 0 && c.rect[2] <= c.W && c.rect[1] >= c.fieldTop + 44 && c.rect[3] <= c.fieldBottom - 44 && c.over.length === 0 && c.scrolls && !!c.closeBtn && c.closeBtn[1] >= c.rect[1] - 10 && c.closeBtn[3] - c.closeBtn[1] >= 40,
+  JSON.stringify({ rect: c.rect, champ: [c.fieldTop, c.fieldBottom], boutons: c.over, étapes: c.steps.length, défile: c.scrolls, fermer: c.closeBtn }));
 const geometry = (c, where) => check(`${where} : l’encart est dans l’écran, hors du champ de la lunette et des commandes tactiles, texte non coupé`, c.shown && c.rect[0] >= 0 && c.rect[1] >= 0 && c.rect[2] <= c.W && c.rect[3] <= c.H && !c.inField && c.over.length === 0 && !c.clipped, JSON.stringify({ rect: c.rect, champ: c.inField, boutons: c.over, coupé: c.clipped, hautDuChamp: c.fieldTop }));
 
 // =====================================================================================================
@@ -135,10 +140,9 @@ for (const mobile of [false, true]) {
   check('troisième tir manqué de suite : l’encart apparaît, le jeu continue (pas de pause)', c.shown && c.tracker && c.state === 'play', `${c.title} / état ${c.state}`);
   const t0 = c.time; await sleep(600);
   check('le temps de jeu avance pendant que l’encart est affiché', (await coach(page)).time > t0 + 0.3);
-  geometry(c, `${dev}, en lunette`);
+  if (mobile) overField(c, 'portrait, en lunette'); else geometry(c, `${dev}, en lunette`);
   if (mobile) {
-    check('portrait, en lunette : bandeau court au-dessus du champ, qui descend d’autant', c.rect[3] <= c.fieldTop && c.short.length > 20 && c.steps.length === 0 && c.rect[3] - c.rect[1] < 110, JSON.stringify({ rect: c.rect, champ: c.fieldTop, court: c.short }));
-    check('bandeau : écart des impacts et chiffres du carnet', /trop bas/.test(c.short) && c.short.includes(`Carnet à ${Math.round(ref.measured)} m : ${fr1(ref.book)} mrad ; tourelle : ${fr1(dial0)}.`), c.short);
+    check('en lunette : écart des impacts et élévation du carnet dans le conseil', /trop bas/.test(c.all) && c.all.includes(`${fr1(ref.book)} mrad`), c.all.slice(0, 400));
     await page.screenshot({ path: `${OUT}/portrait-standard-lunette.png` });
     await exitScope(page);
     c = await coach(page);
@@ -173,7 +177,7 @@ for (const mobile of [false, true]) {
   await shoot(page, id, -off, 0);
   await sleep(400);
   c = await coach(page);
-  check('quatrième tir manqué après la fermeture : un rappel, « Toujours pas au but »', c.shown && (mobile ? c.short.length > 0 : c.title === 'Toujours pas au but'), c.title || c.short);
+  check('quatrième tir manqué après la fermeture : un rappel, « Toujours pas au but »', c.shown && c.title === 'Toujours pas au but', c.title || c.short);
   await shoot(page, id);
   await sleep(500);
   c = await coach(page);
@@ -210,7 +214,7 @@ for (const mobile of [false, true]) {
   single(c, `${dev}, arme inadaptée`);
   geometry(c, `${dev}, ${mobile ? 'hors lunette' : 'en lunette'}`);
   await page.screenshot({ path: `${OUT}/${dev}-calibre-${mobile ? 'hors-lunette' : 'lunette'}.png` });
-  if (mobile) { await enterScope(page, id); c = await coach(page); geometry(c, 'portrait, en lunette'); check('bandeau en lunette : l’arme proposée y figure', /râtelier/i.test(c.short), c.short); await page.screenshot({ path: `${OUT}/portrait-calibre-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-calibre-hors-lunette.png` }); }
+  if (mobile) { await enterScope(page, id); c = await coach(page); overField(c, 'portrait, en lunette'); check('en lunette : l’arme proposée figure dans le conseil', /râtelier/i.test(c.all), c.all.slice(0, 400)); await page.screenshot({ path: `${OUT}/portrait-calibre-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-calibre-hors-lunette.png` }); }
   await t.ctx.close();
 }
 
@@ -237,7 +241,7 @@ for (const mobile of [false, true]) {
   single(c, `${dev}, avancé`);
   geometry(c, `${dev}, ${mobile ? 'hors lunette' : 'en lunette'}`);
   await page.screenshot({ path: `${OUT}/${dev}-avance-${mobile ? 'hors-lunette' : 'lunette'}.png` });
-  if (mobile) { await enterScope(page, id); c = await coach(page); geometry(c, 'portrait, en lunette'); check('bandeau en lunette', /trop haut/.test(c.short), c.short); await page.screenshot({ path: `${OUT}/portrait-avance-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-avance-hors-lunette.png` }); }
+  if (mobile) { await enterScope(page, id); c = await coach(page); overField(c, 'portrait, en lunette'); check('en lunette : diagnostic des impacts dans le conseil', /trop haut/.test(c.all), c.all.slice(0, 400)); await page.screenshot({ path: `${OUT}/portrait-avance-lunette.png` }); } else { await exitScope(page); geometry(await coach(page), 'ordinateur, hors lunette'); await page.screenshot({ path: `${OUT}/ordinateur-avance-hors-lunette.png` }); }
   await t.ctx.close();
 }
 

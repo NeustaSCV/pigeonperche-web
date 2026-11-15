@@ -758,10 +758,10 @@ html.touch.portrait .coach { top: calc(var(--sat) + 132px); max-height: calc(100
 html.touch.portrait .coach-t { font-size: 16px; margin: 1px 0 5px; }
 html.touch.portrait .coach p, html.touch.portrait .coach ol { font-size: 12px; line-height: 1.42; margin-bottom: 6px; }
 /* portrait, en visée : bandeau court au-dessus du champ (qui descend d'autant, comme pour le tutoriel) */
-html.touch.portrait #hud.in-scope .coach { top: calc(var(--sat) + 6px); max-height: none; overflow: visible; pointer-events: none; padding: 5px 10px 2px; }
-html.touch.portrait #hud.in-scope .coach .coach-full, html.touch.portrait #hud.in-scope .coach .coach-t { display: none; }
-html.touch.portrait #hud.in-scope .coach .coach-s { display: block; font-size: 11.5px; line-height: 1.36; margin: 2px 0 5px; }
-html.touch.portrait #hud.in-scope .coach-k { font-size: 9px; }
+/* téléphone, en lunette : le conseil complet s'affiche par-dessus le champ, entre les boutons du haut (carnet, pause)
+   et ceux du bas (briefing), défilable, avec son bouton « Fermer » ; tourelles et zoom restent accessibles dessous. Le joueur n'a pas à
+   quitter la visée pour le lire ; une fois refermé, le bouton « Conseil » le rouvre. */
+html.touch.portrait #hud.in-scope .coach { top: calc(var(--scy) - var(--scr) + 50px); max-height: calc(var(--scr) * 2 - 100px); overflow-y: auto; pointer-events: auto; padding: 7px 10px 3px; background: rgba(12, 13, 12, 0.93); }
 html.touch #hud.has-coach .obj { display: none; }
 /* portrait, hors lunette : l'essentiel d'abord (écart mesuré, arme, étapes), l'explication ensuite ; le bas s'estompe tant qu'il reste à lire */
 html.touch.portrait .coach .coach-full { display: flex; flex-direction: column; }
