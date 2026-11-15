@@ -125,7 +125,8 @@ export function targetXZ(id: string): P2 {
 }
 
 /** Rail de la cible mobile : 36 m en travers de la ligne de visée, 1,2 m/s. */
-export const MOVER = { length: 36, speed: 1.2, pause: 2.5 };
+// arrêt long à chaque butoir : à 1 100 m (près de 2 s de vol), il laisse le temps de mesurer, régler et tirer posément
+export const MOVER = { length: 36, speed: 1.2, pause: 10 };
 
 // ---------------------------------------------------------------------------------------------
 // Bâtiments de la banque. Lacet (rad) = group.rotation.y : à 0 la façade sud regarde +z.

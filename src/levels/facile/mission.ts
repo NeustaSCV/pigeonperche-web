@@ -35,7 +35,7 @@ export const STEPS: Step[] = [
   {
     id: 'runner', title: 'La cible mobile', targets: ['runner'],
     brief: 'Dans le pré clos de la rive nord, un chariot fait la navette sur un rail et porte un disque d’acier. Il roule au pas et marque l’arrêt à chaque heurtoir : tirez à l’arrêt, ou visez un peu devant lui.',
-    intel: 'Disque de 50 cm. Voie de 44 m, vitesse 1,4 m/s (5 km/h), arrêt de 2,5 s à chaque bout.',
+    intel: 'Disque de 50 cm. Voie de 44 m, vitesse 1,4 m/s (5 km/h), arrêt de 8 s à chaque bout.',
     zone: 'Plein nord, à 315 m, entre la rivière et la route.', posts: 'Parapet nord (accroupi) ou plate-forme du guet.', weapon: '6 mm Creedmoor : 0,4 s de vol, le disque avance d’à peine 55 cm.',
   },
   {

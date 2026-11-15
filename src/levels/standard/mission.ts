@@ -47,13 +47,13 @@ export const STEPS: Step[] = [
   },
   {
     id: 'drone', title: 'Le drone', targets: ['drone'],
-    brief: 'Un drone d’observation tient un point fixe au-dessus du versant nord-ouest. Petit et sombre, il n’est pas facile à trouver : vu d’ici, il se détache sur les maisons situées entre le château d’eau et la rivière. Il oscille lentement et penche contre le vent.',
+    brief: 'Un drone d’observation tient un point fixe au-dessus du versant nord-ouest. Petit et sombre, il n’est pas facile à trouver : vu d’ici, il se détache sur les maisons situées entre le château d’eau et la rivière. Il tient sa position et penche contre le vent.',
     intel: 'Envergure de 80 cm rotors compris.',
     zone: 'Nord-nord-ouest, vers 460 m, bien en dessous de vous : cherchez-le au-dessus des maisons, entre le château d’eau et la rivière.', posts: 'Rebord d’éboulis ou créneau nord.', weapon: 'Calibre libre : temps de vol court conseillé.',
   },
   {
     id: 'sentinel', title: 'La sentinelle', targets: ['sentinel'],
-    brief: 'Un homme armé garde le mirador de la rive du lac. Il fait les cent pas le long du garde-corps et s’arrête quelques secondes à chaque bout.',
+    brief: 'Un homme armé garde le mirador de la rive du lac. Il se tient immobile au garde-corps et surveille le sommet.',
     intel: 'Homme de 1,75 m. Plateforme à 6 m du sol, garde-corps à 0,95 m.',
     zone: 'Nord-est, vers 1 250 m, au bord du lac.', posts: 'Étage de la tour (couché).', weapon: '.338 Lapua Magnum ou .300 Win Mag. Près de deux secondes de vol.',
   },

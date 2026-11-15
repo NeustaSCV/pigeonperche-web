@@ -25,8 +25,8 @@ export const STEPS: Step[] = [
   },
   {
     id: 'mover', title: 'La cible mobile', targets: ['mover'],
-    brief: 'Au pied du talus, un chariot porte une plaque le long de 36 m de rail, en travers de votre ligne de visée. Il roule à 1,2 m/s et marque 2,5 s d’arrêt à chaque butoir.',
-    intel: 'Plaque orange de 75 cm de large sur 1 m de haut. Deux fanions, un à chaque bout du rail. Près de deux secondes de vol : plus de deux mètres d’avance en plein mouvement, ou tirez à l’arrêt.',
+    brief: 'Au pied du talus, un chariot porte une plaque le long de 36 m de rail, en travers de votre ligne de visée. Il roule à 1,2 m/s et marque dix secondes d’arrêt à chaque butoir : attendez-le là.',
+    intel: 'Plaque orange de 75 cm de large sur 1 m de haut. Deux fanions, un à chaque bout du rail. Près de deux secondes de vol : tirez à l’arrêt, au butoir ; en plein mouvement il faudrait plus de deux mètres d’avance.',
     zone: 'Nord-ouest (318°), 1 100 m, 300 m plus bas.', posts: 'Dalle nord (couché).', weapon: '.338 Lapua Magnum 300 gr ou .33 XC : temps de vol court.',
   },
   {

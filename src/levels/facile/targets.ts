@@ -209,7 +209,8 @@ export class Runner extends Target {
   private len: number;
   speed = 0;
   readonly cruise = 1.4;
-  private readonly pause = 2.5;
+  /** arrêt à chaque bout, s : assez long pour viser et tirer posément */
+  private readonly pause = 8;
   private readonly radius = 0.25;
   constructor(engine: Engine, private a: Vector3, private b: Vector3) {
     super('runner', 'Cible mobile sur rail');

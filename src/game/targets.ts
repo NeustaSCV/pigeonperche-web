@@ -434,7 +434,8 @@ export class Drone extends Target {
     return out.copy(this.body.position);
   }
   private posAt(t: number, out: Vector3): Vector3 {
-    return out.set(this.home.x + Math.sin(t * 0.31) * 1.6 + Math.sin(t * 0.83) * 0.3, this.home.y + Math.sin(t * 0.47) * 0.7, this.home.z + Math.sin(t * 0.23 + 1) * 1.3);
+    // point fixe : une dérive de quelques centimètres le garde vivant sans en faire une cible mobile
+    return out.set(this.home.x + Math.sin(t * 0.31) * 0.05, this.home.y + Math.sin(t * 0.47) * 0.03, this.home.z + Math.sin(t * 0.23 + 1) * 0.04);
   }
   private now = 0;
   predict(dt: number, out: Vector3): Vector3 {
@@ -496,7 +497,8 @@ export class Sentinel extends Target {
   private pose: PoseInput = defaultPose();
   private u = 0.5;
   private dir = 1;
-  private wait = 3;
+  /** la sentinelle reste à son poste (une seule cible mobile par carte : le véhicule) ; une valeur finie lui rendrait son va-et-vient */
+  private wait = Infinity;
   private now = 0;
   private yaw: number;
   private center: Vector3;
