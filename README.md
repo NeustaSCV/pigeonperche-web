@@ -40,7 +40,7 @@ npm install
 npm run dev
 ```
 
-Ouvrez l'adresse affichée (http://127.0.0.1:5173). Jouez au casque. Le premier chargement d'une carte prend quelques secondes.
+Ouvrez l'adresse affichée (http://127.0.0.1:5173). Jouez au casque. Le menu s'affiche tout de suite, sur des vues de cibles prises à la lunette ; la carte choisie se charge en quelques secondes quand on clique sur « Commencer ».
 
 ### Construire la version statique
 
@@ -65,9 +65,9 @@ Les reliefs sont fournis dans `public/terrain/<niveau>/`. Pour les recalculer ap
 
 ```bash
 npm run gen:terrain -- facile
-npm run gen:terrain -- standard
-npm run gen:terrain -- avance
 ```
+
+L'argument est l'identifiant de la carte : `facile`, `standard`, `avance`, `fete`, `phare` ou `plaine`.
 
 ### Installer le navigateur des tests de bout en bout
 
@@ -111,13 +111,19 @@ Trois lieux abandonnés de la banque de bâtiments, vus d'en haut. Les missions 
 
 #### Facile : La Fête foraine
 
+![Le manège de la fête foraine](docs/captures/fete-lunette.jpg)
+
 Fin de journée sur une station balnéaire. Vous êtes sur une terrasse de bois, au sommet du Grand Hôtel, et la fête fermée s'étend à vos pieds le long de la mer : c'est un stand de tir géant. Six séries, de 68 à 420 m : deux plaques pour régler la lunette, six ballons au-dessus des baraques, les plaques de la grande roue (elle tourne par à-coups et s'arrête six secondes à chaque nacelle), les canards et les étoiles du manège, la cloche du tape-fort, puis la guirlande, à éteindre globe après globe, de gauche à droite. Toutes les aides sont là et il n'y a presque pas de vent. Le chrono part à votre premier tir : enchaîner les touches et finir vite rapporte des points, prendre son temps n'en retire aucun.
 
 #### Standard : Le Phare
 
+![Le caboteur au mouillage dans la crique](docs/captures/phare-lunette.jpg)
+
 Vous êtes sur la galerie d'un phare, 34 m au-dessus de la mer. Dans la crique, un caboteur finit de charger : rien ne doit en sortir. Sept objectifs de 260 à 1 200 m, tous sur du matériel — la plaque de réglage sur son îlot, les feux des bouées du chenal, le boîtier du treuil de la grue, la radio et le projecteur du caboteur, le bidon de la barge de ravitaillement, le moteur du canot, la lanterne de la tourelle de la passe. Le tir est plongeant et le vent de mer souffle en rafales : lisez les fanions et tirez dans une accalmie. Pour la barge, il faut descendre au musoir de la digue par la trappe de la galerie, et tirer au ras de l'eau. Le canot est la seule cible qui se déplace : il s'arrête plusieurs secondes à chaque bouée de sa route, et vous avez un peu moins de quatre minutes avant qu'il ne passe la pointe. Bonus pour chaque objectif réussi sans balle perdue et pour un canot arrêté tôt.
 
 #### Avancé : Le Château d'eau
+
+![La médiathèque et son relais radio](docs/captures/plaine-lunette.jpg)
 
 Vous êtes allongé sur la plate-forme d'un château d'eau, trente mètres au-dessus d'une plaine de champs et d'usines, et tout ce qui compte est autour de vous : tournez-vous. Sept sabotages à enchaîner de 900 à 2 400 m — l'émetteur d'un relais, les vannes d'une usine, un signal de chemin de fer, la citerne du convoi qu'il arrête, un drone au-dessus d'une villa, une lunette de surveillance dont le reflet vous trahit, et pour finir l'horloge de la gare. Aucune aide : la distance se vérifie au réticule, le vent se lit aux fanions, aux fumées et à la vapeur des vannes, la balistique est complète. Et la plaine écoute : chaque tir perdu fait monter l'alerte ; au quatrième d'affilée, l'objectif est à reprendre. Rien ne se tire en mouvement.
 
@@ -137,7 +143,7 @@ Les touches sont lues par position physique : ZQSD sur un clavier français, WAS
 | Grossissement | Molette |
 | Tourelle d'élévation | ↑ ↓ par pas de 0,1 mrad (Maj droite : 1 mrad) |
 | Tourelle de dérive | ← → |
-| Télémètre | T (niveaux facile et standard) |
+| Télémètre | T (cartes faciles et standard) |
 | Recharger | R |
 | Râtelier, changer d'arme | E, sous l'abri du site de tir |
 | Carnet de tir | Tab |
@@ -145,17 +151,29 @@ Les touches sont lues par position physique : ZQSD sur un clavier français, WAS
 | Afficher les images par seconde | H |
 | Pause | Échap |
 | Passer le tutoriel | P |
+| Fermer ou rouvrir le conseil | Entrée |
 
 On marche librement sur tout le site de tir, jusqu'à une limite visible : rebord de falaise, pente trop raide, mur ou clôture.
 
-Après trois tirs manqués de suite sur une même cible, un encart « Conseil » rappelle la marche à suivre (mesurer la distance, lire le carnet, reporter l'élévation sur la tourelle, corriger le vent), avec les chiffres de l'arme en main et l'écart mesuré des impacts ; il signale aussi une arme mal adaptée à la distance et propose mieux au râtelier. Il ne met pas le jeu en pause, se ferme par Entrée (ou son bouton, au doigt) et se coupe au menu (« Conseils : Sans »).
+Après trois tirs manqués de suite sur une même cible, un encart « Conseil » rappelle la marche à suivre (mesurer la distance, lire le carnet, reporter l'élévation sur la tourelle, corriger le vent), avec les chiffres de l'arme en main et l'écart mesuré des impacts ; il signale aussi une arme mal adaptée à la distance et propose mieux au râtelier. Il ne met pas le jeu en pause et se ferme par Entrée (ou son bouton, au doigt) ; un bouton « Conseil » reste alors à l'écran pour le rouvrir. Sur téléphone, il se lit dans la lunette, sans quitter la visée. Il se coupe au menu (« Conseils : Sans »).
 
-Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours.
+Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours ; un losange bleu y marque la direction de la cible.
+
+### Le mrad, l'élévation et le vent
+
+Tout le réglage se fait en mrad (milliradian). Un mrad est un angle : il couvre 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. Le réticule est gradué dans cette unité, et les tourelles avancent par pas de 0,1 mrad.
+
+- **Élévation** : la balle tombe en route. Le carnet de tir donne, pour la distance mesurée, l'angle qui compense cette chute ; on l'affiche à la tourelle d'élévation.
+- **Tir manqué** : l'écart se lit sur le réticule. Un impact 2 mrad sous la cible se corrige en ajoutant 2 mrad d'élévation.
+- **Vent** : la flèche de la rose des vents pointe là où le vent pousse la balle (vers le haut : dans l'axe du tir). Flèche vers la gauche, la balle part à gauche : on corrige la dérive vers la droite.
+
+Le tutoriel de la carte facile (17 étapes) fait pratiquer tout cela sur deux plaques.
 
 ## Scores et classements
 
 À la fin d'une mission réussie, le jeu affiche les vingt meilleurs scores du niveau joué. Si le score y entre, le joueur inscrit son nom : huit caractères au plus, lettres, chiffres, espace et tiret, en majuscules comme sur une borne d'arcade. Le dernier nom utilisé est proposé d'emblée ; « Passer » termine sans s'inscrire. L'accueil montre les cinq premiers de chaque carte de la campagne en cours (l'écran « Scores » passe d'une campagne à l'autre) (sur téléphone : bouton « Scores »).
 
+- **Tirs d'adresse** : un tir en plein centre de la cible rapporte 250 points, un tir sur une cible en mouvement 400, dans la limite de 650 par objectif. Un compliment s'affiche à chaque fois. Ces points s'ajoutent au score avant le coefficient de difficulté.
 - **Tri** : score décroissant ; à score égal, le premier inscrit reste devant. Vingt lignes par niveau.
 - **En ligne** : quand le jeu est servi par son serveur (`npm start`, Docker, mais aussi `npm run dev` et `npm run preview`), le classement est commun à tous les joueurs et enregistré dans un fichier du serveur. L'écran l'indique : « en ligne ».
 - **Local à cet appareil** : sur un hébergement statique simple, ou hors ligne, les scores restent dans le navigateur (`localStorage`) : ils ne sont visibles que sur cet appareil et dans ce navigateur, et disparaissent si l'on efface les données du site. Ce classement local se vide depuis l'écran « Commandes » (bouton « Effacer », avec confirmation).
@@ -170,7 +188,8 @@ Le serveur vérifie chaque inscription (niveau connu, nom nettoyé, score entre 
 Sur un appareil tactile, le jeu affiche ses commandes à l'écran et se joue en portrait ; à l'horizontale, il demande de redresser le téléphone. Les tablettes acceptent les deux sens.
 
 - **Hors lunette** : manette flottante sous le pouce gauche, regard en glissant partout ailleurs, boutons de posture, d'épaulement et de rechargement sous le pouce droit.
-- **En lunette** : le champ occupe le haut de l'écran ; dessous, les tourelles (0,1 et 1 mrad), le grossissement et le télémètre ; tout en bas, Souffle, Quitter et Tirer.
+- **En lunette** : le champ occupe le haut de l'écran ; dessous, les tourelles (0,1 et 1 mrad), le grossissement et le télémètre ; tout en bas, Souffle, Quitter et Tirer. Le doigt déplace la visée d'autant plus vite que le grossissement est faible, et une petite flèche au bord du champ indique la cible quand elle en est sortie.
+- **Chargement** : le menu s'affiche avant la carte, et le relief, le ciel et les textures de la carte sélectionnée sont préchargés en arrière-plan, sauf en connexion limitée.
 - **Gestes du navigateur neutralisés** : double tap, pincement de page, défilement élastique.
 - **iPhone** : Safari n'offre pas de plein écran à une page web. Ajouter la page à l'écran d'accueil (Partager, puis « Sur l'écran d'accueil ») retire les barres du navigateur.
 
@@ -238,7 +257,7 @@ docker build -t pigeon-perche .
 docker run -d --name pigeon-perche -p 8080:8080 -v pigeon-scores:/data pigeon-perche
 ```
 
-L'image est construite en deux étapes ; l'image finale ne contient que `dist/` et le serveur, tourne sous un utilisateur non privilégié et déclare un contrôle de santé (`/healthz`). Le classement est dans le volume monté sur `/data` : il survit aux redémarrages et aux mises à jour de l'image.
+L'image est construite en deux étapes ; les fichiers sont précompressés en Brotli à la construction et servis avec un cache long, lié à une empreinte de leur contenu. L'image finale ne contient que `dist/` et le serveur, tourne sous un utilisateur non privilégié et déclare un contrôle de santé (`/healthz`). Le classement est dans le volume monté sur `/data` : il survit aux redémarrages et aux mises à jour de l'image.
 
 ### Sans Docker
 
@@ -273,11 +292,11 @@ Le serveur parle HTTP : pour le HTTPS, placez-le derrière un mandataire inverse
 ## Tests
 
 ```bash
-npm test                 # tests unitaires (balistique, vol, lots des bâtiments, classement, conseils)
+npm test                 # tests unitaires (balistique, vol, lots des bâtiments, classement, conseils, tirs d'adresse, cartes)
 npm run build            # vérification des types puis construction
 ```
 
-Tests de bout en bout (après `npm run e2e:install`). Chaque script accepte `-- --level facile|standard|avance` et vise `standard` par défaut :
+Tests de bout en bout (après `npm run e2e:install`). Chaque script accepte `-- --level <carte>` (`facile`, `standard`, `avance`, `fete`, `phare`, `plaine`) et vise `standard` par défaut :
 
 ```bash
 npm run e2e:smoke        # menu, briefing, jeu, carnet, pause
@@ -286,13 +305,15 @@ npm run e2e:mission:portrait
 npm run e2e:matrix       # chaque cible est visible d'au moins un poste
 npm run e2e:walk         # parcours à pied vers chaque poste, et marche droit vers le bord dans huit directions
 npm run e2e:mobile       # commandes tactiles en portrait
-npm run e2e:tutorial     # les 16 étapes du tutoriel
+npm run e2e:tutorial     # les 17 étapes du tutoriel
 npm run e2e:rifles       # cotes et coût des 17 modèles d'armes
 npm run e2e:physics      # tir réel contre solution calculée, effets avancés
 npm run e2e:buildings    # banc d'essai des bâtiments
 npm run e2e:perf         # temps par image des vues de référence
 npm run e2e:scores       # classements : API du serveur, repli local, ordinateur et portrait (lance son propre serveur sur dist/)
 npm run e2e:coach        # conseil après tirs manqués
+HR_URL=http://127.0.0.1:4173/ PLAYWRIGHT_BROWSERS_PATH=0 node e2e/menu.mjs          # menu affiché avant la carte, chargement au clic (avec npm run preview)
+HR_URL=http://127.0.0.1:4173/ PLAYWRIGHT_BROWSERS_PATH=0 node e2e/coach-button.mjs  # bouton qui rouvre le conseil
 PLAYWRIGHT_BROWSERS_PATH=0 node e2e/zone.mjs     # zone de marche : aucune limite invisible
 PLAYWRIGHT_BROWSERS_PATH=0 node e2e/routes.mjs   # captures des voies d'accès et des cours d'eau
 ```
@@ -319,7 +340,7 @@ src/
   shared/      cœur du classement, commun au jeu et au serveur
   audio/       moteur sonore synthétisé ; tir hybride (attaque enregistrée, shot-*.ts)
   ui/          interface, commandes tactiles, styles
-public/        relief, textures, modèles, ciel, police du titre, icônes
+public/        relief, textures, modèles, ciel, images du fond de menu, police du titre, icônes
 tools/         générateur de relief et d'icônes
 tests/         tests unitaires (Vitest)
 e2e/           tests de bout en bout (Playwright)
