@@ -9,7 +9,9 @@ import { GAME_AIR, ballisticTable, loadDrag } from '../ballistics/solver';
 import { CLICK_MIL, RETICLE_HOLD_MIL, SIGHT_HEIGHT, WEAPONS, weaponById, type WeaponDef } from '../config/weapons';
 import { Engine, REF_FOV, REF_SCOPE_R, type QualityName, type View } from '../core/engine';
 import { Input } from '../core/input';
-import { report } from '../core/diag';
+import { report, showError } from '../core/diag';
+import { Preloader, meteredConnection, preloadList } from '../core/preload';
+import { showBackdrop } from '../ui/backdrop';
 import { canFullscreen, goFullscreen, installGestureGuards, isTablet, isTouchDevice, lockPortrait, needsHomeScreenTip, safeInsets } from '../core/device';
 import { loadTex, setTextureLimit } from '../core/assets';
 import { damp } from '../core/noise';
@@ -247,7 +249,7 @@ export class Game {
     this.ui = new UI(
       uiRoot,
       {
-        start: () => { autoFs(); this.startMission(); },
+        start: () => { autoFs(); if (this.ready) this.startMission(); else void this.loadAndStart(); },
         resume: () => { autoFs(); this.setState('play'); },
         close: () => { if (this.state === 'rack' || this.state === 'book') this.setState('play'); },
         setTutorial: (on) => this.setTutoPref(on ? 'on' : 'off'),
@@ -318,7 +320,78 @@ export class Game {
     canvas.addEventListener('click', () => { if (this.state === 'play' && !this.testMode) this.input.lock(); });
   }
 
+  /**
+   * Démarrage. Le menu s'affiche tout de suite, sur un fond d'images, sans rien charger de la carte : elle n'est
+   * téléchargée et construite qu'au clic sur « Commencer » (`loadAndStart`). Changer de niveau ou de qualité au menu
+   * ne recharge donc que la page, pas un monde. Entre-temps, les fichiers lourds sont préchargés en arrière-plan.
+   * Les essais automatisés (`?test`) et `?play` chargent la carte d'emblée, comme avant ; `?lazy=1` force le menu léger.
+   */
   async init(): Promise<void> {
+    const eager = this.params.has('play') || (this.testMode && this.params.get('lazy') !== '1');
+    if (eager) {
+      await this.load();
+      setTimeout(() => {
+        this.ui.show('menu');
+        if (this.params.has('play')) this.startMission();
+      }, 500);
+      return;
+    }
+    this.backdrop = showBackdrop();
+    this.ui.show('menu');
+    if (this.params.get('preload') !== '0' && !meteredConnection()) {
+      this.preloader = new Preloader();
+      const start = (): void => this.preloader?.start(preloadList({ terrainDir: this.data.terrain.dir, sky: this.engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_2k.hdr' }));
+      // après l'affichage du menu et de son fond, pour ne pas leur disputer la connexion
+      setTimeout(start, 600);
+    }
+  }
+
+  private loading = false;
+  private backdrop: HTMLElement | null = null;
+  private preloader: Preloader | null = null;
+
+  /** « Commencer » sur le menu léger : charge la carte (barre de progression), puis lance la mission. */
+  private async loadAndStart(): Promise<void> {
+    if (this.loading || this.ready) return;
+    this.loading = true;
+    // le son démarre sur ce geste : l'attendre plus tard le ferait refuser par le navigateur
+    void this.audio.start().then(() => this.audio.setMasterVolume(this.volume));
+    this.audio.ui('confirm');
+    this.ui.setLoading(0, 'Chargement');
+    this.ui.show('loading');
+    try {
+      await this.load();
+      // échauffement derrière le rideau : le menu n'affiche plus la carte, il ne compile donc plus les shaders ni ne
+      // remplit les ombres avant la partie. On tourne quelques images sur la vue du menu puis sur celle du joueur,
+      // sinon les premières secondes de jeu saccadent.
+      this.ui.setLoading(1, 'Préparation');
+      await this.warmUp(0.9);
+      this.player.applyCamera(this.engine.camera, 0, true);
+      await this.warmUp(0.9);
+      this.backdrop?.remove();
+      this.backdrop = null;
+      this.startMission();
+    } catch (e) {
+      console.error(e);
+      showError('Erreur de chargement', String((e as Error)?.stack || e));
+    }
+  }
+
+  /** Laisse tourner le rendu `sec` secondes (au moins vingt images). */
+  private warmUp(sec: number): Promise<void> {
+    return new Promise((done) => {
+      const t0 = performance.now();
+      let n = 0;
+      const tick = (): void => { if (++n >= 20 && performance.now() - t0 >= sec * 1000) done(); else requestAnimationFrame(tick); };
+      requestAnimationFrame(tick);
+      // onglet passé en arrière-plan : plus d'images, on n'attend pas indéfiniment
+      setTimeout(done, sec * 1000 + 3000);
+    });
+  }
+
+  /** Télécharge et construit la carte. */
+  private async load(): Promise<void> {
+    this.preloader?.stop();
     const e = this.engine;
     const step = async (p: number, text: string, f: () => Promise<void> | void): Promise<void> => {
       this.ui.setLoading(p, text);
@@ -417,10 +490,6 @@ export class Game {
     this.ready = true;
     this.last = performance.now();
     requestAnimationFrame((t) => this.frame(t));
-    setTimeout(() => {
-      this.ui.show('menu');
-      if (this.params.has('play')) this.startMission();
-    }, 500);
   }
 
   /**

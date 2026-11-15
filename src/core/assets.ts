@@ -26,6 +26,7 @@ let texLimit = 0;
 export function setTextureLimit(px: number): void {
   texLimit = px;
 }
+export const textureLimit = (): number => texLimit;
 function fit(img: ImageBitmap | HTMLCanvasElement): ImageBitmap | HTMLCanvasElement {
   if (!texLimit || Math.max(img.width, img.height) <= texLimit) return img;
   const k = texLimit / Math.max(img.width, img.height);
@@ -142,10 +143,34 @@ export async function loadTexArray(names: string[], kind: TexKind, size: number,
   return { tex, mean };
 }
 
+/**
+ * Téléphone : les textures embarquées dans les modèles (1024 px, 5,6 Mo chacune une fois en mémoire graphique) sont
+ * ramenées à la limite, comme les autres. Sans cela elles pesaient à elles seules 270 Mo sur la carte facile, de quoi
+ * faire tuer l'onglet par le système.
+ */
+function shrinkModelTextures(root: Group): void {
+  const done = new Set<Texture>();
+  root.traverse((o) => {
+    const mat = (o as unknown as { material?: unknown }).material;
+    for (const m of (Array.isArray(mat) ? mat : mat ? [mat] : []) as Record<string, unknown>[]) {
+      for (const k in m) {
+        const t = m[k] as Texture | null;
+        if (!t || !(t as Texture).isTexture || done.has(t)) continue;
+        done.add(t);
+        const img = t.image as ImageBitmap | HTMLCanvasElement | undefined;
+        if (!img || !img.width || Math.max(img.width, img.height) <= texLimit) continue;
+        t.image = fit(img);
+        t.needsUpdate = true;
+      }
+    }
+  });
+}
+
 const gltf = new GLTFLoader();
 export async function loadModel(name: string): Promise<Group | null> {
   try {
     const r = await gltf.loadAsync(assetUrl(`assets/models/${name}.glb`));
+    if (texLimit) shrinkModelTextures(r.scene);
     return r.scene;
   } catch {
     return null;

@@ -11,7 +11,8 @@ await p.waitForFunction(() => window.hr && window.hr.ready, null, { timeout: 120
 await p.waitForTimeout(1500);
 await assertLevel(p);
 await p.click('text=Commandes'); await p.waitForTimeout(400); await p.click('text=Retour'); await p.waitForTimeout(300);
-await p.click('text=Commencer'); await p.waitForTimeout(900);
+// hors mode essai, la carte n'est chargée qu'à ce clic : on attend le briefing
+await p.click('text=Commencer'); await p.waitForFunction(() => window.hr.game.ready && window.hr.game.state !== 'menu', null, { timeout: 180000 }); await p.waitForTimeout(900);
 const s1 = await p.evaluate(() => window.hr.game.state);
 await p.click('text=Continuer'); await p.waitForTimeout(800);
 const s2 = await p.evaluate(() => window.hr.game.state);

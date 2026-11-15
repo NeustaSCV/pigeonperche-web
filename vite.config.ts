@@ -55,9 +55,20 @@ function assetsVersion(): string {
   return h.digest('hex').slice(0, 12);
 }
 
+/** Fichiers communs aux trois cartes (textures, modèles), que le menu précharge en arrière-plan : src/core/preload.ts. */
+function commonAssets(): string[] {
+  // textures présentes dans public/ mais qu'aucune carte ne demande (relevé : e2e/menu.mjs le revérifie)
+  const unused = new Set(['bark_arm', 'bark_diff', 'bark_nor', 'dirt_arm', 'forest_arm', 'grass_arm', 'rock_arm', 'scree_arm', 'wall_disp'].map((n) => `assets/tex/${n}.jpg`));
+  const out: string[] = [];
+  for (const dir of ['assets/models', 'assets/tex']) {
+    try { for (const f of readdirSync(join('public', dir)).sort()) if (/\.(glb|jpg)$/.test(f) && !unused.has(`${dir}/${f}`)) out.push(`${dir}/${f}`); } catch { /* dossier absent */ }
+  }
+  return out;
+}
+
 export default defineConfig({
   base: './',
-  define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()) },
+  define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()), __COMMON_ASSETS__: JSON.stringify(commonAssets()) },
   plugins: [deviceLog(), scoresApi()],
   server: { port: 5173, host: '127.0.0.1' },
   build: { target: 'es2022', chunkSizeWarningLimit: 4000 },

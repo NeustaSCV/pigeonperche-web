@@ -29,7 +29,7 @@ import {
   type PerspectiveCamera,
   type Texture,
 } from 'three';
-import { loadModel } from '../core/assets';
+import { loadModel, textureLimit } from '../core/assets';
 import type { Engine } from '../core/engine';
 import { hash01, mulberry32, smoothstep } from '../core/noise';
 import type { PostDef, Sightline } from '../levels/types';
@@ -351,7 +351,9 @@ export class Vegetation {
     const size = proto.box.getSize(new Vector3());
     const w = Math.max(size.x, size.z) * 1.04;
     const h = size.y * 1.02;
-    const rt = new WebGLRenderTarget(1024, 2048, { generateMipmaps: true, minFilter: LinearMipmapLinearFilter, magFilter: LinearFilter, depthBuffer: true });
+    // téléphone : imposteur deux fois plus petit (quatre fois moins de mémoire graphique)
+    const small = textureLimit() > 0 && textureLimit() <= 512;
+    const rt = new WebGLRenderTarget(small ? 512 : 1024, small ? 1024 : 2048, { generateMipmaps: true, minFilter: LinearMipmapLinearFilter, magFilter: LinearFilter, depthBuffer: true });
     const sc = new Scene();
     for (const p of proto.parts) {
       const m = new Mesh(p.geometry, new MeshLambertMaterial({ map: p.material.map, alphaTest: p.leaf ? 0.4 : 0, side: DoubleSide, color: p.leaf ? 0xffffff : 0xb0a090 }));

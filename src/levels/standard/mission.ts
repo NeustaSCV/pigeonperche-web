@@ -47,9 +47,9 @@ export const STEPS: Step[] = [
   },
   {
     id: 'drone', title: 'Le drone', targets: ['drone'],
-    brief: 'Un drone d’observation tient un point fixe au-dessus du versant nord-ouest. Il oscille lentement et penche contre le vent.',
+    brief: 'Un drone d’observation tient un point fixe au-dessus du versant nord-ouest. Petit et sombre, il n’est pas facile à trouver : vu d’ici, il se détache sur les maisons situées entre le château d’eau et la rivière. Il oscille lentement et penche contre le vent.',
     intel: 'Envergure de 80 cm rotors compris.',
-    zone: 'Nord-nord-ouest, vers 460 m, bien en dessous de vous.', posts: 'Rebord d’éboulis ou créneau nord.', weapon: 'Calibre libre : temps de vol court conseillé.',
+    zone: 'Nord-nord-ouest, vers 460 m, bien en dessous de vous : cherchez-le au-dessus des maisons, entre le château d’eau et la rivière.', posts: 'Rebord d’éboulis ou créneau nord.', weapon: 'Calibre libre : temps de vol court conseillé.',
   },
   {
     id: 'sentinel', title: 'La sentinelle', targets: ['sentinel'],

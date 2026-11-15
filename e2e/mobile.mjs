@@ -151,6 +151,8 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
   await shot(page, 'commandes');
   await tapText(page, fingers, 'Retour');
   await tapText(page, fingers, 'Commencer');
+  // hors mode essai, la carte n'est chargée qu'à ce toucher
+  await page.waitForFunction(() => window.hr.game.ready && window.hr.game.state !== 'menu', null, { timeout: 180000 });
   await sleep(700);
   // niveau sans tutoriel (data.tutorial nul) : le briefing ne le propose pas, ces contrôles sont sautés
   const HAS_TUTO = await G(page, () => !!window.hr.level.tutorial && window.hr.game.difficulty !== 'real');
@@ -647,7 +649,7 @@ async function tour(label, tag, vp, notch, dsf, extra = '') {
   await screenOk(page, `${tag} commandes`, notch);
   await shot(page, `${tag}-commandes`);
   await tapText(page, fingers, 'Retour');
-  await tapText(page, fingers, 'Commencer'); await sleep(700);
+  await tapText(page, fingers, 'Commencer'); await page.waitForFunction(() => window.hr.game.ready && window.hr.game.state !== 'menu', null, { timeout: 180000 }); await sleep(700);
   await screenOk(page, `${tag} briefing`, notch);
   await shot(page, `${tag}-briefing`);
   await tapText(page, fingers, 'Continuer'); await sleep(1300);

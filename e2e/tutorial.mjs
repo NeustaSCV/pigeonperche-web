@@ -316,7 +316,7 @@ for (const q of ['test&tuto=1&play&d=real&q=low&dr=0', 'tuto=1&play&d=real&q=low
   // premier lancement réel (sans ?test) : proposition au briefing, choix mémorisé, relance depuis le menu
   const { page } = await desktopPage('q=low&dr=0&d=standard');
   let s = await page.evaluate(() => ({ pref: localStorage.getItem('hr.tuto'), menu: document.querySelector('[data-id=segTuto] .sel')?.dataset.k }));
-  await page.click('text=Commencer'); await sleep(800);
+  await page.click('text=Commencer'); await page.waitForFunction(() => window.hr.game.ready && window.hr.game.state !== 'menu', null, { timeout: 180000 }); await sleep(800);
   const b = await page.evaluate(() => ({ choice: [...document.querySelectorAll('#brief [data-tuto]')].map((e) => e.textContent), sel: document.querySelector('#brief [data-tuto].sel')?.dataset.tuto, cont: !!document.querySelector('#brief [data-act=continue]') }));
   check('premier lancement : le briefing propose « Avec le tutoriel » / « Sans »', s.pref === null && s.menu === 'on' && b.choice.join('|') === 'Avec le tutoriel|Sans' && b.sel === 'on' && b.cont, JSON.stringify(b));
   await page.screenshot({ path: 'e2e/out/tutoriel-ordinateur-briefing.png' });
@@ -331,7 +331,7 @@ for (const q of ['test&tuto=1&play&d=real&q=low&dr=0', 'tuto=1&play&d=real&q=low
   s = await page.evaluate(() => document.querySelector('[data-id=segTuto] .sel')?.dataset.k);
   await page.click('[data-id=segTuto] [data-k=on]'); await sleep(200);
   const pref = await page.evaluate(() => localStorage.getItem('hr.tuto'));
-  await page.click('text=Commencer'); await sleep(800);
+  await page.click('text=Commencer'); await page.waitForFunction(() => window.hr.game.ready && window.hr.game.state !== 'menu', null, { timeout: 180000 }); await sleep(800);
   const again = await page.evaluate(() => !!document.querySelector('#brief [data-tuto]'));
   await page.click('text=Continuer'); await sleep(900);
   const t = await page.evaluate(() => ({ step: window.hr.game.tutorial?.stepId, shown: !document.querySelector('.tuto').classList.contains('hidden') }));
