@@ -103,6 +103,12 @@ export interface ShotsEnv {
 
 const UP = new Vector3(0, 1, 0);
 
+/**
+ * Distance de l'œil, m, en deçà de laquelle le décor est ignoré : il est derrière l'objectif de la lunette et la bouche
+ * du canon. La même valeur sert à la vue en lunette (objectif à 0,45 m + plan proche de 0,55 m), au télémètre et à la balle.
+ */
+export const MUZZLE_CLEAR = 1.0;
+
 export class Shots {
   bullets: Bullet[] = [];
   targets: Target[] = [];
@@ -210,7 +216,8 @@ export class Shots {
     }
     const seg = this.a.distanceTo(this.b);
     const d = this.col.segment(this.a, this.b, this.hit, this.tag);
-    if (d >= 0 && d / seg < bestT) {
+    // un obstacle à moins d'un canon de l'œil (parapet ou dalle sous l'arme) est déjà dépassé par la bouche : ignoré
+    if (d >= 0 && d / seg < bestT && this.hit.distanceTo(b.origin) >= MUZZLE_CLEAR) {
       bestT = d / seg;
       target = null;
       kind = this.tag.tag === 'wood' ? 'wood' : this.tag.tag === 'metal' ? 'metal' : 'rock';

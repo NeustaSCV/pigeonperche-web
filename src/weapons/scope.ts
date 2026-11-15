@@ -16,6 +16,9 @@ export const fovForZoom = (mag: number): number => (Math.atan(TAN_BASE / mag) * 
 
 export type Breath = 'normal' | 'held' | 'gasping';
 
+/** distance de l'œil à l'objectif de la lunette, m : dégagement oculaire (9 cm) et longueur du corps (36 cm) */
+export const SCOPE_OBJECTIVE = 0.45;
+
 export class Scope {
   active = false;
   /** 0..1 fondu d'entrée */
@@ -162,11 +165,14 @@ export class Scope {
 
   /** `fov` : champ vertical de la caméra pour le grossissement courant (`Engine.scopeFov`) */
   applyCamera(cam: PerspectiveCamera, eye: Vector3, fov: number): void {
-    cam.position.copy(eye);
     const y = this.yaw + (this.swayX + this.kickX) * 0.001;
     const p = this.pitch + (this.swayY + this.kickY) * 0.001;
     this.e.set(Math.sin(y) * Math.cos(p), Math.sin(p), -Math.cos(y) * Math.cos(p));
-    cam.lookAt(eye.x + this.e.x * 100, eye.y + this.e.y * 100, eye.z + this.e.z * 100);
+    // l'image d'une lunette se forme à partir de son objectif, pas de l'œil : la caméra est avancée d'autant sur l'axe
+    // de visée (même droite, donc même point visé). Sans cela, le sol ou le parapet situés sous la lunette
+    // apparaissaient dans le champ alors que l'objectif les avait dépassés.
+    cam.position.copy(eye).addScaledVector(this.e, SCOPE_OBJECTIVE);
+    cam.lookAt(cam.position.x + this.e.x * 100, cam.position.y + this.e.y * 100, cam.position.z + this.e.z * 100);
     // léger roulis proportionnel au recul latéral
     this.q.setFromAxisAngle(this.e, this.kickX * 0.0015);
     cam.quaternion.premultiply(this.q);

@@ -36,7 +36,7 @@ import type { Level, LevelData, LevelHost, LevelPhysics, LevelScene } from '../l
 import { Mission, type Difficulty, type Step } from './mission';
 import { ScoreService, type ScoreResult } from './scores';
 import { AIM_WINDOW_MIL, CoachTracker, assessWeapon, buildAdvice, diagnose } from './coach';
-import { Shots, type Bullet, type ImpactReport, type Prediction } from './shots';
+import { MUZZLE_CLEAR, Shots, type Bullet, type ImpactReport, type Prediction } from './shots';
 import { Tutorial, type TutoSnap } from './tutorial';
 import type { Target, TargetCtx } from './targets';
 
@@ -964,21 +964,25 @@ export class Game {
     return Math.min(11, Math.max(4.5, this.data.rangeLimit / 420));
   }
 
-  private losDistance(eye: Vector3, dir: Vector3): number {
+  /** Distance du premier obstacle sur la ligne de visée, mesurée depuis l'œil ; ce qui est à moins de `skip` m (derrière l'objectif de la lunette) est ignoré. */
+  private losDistance(eye: Vector3, dir: Vector3, skip = 0): number {
     const R = this.data.rangeLimit;
+    const from = this.losFrom.copy(eye).addScaledVector(dir, skip);
     const far = this.v3.copy(eye).addScaledVector(dir, R);
+    const len = R - skip;
     let best = R;
     const hit = new Vector3();
-    if (this.terrain.raycast(eye.x, eye.y, eye.z, far.x, far.y, far.z, hit, 3)) best = eye.distanceTo(hit);
-    const d = this.col.segment(eye, far);
-    if (d >= 0 && d < best) best = d;
+    if (this.terrain.raycast(from.x, from.y, from.z, far.x, far.y, far.z, hit, 3)) best = eye.distanceTo(hit);
+    const d = this.col.segment(from, far);
+    if (d >= 0 && d + skip < best) best = d + skip;
     for (const t of this.shots.targets) {
       if (!t.active) continue;
-      const h = t.segment(eye, far);
-      if (h && h.t * R < best) best = h.t * R;
+      const h = t.segment(from, far);
+      if (h && h.t * len + skip < best) best = h.t * len + skip;
     }
     return best;
   }
+  private losFrom = new Vector3();
 
   // ------------------------------------------------------------------ caméras
   private nearT = 0;
@@ -1190,7 +1194,7 @@ export class Game {
           if (inp.click(0)) this.fire();
           if (inp.hit('KeyT')) {
             if (this.difficulty === 'real') this.ui.toast('Pas de télémètre', 'Estimez la distance au réticule : taille (m) × 1000 ÷ mils', 3);
-            else { this.range = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2)); this.rangeT = 8; this.audio.rangefinder(); this.tutoRanged = true; this.coachRange = { v: this.range, step: this.mission.step.id }; }
+            else { this.range = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2), MUZZLE_CLEAR); this.rangeT = 8; this.audio.rangefinder(); this.tutoRanged = true; this.coachRange = { v: this.range, step: this.mission.step.id }; }
           }
         } else if (inp.click(0)) this.ui.toast('Épaulez d’abord', 'Clic droit, accroupi ou couché', 1.8);
         if (inp.hit('KeyR')) this.rifle.reload();
@@ -1222,7 +1226,7 @@ export class Game {
       this.aimT -= dtReal;
       if (sc.active && this.aimT <= 0) {
         this.aimT = 0.25;
-        this.aimDist = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2));
+        this.aimDist = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2), MUZZLE_CLEAR);
         if (this.difficulty === 'assist') { this.range = this.aimDist < this.data.rangeLimit - 10 ? this.aimDist : null; this.rangeT = 1; }
       }
       this.rangeT -= dtReal;
