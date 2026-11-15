@@ -90,13 +90,13 @@ const truth = (page, id) => page.evaluate((id) => {
   const half = (g.targetWidth(t) / 2 / range) * 1000;
   return { range, measured: g.coachRange ? g.coachRange.v : null, book: s ? Math.max(0, s.elevMil) : null, rack: window.hr.level.weapons, off: Math.round((half * 1.7 + 0.8) * 10) / 10 };
 }, id);
-/** consignes chiffrées de l'encart complet, par axe (impératif suivi d'une valeur en mrad ou en clics) */
+/** consignes chiffrées de l'encart complet, par axe (impératif suivi d'une valeur en mrad) */
 const orders = (c) => {
   const t = [c.diag, c.why, ...c.steps, c.calibre].join('\n');
   const grab = (res) => res.flatMap((re) => [...t.matchAll(re)].map((m) => m[0]));
   return {
     v: grab([/(montez|descendez)[^.;\n]*? de [\d,]+ mrad/gi, /visez [\d,]+ mrad plus (haut|bas)/gi]),
-    h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /tournez-la de \d+ clics? vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
+    h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /donnez-lui [\d,]+ mrad de plus vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
   };
 };
 const single = (c, where) => { const o = orders(c); check(`${where} : au plus une consigne chiffrée par axe dans tout l’encart`, o.v.length <= 1 && o.h.length <= 1, JSON.stringify(o)); return o; };

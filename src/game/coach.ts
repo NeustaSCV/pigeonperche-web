@@ -258,7 +258,16 @@ export interface Advice {
 }
 
 const fr = (n: number, d = 0): string => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
-const clicks = (mil: number): string => { const n = Math.round(Math.abs(mil) * 10); return `${n} clic${n > 1 ? 's' : ''}`; };
+/**
+ * Ce qu'un angle représente sur la cible : 1 mrad = 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. Rend une correction
+ * concrète (« soit 9 cm à 75 m ») ; vide si la distance n'est pas connue.
+ */
+export function onTarget(mil: number, range: number | null): string {
+  if (range === null || !Number.isFinite(range) || range <= 0) return '';
+  const cm = (Math.abs(mil) * range) / 10;
+  const size = cm < 100 ? `${fr(Math.max(1, Math.round(cm)))} cm` : `${fr(cm / 100, 1)} m`;
+  return ` (soit ${size} à ${fr(Math.round(range))} m)`;
+}
 const NUM = ['', 'un', 'deux', 'trois', 'quatre', 'cinq', 'six', 'sept', 'huit', 'neuf', 'dix'];
 const count = (n: number): string => NUM[n] ?? String(n);
 const cap = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
@@ -271,7 +280,7 @@ const side = (mil: number): string => (Math.abs(mil) < 0.05 ? '0,0 mrad' : `${fr
  * (distance inconnue, niveau sans aide) et l'écart mesuré est alors la seule consigne.
  */
 interface AxisPlan { gap: number | null }
-/** en deçà, la tourelle est « à la valeur du carnet » (un demi-clic) */
+/** en deçà, la tourelle est « à la valeur du carnet » (un demi-pas de 0,05 mrad) */
 const AT_BOOK = 0.05;
 /** écart mesuré et écart tourelle/carnet tenus pour identiques en deçà, mrad */
 const SAME = 0.3;
@@ -297,7 +306,7 @@ function diagText(d: Diagnosis | null, c: CoachContext, plan: { v: AxisPlan; h: 
     parts.push(`environ ${fr(mil, 1)} mrad trop ${where}`);
     sh.push(`${fr(mil, 1)} mrad trop ${where}`);
     const k = both ? 'En hauteur : ' : '';
-    if (gap === null) fix.push(`${low ? 'montez' : 'descendez'} l’élévation de ${fr(mil, 1)} mrad (${clicks(mil)})`);
+    if (gap === null) fix.push(`${low ? 'montez' : 'descendez'} l’élévation de ${fr(mil, 1)} mrad${onTarget(mil, c.range)}`);
     else if (Math.abs(gap) < AT_BOOK) notes.push(`${k}${both ? 'v' : 'V'}otre tourelle est déjà à la valeur du carnet : l’écart vient de la visée, de la tenue de l’arme ou du vent. Pour le rattraper sans la dérégler, visez ${fr(mil, 1)} mrad plus ${low ? 'haut' : 'bas'}, sur les graduations du réticule.`);
     // tourelle sous le carnet et tirs bas (ou l'inverse) : le réglage explique tout ou partie de l'écart
     else if (gap > 0 === low) notes.push(Math.abs(mil - Math.abs(gap)) <= SAME
@@ -369,7 +378,7 @@ export function buildAdvice(c: CoachContext): Advice {
   const dialLine = known
     ? Math.abs(gap) < 0.05
       ? `Votre tourelle est à ${fr(c.elevDial, 1)} mrad : c’est la valeur du carnet.`
-      : `Votre tourelle est à ${fr(c.elevDial, 1)} mrad, le carnet donne ${fr(book, 1)} : ${gap > 0 ? 'montez' : 'descendez'} de ${fr(Math.abs(gap), 1)} mrad (${clicks(gap)}).`
+      : `Votre tourelle est à ${fr(c.elevDial, 1)} mrad, le carnet donne ${fr(book, 1)} : ${gap > 0 ? 'montez' : 'descendez'} de ${fr(Math.abs(gap), 1)} mrad${onTarget(gap, c.range)}.`
     : '';
   const hold = known && book > w.turretMaxMil + 0.05 ? ` La tourelle s’arrête à ${fr(w.turretMaxMil, 1)} mrad : le reste se vise plus haut, sur les graduations du réticule.` : '';
   /** dérive demandée par le vent du moment − réglage de la tourelle ; null si l'encart ne la chiffre pas */
@@ -379,7 +388,7 @@ export function buildAdvice(c: CoachContext): Advice {
     const need = s!.windMil;
     if (Math.abs(need) < 0.05 && Math.abs(c.windDial) < 0.05) return ` Ici le vent de ${fr(c.windSpeed!, 1)} m/s ne demande aucune correction.`;
     if (Math.abs(windGap) < AT_BOOK) return ` Ici, avec ${fr(c.windSpeed!, 1)} m/s de vent, il faut ${side(need)} : votre tourelle y est.`;
-    return ` Ici, avec ${fr(c.windSpeed!, 1)} m/s de vent, il faut ${side(need)} et votre tourelle est à ${side(c.windDial)} : tournez-la de ${clicks(windGap)} vers la ${windGap > 0 ? 'droite' : 'gauche'}.`;
+    return ` Ici, avec ${fr(c.windSpeed!, 1)} m/s de vent, il faut ${side(need)} et votre tourelle est à ${side(c.windDial)} : donnez-lui ${fr(Math.abs(windGap), 1)} mrad de plus vers la ${windGap > 0 ? 'droite' : 'gauche'}${onTarget(windGap, c.range)}.`;
   };
   const diag = diagText(c.diagnosis, c, { v: { gap: known && c.difficulty !== 'real' ? gap : null }, h: { gap: windGap } });
   let short = diag.short;
@@ -388,7 +397,7 @@ export function buildAdvice(c: CoachContext): Advice {
     why = 'Une balle tombe dès qu’elle quitte le canon, et de plus en plus vite avec la distance : la lunette doit viser plus haut, d’un angle que le carnet donne en mrad. Ici, pas de télémètre : tout commence par une bonne estimation de la distance.';
     steps.push(`<b>Estimez la distance au réticule</b> : taille connue de la cible (m) ÷ taille lue dans la lunette (mrad) × 1 000. Une plaque de 1 m qui couvre 0,5 mrad est à 2 000 m. Repères du briefing : ${c.intel}`);
     steps.push(`${t ? 'Bouton <b>Carnet</b>' : '<b>Tab</b>'} : le carnet de tir${c.advancedBook ? ' décomposé' : ''}. Sur la ligne de cette distance, l’<b>Élévation</b> (chute${c.advancedBook ? ' + Coriolis' : ''}) et la <b>Dérive</b>${c.advancedBook ? ' (dérive gyroscopique + Coriolis)' : ''} se lisent sans vent.`);
-    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez l’élévation sur la tourelle, 0,1 mrad par clic. Elle est à ${fr(c.elevDial, 1)} mrad. Au-delà de sa course (${fr(w.turretMaxMil, 1)} mrad), le reste se prend en contre-visée, sur les graduations sous le centre du réticule.`);
+    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez l’élévation sur la tourelle, par pas de 0,1 mrad. Elle est à ${fr(c.elevDial, 1)} mrad. Au-delà de sa course (${fr(w.turretMaxMil, 1)} mrad), le reste se prend en contre-visée, sur les graduations sous le centre du réticule.`);
     steps.push(`${t ? 'Boutons <b>G D</b>' : '<b>← →</b>'} : ajoutez la correction du vent, à lire sur les fanions et le mirage, du côté d’où il vient. Le carnet la donne pour 5 m/s de plein travers : la moitié pour 2,5 m/s.`);
     if (!short) short = 'Estimez la distance au réticule (taille ÷ mrad × 1 000), puis lisez le carnet.';
   } else if (c.difficulty === 'assist') {
@@ -397,7 +406,7 @@ export function buildAdvice(c: CoachContext): Advice {
       : 'Une balle tombe dès qu’elle quitte le canon, et de plus en plus avec la distance : la lunette doit viser plus haut, d’un angle que le carnet donne en mrad (1 mrad = 10 cm à 100 m).';
     steps.push(known ? `La <b>distance</b> est affichée en haut à droite de la lunette : ${fr(Math.round(c.range!))} m.` : 'En lunette, la <b>distance</b> de ce que vous visez est affichée en haut à droite.');
     steps.push(`${t ? 'Bouton <b>Carnet</b>' : '<b>Tab</b>'} : le carnet de tir. Lisez la ligne de cette distance, colonne <b>Élévation</b>.`);
-    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez-la sur la tourelle, 0,1 mrad par clic. ${dialLine}${hold}`.trim());
+    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez-la sur la tourelle, par pas de 0,1 mrad. ${dialLine}${hold}`.trim());
     steps.push(`Le <b>losange orange</b> montre où la balle arrivera : ${t ? 'boutons <b>G D</b>' : '<b>← →</b>'} pour la dérive, jusqu’à ce qu’il se pose sur la cible.${windLine()}`);
     if (known) short += `${short ? ' ' : ''}Carnet à ${fr(Math.round(c.range!))} m : ${fr(book, 1)} mrad ; tourelle : ${fr(c.elevDial, 1)}.`;
     else if (!short) short = 'Lisez la distance affichée, puis le carnet : reportez l’élévation sur la tourelle.';
@@ -407,7 +416,7 @@ export function buildAdvice(c: CoachContext): Advice {
       : 'Une balle tombe dès qu’elle quitte le canon, et de plus en plus avec la distance : à 400 m, une balle de .308 est déjà descendue d’un mètre. La lunette doit viser plus haut, d’un angle que le carnet donne en mrad (1 mrad = 10 cm à 100 m).';
     steps.push(known ? `<b>Distance</b> : vous l’avez mesurée, ${fr(Math.round(c.range!))} m. (${t ? 'Bouton <b>Télémètre</b>' : '<b>T</b>'} en visant la cible, pour la relire.)` : `${t ? 'Bouton <b>Télémètre</b>' : '<b>T</b>'} en visant la cible : le télémètre affiche sa <b>distance</b> en haut à droite.`);
     steps.push(`${t ? 'Bouton <b>Carnet</b>' : '<b>Tab</b>'} : le carnet de tir. Lisez la ligne de cette distance, colonne <b>Élévation</b>${known ? ` : ${fr(book, 1)} mrad` : ''}.`);
-    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez-la sur la tourelle, 0,1 mrad par clic. ${dialLine}${hold}`.trim());
+    steps.push(`${t ? 'Boutons <b>− +</b> de l’élévation' : '<b>↑ ↓</b>'} : reportez-la sur la tourelle, par pas de 0,1 mrad. ${dialLine}${hold}`.trim());
     steps.push(`${t ? 'Boutons <b>G D</b>' : '<b>← →</b>'} : corrigez la dérive du côté d’où vient le vent. Le carnet la donne pour 5 m/s de plein travers.${windLine()}`);
     if (known) short += `${short ? ' ' : ''}Carnet à ${fr(Math.round(c.range!))} m : ${fr(book, 1)} mrad ; tourelle : ${fr(c.elevDial, 1)}.`;
     else if (!short) short = `Mesurez la distance (${t ? 'Télémètre' : 'T'}), lisez le carnet (${t ? 'Carnet' : 'Tab'}), reportez l’élévation.`;

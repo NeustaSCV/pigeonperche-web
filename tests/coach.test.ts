@@ -205,7 +205,7 @@ describe('texte du conseil', () => {
   };
   const all = (a: ReturnType<typeof buildAdvice>): string => [a.title, a.diag, a.why, ...a.steps, a.calibre].join('\n');
 
-  it('standard, distance mesurée : chiffres réels de l’arme (distance, chute, carnet, tourelle, écart en clics)', () => {
+  it('standard, distance mesurée : chiffres réels de l’arme (distance, chute, carnet, tourelle, écart en mrad et sur la cible)', () => {
     const c = base();
     const a = buildAdvice(c);
     const s = c.solution!;
@@ -220,7 +220,7 @@ describe('texte du conseil', () => {
     expect(a.steps[0]).toContain('<b>T</b>');
     expect(a.steps[1]).toContain('<b>Tab</b>');
     expect(a.steps[2]).toContain('<b>↑ ↓</b>');
-    expect(a.steps[2]).toContain(`Votre tourelle est à 1,2 mrad, le carnet donne ${f1(book)} : montez de ${f1(book - 1.2)} mrad (${Math.round((book - 1.2) * 10)} clics)`);
+    expect(a.steps[2]).toContain(`Votre tourelle est à 1,2 mrad, le carnet donne ${f1(book)} : montez de ${f1(book - 1.2)} mrad (soit `);
     expect(a.steps[3]).toContain('3,0 m/s');
     expect(a.calibre).toBe('');
     expect(a.close).toContain('Entrée');
@@ -240,13 +240,13 @@ describe('texte du conseil', () => {
     expect(all(a)).not.toMatch(/\d+ m\/s de vent/);
     expect(a.short).toContain('Mesurez la distance');
   });
-  /** consignes chiffrées de l'encart complet, par axe : tout impératif suivi d'une valeur en mrad ou en clics */
+  /** consignes chiffrées de l'encart complet, par axe : tout impératif suivi d'une valeur en mrad */
   const orders = (a: ReturnType<typeof buildAdvice>): { v: string[]; h: string[] } => {
     const t = [a.diag, a.why, ...a.steps, a.calibre].join('\n').replace(/<\/?b>/g, '');
     const grab = (res: RegExp[]): string[] => res.flatMap((re) => [...t.matchAll(re)].map((m) => m[0]));
     return {
       v: grab([/(montez|descendez)[^.;\n]*? de [\d,]+ mrad/gi, /visez [\d,]+ mrad plus (haut|bas)/gi]),
-      h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /tournez-la de \d+ clics? vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
+      h: grab([/corrigez la dérive de [\d,]+ mrad à (gauche|droite)/gi, /donnez-lui [\d,]+ mrad de plus vers la (gauche|droite)/gi, /visez [\d,]+ mrad plus à (gauche|droite)/gi]),
     };
   };
   const bookOf = (c: CoachContext): number => Math.round((c.solution!.parts.drop + c.solution!.parts.coriolisV) * 10) / 10;
@@ -255,9 +255,9 @@ describe('texte du conseil', () => {
   const right = (mil: number) => diagnose([{ up: 0.1, right: mil + 0.1 }, { up: -0.1, right: mil - 0.1 }, { up: 0, right: mil }]);
   const left = (mil: number) => diagnose([{ up: 0.1, right: -mil + 0.1 }, { up: -0.1, right: -mil - 0.1 }, { up: 0, right: -mil }]);
 
-  it('carnet non chiffré (distance non mesurée) : l’écart mesuré est la seule consigne, en mrad et en clics', () => {
+  it('carnet non chiffré (distance non mesurée) : l’écart mesuré est la seule consigne, en mrad', () => {
     const a = buildAdvice(base({ range: null, diagnosis: low(0.8) }));
-    expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 0,8 mrad trop bas. Le plus direct : montez l’élévation de 0,8 mrad (8 clics).');
+    expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 0,8 mrad trop bas. Le plus direct : montez l’élévation de 0,8 mrad.');
     expect(a.short.startsWith('Impacts 0,8 mrad trop bas.')).toBe(true);
     const b = buildAdvice(base({ range: null, diagnosis: right(1.1) }));
     expect(b.diag).toContain('1,1 mrad trop à droite');
@@ -271,7 +271,7 @@ describe('texte du conseil', () => {
     expect(a.diag).toBe(`Vos trois derniers tirs sont passés environ ${f1(2 * book)} mrad trop bas. La tourelle n’est pas réglée pour cette distance : commencez par la mettre à la valeur du carnet (étape 3). Si les tirs restent bas ensuite, c’est la visée ou le vent.`);
     expect(a.diag).not.toMatch(/montez|descendez|clic/);
     expect(orders(a).v).toEqual([`montez de ${f1(book)} mrad`]);
-    expect(a.steps[2]).toContain(`Votre tourelle est à 0,0 mrad, le carnet donne ${f1(book)} : montez de ${f1(book)} mrad (${Math.round(book * 10)} clics).`);
+    expect(a.steps[2]).toContain(`Votre tourelle est à 0,0 mrad, le carnet donne ${f1(book)} : montez de ${f1(book)} mrad (soit `);
   });
   it('écart mesuré = écart tourelle/carnet : le conseil le dit, consigne à l’étape 3', () => {
     const c = base({ elevDial: 0 });
@@ -306,7 +306,7 @@ describe('texte du conseil', () => {
     expect(need).toBeLessThan(-0.3);
     const a = buildAdvice({ ...c, diagnosis: right(1.6) });
     expect(a.diag).toBe('Vos trois derniers tirs sont passés environ 1,6 mrad trop à droite. La dérive n’est pas réglée pour ce vent : commencez par là (étape 4). Si les tirs restent à droite ensuite, c’est la visée ou une saute de vent.');
-    expect(a.steps[3]).toContain(`Ici, avec 3,0 m/s de vent, il faut ${f1(need)} mrad à gauche et votre tourelle est à 0,0 mrad : tournez-la de ${Math.round(Math.abs(need) * 10)} clics vers la gauche.`);
+    expect(a.steps[3]).toContain(`Ici, avec 3,0 m/s de vent, il faut ${f1(need)} mrad à gauche et votre tourelle est à 0,0 mrad : donnez-lui ${f1(Math.abs(need))} mrad de plus vers la gauche`);
     expect(orders(a).h).toHaveLength(1);
     // tourelle de dérive déjà juste : écart mesuré, au réticule
     const b = buildAdvice({ ...c, windDial: Math.round(need * 10) / 10, diagnosis: left(0.9) });
@@ -321,7 +321,7 @@ describe('texte du conseil', () => {
     const e = buildAdvice({ ...c, elevDial: 0, diagnosis: diagnose([{ up: -3, right: 1.5 }, { up: -3.1, right: 1.6 }, { up: -2.9, right: 1.7 }]) });
     expect(e.diag).toContain('En hauteur : ');
     expect(e.diag).toContain('En dérive : ');
-    expect(orders(e)).toMatchObject({ v: [expect.stringMatching(/^montez de /)], h: [expect.stringMatching(/^tournez-la de /)] });
+    expect(orders(e)).toMatchObject({ v: [expect.stringMatching(/^montez de /)], h: [expect.stringMatching(/^donnez-lui /)] });
   });
   it('jamais deux consignes chiffrées pour le même axe, quels que soient le niveau, les tourelles et les impacts', () => {
     const c0 = base();
@@ -347,7 +347,9 @@ describe('texte du conseil', () => {
                   if (diagnosis?.vertical && difficulty !== 'real') expect(o.v.length, tag).toBe(1);
                   if (diagnosis?.horizontal && difficulty !== 'real') expect(o.h.length, tag).toBe(1);
                   // le diagnostic ne chiffre de correction que s'il porte la consigne de l'axe
-                  expect((a.diag.match(/\d+ clics?/g) ?? []).length, tag).toBeLessThanOrEqual(1);
+                  expect((a.diag.match(/\(soit /g) ?? []).length, tag).toBeLessThanOrEqual(1);
+                  // on ne parle jamais de « clics » : les corrections se disent en mrad
+                  expect([a.diag, a.why, a.short, a.calibre, ...a.steps].join(' '), tag).not.toMatch(/\bclics?\b/i);
                   n++;
                 }
     expect(n).toBeGreaterThan(1500);
@@ -424,5 +426,22 @@ describe('texte du conseil', () => {
   });
   it('phrase d’exemple du conseil sans distance : une .308 est bien descendue d’un mètre à 400 m', () => {
     expect(Math.abs(solveAt(400, 0)(W('308'))!.deflection.drop)).toBeCloseTo(1.06, 1);
+  });
+});
+
+describe('un angle rendu concret sur la cible', () => {
+  it('1 mrad = 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m', async () => {
+    const { onTarget } = await import('../src/game/coach');
+    expect(onTarget(1, 100)).toBe(' (soit 10 cm à 100 m)');
+    expect(onTarget(1, 200)).toBe(' (soit 20 cm à 200 m)');
+    // le séparateur de milliers est une espace fine insécable : on compare espaces normalisées
+    expect(onTarget(1, 1000).replace(/\s/g, ' ')).toBe(' (soit 1,0 m à 1 000 m)');
+    expect(onTarget(-1.6, 412)).toBe(' (soit 66 cm à 412 m)');
+    expect(onTarget(2.8, 412)).toBe(' (soit 1,2 m à 412 m)');
+    // distance inconnue : pas d'équivalent inventé
+    expect(onTarget(1.2, null)).toBe('');
+    expect(onTarget(1.2, NaN)).toBe('');
+    // une correction infime reste lisible
+    expect(onTarget(0.05, 65)).toBe(' (soit 1 cm à 65 m)');
   });
 });

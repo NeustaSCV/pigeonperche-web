@@ -594,7 +594,7 @@ else {
   await tapText(page, fingers, 'Continuer');
   await sleep(1500);
   let s = await G(page, () => ({ st: window.hr.game.state, step: window.hr.game.tutorial?.stepId, card: document.querySelector('.tuto').innerText, vis: !document.querySelector('.tuto').classList.contains('hidden') }));
-  check('tutoriel lancé par défaut à la première partie (Assisté)', s.st === 'play' && s.step === 'look' && s.vis && /Tutoriel · 1 \/ 16/i.test(s.card), s.card.replace(/\s+/g, ' ').slice(0, 90));
+  check('tutoriel lancé par défaut à la première partie (Assisté)', s.st === 'play' && s.step === 'look' && s.vis && /Tutoriel · 1 \/ 17/i.test(s.card), s.card.replace(/\s+/g, ' ').slice(0, 90));
   check('tutoriel : commande tactile du portrait, pas de touche ni de « moitié droite »', /pouce droit/i.test(s.card) && !/Souris|moitié/i.test(s.card), s.card.replace(/\s+/g, ' ').slice(-60));
   await geometry(page, 'tutoriel', NONE);
   await shot(page, 'tutoriel');
@@ -610,7 +610,7 @@ else {
       g.scope.enter(1.75, 0);
       g.rifle.zoom = 10;
       g.autoAim((window.hr.level.testTouch.near ?? window.hr.level.tutorial.near));
-      t.index = ['look', 'move', 'go', 'prone', 'scope', 'zoom', 'wind', 'range', 'book', 'elev', 'breath', 'fire', 'impact'].indexOf(id);
+      t.index = ['look', 'move', 'go', 'prone', 'scope', 'zoom', 'wind', 'range', 'mrad', 'book', 'elev', 'breath', 'fire', 'impact'].indexOf(id);
       t.flags.aimed = 0; t.flags.book = false;
       if (id === 'impact') t.onImpact(false);
       g.rifle.elevClicks = id === 'elev' ? 0 : g.rifle.elevClicks;

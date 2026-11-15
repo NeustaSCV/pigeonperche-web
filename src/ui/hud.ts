@@ -318,7 +318,7 @@ export class UI {
 
       <div class="screen veil-full" id="help"><div class="card wide scroll"><div class="kicker">Commandes${touch ? '<button class="xclose" data-act="closeHelp">Retour</button>' : ''}</div>${touch ? `<h2>Écran tactile</h2>
         ${touchHelpHtml()}
-        <p class="help-note" style="color:var(--dim)">Les boutons n’apparaissent que lorsqu’ils servent. Tourelles : un appui donne un clic de 0,1 mrad, un appui maintenu les enchaîne ; −1, +1, G1 et D1 donnent 1 mrad. On n’épaule que couché ou accroupi.</p>` : `<h2>Clavier et souris</h2>
+        <p class="help-note" style="color:var(--dim)">Les boutons n’apparaissent que lorsqu’ils servent. Tourelles : un appui ajoute 0,1 mrad, un appui maintenu les enchaîne ; −1, +1, G1 et D1 donnent 1 mrad. On n’épaule que couché ou accroupi.</p>` : `<h2>Clavier et souris</h2>
         <div class="keys">${KEYS.map(([a, b]) => `<div><span>${a}</span><kbd>${b}</kbd></div>`).join('')}</div>
         <p style="color:var(--dim)">Les touches sont lues par position : ZQSD sur un clavier français, WASD sur un clavier anglais. On ne peut épauler que couché (bipied) ou accroupi ; accroupi contre un mur, l’arme est appuyée et tremble moins.</p>`}
         <div class="local-scores hidden" data-id="localRow"><span data-id="localT"></span><button data-act="clearLocal" data-id="localB">Effacer</button></div>
@@ -751,7 +751,8 @@ export class UI {
           .map((r) => `<tr class="${r.velocity < 342 * 1.1 && def.v0 > 400 ? 'sub' : ''}"><td>${fr(r.range)} m</td><td>${r.elevMil < 0.05 ? '0,0' : fr(r.elevMil, 1)} mrad</td><td>${fr(r.windMil, 1)} mrad</td><td>${fr(r.time, 2)} s</td><td>${fr(r.velocity)} m/s</td><td>${fr(r.energy)} J</td></tr>`)
           .join('');
       this.el.dopeL.innerHTML = '';
-      this.el.bookN.innerHTML = '';
+      // le mrad est le cœur du jeu : le carnet rappelle ce qu'il représente
+      this.el.bookN.innerHTML = '<p><b>Le mrad est un angle.</b> 1 mrad couvre 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. L’<b>élévation</b> relève la lunette de cet angle pour compenser la chute de la balle ; la colonne du <b>vent</b> se corrige de même, à la dérive.</p>';
       this.el.bookH.textContent = `table calculée pour un tir à plat, vent traversier plein de ${fr(data.wind)} m/s`;
     } else {
       const e = adv.env;
@@ -779,7 +780,7 @@ export class UI {
           <div class="dl2">chute ${fr(r.drop, 1)} · Cor. ${sg1(r.coriolisV)} · gyro ${lr1(r.spin)} · Cor. ${lr1(r.coriolisH)} · saut ${jump(r)}</div></div>`)
         .join('');
       this.el.bookN.innerHTML =
-        `<p>Corrections en mrad. <b>Élévation</b> = chute + Coriolis vertical ; <b>Dérive</b> = dérive gyroscopique + Coriolis horizontal (D : à droite, G : à gauche), sans vent.</p>
+        `<p>Corrections en mrad, un angle : 1 mrad couvre 10 cm à 100 m, 1 m à 1 000 m. <b>Élévation</b> = chute + Coriolis vertical ; <b>Dérive</b> = dérive gyroscopique + Coriolis horizontal (D : à droite, G : à gauche), sans vent.</p>
         <p><b>Vent</b> : correction pour ${fr(data.wind)} m/s de plein travers, à prendre du côté d’où vient le vent. <b>Saut</b> : à ajouter à l’élévation si ce vent vient de la gauche, à retrancher s’il vient de la droite.</p>` +
         (anyHold ? `<p><span class="hold">+ x,x</span> : la tourelle est en butée à ${fr(data.turretMax, 1)} mrad ; le reste se prend en contre-visée, sur les graduations sous le centre du réticule (jusqu’à ${fr(data.holdMax)} mrad${adv.rows.some((r) => r.hold > data.holdMax) ? ' ; « ! » : au-delà' : ''}).</p>` : '');
       this.el.bookH.textContent = `table calculée pour un tir à plat à l’azimut ${fr(adv.azimuth)}°, vent traversier plein de ${fr(data.wind)} m/s`;

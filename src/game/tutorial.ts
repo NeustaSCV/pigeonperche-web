@@ -72,6 +72,8 @@ interface Flags {
   atPost: boolean;
   zoomed: boolean;
   aimed: number;
+  /** temps passé à observer la plaque au réticule pendant la leçon du mrad, s */
+  studied: number;
   ranged: boolean;
   book: boolean;
   held: number;
@@ -94,8 +96,20 @@ const fr0 = (n: number): string => Math.round(n).toLocaleString('fr-FR');
 const k = (s: TutoSnap, key: string, touch: string, portrait?: string): string => (s.touch ? (s.portrait && portrait ? portrait : touch) : key);
 /** où se lisent la distance et le vent en lunette */
 const info = (s: TutoSnap, cap = false): string => (s.portrait ? (cap ? 'Sous la lunette' : 'sous la lunette') : cap ? 'En haut à droite' : 'en haut à droite');
-/** tolérance sur la tourelle : deux clics et demi autour de la valeur du carnet */
+/** tolérance sur la tourelle : un quart de mrad autour de la valeur du carnet */
 const TURRET_TOL = 0.25;
+/**
+ * Le mrad est le cœur du jeu : un angle, donc une taille qui grandit avec la distance. 1 mrad = 10 cm à 100 m,
+ * 20 cm à 200 m, 1 m à 1 000 m. Ces deux aides rendent les chiffres concrets, à la distance de la cible.
+ */
+/** ce que couvre `mil` mrad à `dist` mètres, en clair (« 7 cm », « 1,2 m ») */
+export function milSize(mil: number, dist: number): string {
+  const cm = (Math.abs(mil) * dist) / 10;
+  if (cm < 100) return `${fr0(cm < 1 ? 1 : cm)} cm`;
+  return `${fr1(cm / 100)} m`;
+}
+/** secondes à garder la plaque dans le réticule pour valider la leçon du mrad : le temps de la lire */
+export const MRAD_STUDY = 6;
 const smallBore = (s: TutoSnap): boolean => s.weaponId === '22lr' || s.weaponId === '308sub';
 
 const STEPS: StepDef[] = [
@@ -136,7 +150,7 @@ const STEPS: StepDef[] = [
   },
   {
     id: 'zoom', title: 'Grossissement',
-    text: () => 'Cherchez large, grossissez pour viser. Le réticule grossit avec l’image : un point vaut toujours 1 mrad.',
+    text: () => 'Cherchez large, grossissez pour viser. Le réticule grossit avec l’image : ses graduations gardent toujours la même valeur.',
     cmd: (s) => k(s, '<b>Molette</b>', 'Boutons <b>+</b> et <b>−</b>, ou pincez à deux doigts'),
     halo: () => ['zin', 'zout'],
     check: (_s, f) => f.zoomed,
@@ -158,8 +172,17 @@ const STEPS: StepDef[] = [
     check: (s, f) => f.ranged || s.plate1Done,
   },
   {
+    id: 'mrad', title: 'Le mrad : un angle',
+    text: (s) => `Le réticule est gradué en mrad. Un mrad est un angle : il couvre 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. Ici, à ${fr0(s.dist1)} m, 1 mrad couvre ${milSize(1, s.dist1)} sur la plaque.`,
+    cmd: () => 'Gardez la plaque dans le réticule et comparez-la aux graduations',
+    halo: () => [],
+    check: (s, f) => f.studied >= MRAD_STUDY || s.plate1Done,
+  },
+  {
     id: 'book', title: 'Carnet de tir',
-    text: (s) => `Le carnet donne l’élévation pour chaque distance. Ouvrez-le : à ${fr0(s.dist1)} m, comptez ${fr1(s.need1)} mrad.`,
+    text: (s) => (s.need1 < 0.05
+      ? `La balle tombe en route, mais à ${fr0(s.dist1)} m elle n’a pas encore eu le temps : le carnet indique 0 mrad. Ouvrez-le pour voir la chute grandir avec la distance.`
+      : `La balle tombe en route : à ${fr0(s.dist1)} m, elle arrive ${milSize(s.need1, s.dist1)} sous la croix. Le carnet donne l’angle qui compense cette chute : ${fr1(s.need1)} mrad. Ouvrez-le.`),
     cmd: (s) => k(s, '<b>Tab</b> pour ouvrir et refermer', 'Bouton <b>Carnet</b>, en haut à droite', 'Bouton <b>Carnet</b>, en haut à gauche de la lunette'),
     halo: () => ['book'],
     check: (s, f) => f.book || s.plate1Done,
@@ -167,8 +190,8 @@ const STEPS: StepDef[] = [
   {
     id: 'elev', title: 'Tourelle d’élévation',
     text: (s) => (s.difficulty === 'assist'
-      ? `Montez l’élévation à ${fr1(s.need1)} mrad. Le losange doré montre l’impact prévu : il doit revenir au centre.`
-      : `Affichez ${fr1(s.need1)} mrad à la tourelle d’élévation : la balle tombera sur la croix à ${fr0(s.dist1)} m.`),
+      ? `Affichez ${fr1(s.need1)} mrad à la tourelle : la lunette se relève de cet angle et compense la chute. Le losange doré montre l’impact prévu : il doit revenir au centre.`
+      : `Affichez ${fr1(s.need1)} mrad à la tourelle d’élévation : la lunette se relève de cet angle, soit ${milSize(s.need1, s.dist1)} à ${fr0(s.dist1)} m, et la balle retombe sur la croix.`),
     cmd: (s) => k(s, '<b>↑ ↓</b> en lunette (<b>Maj droite</b> : 1 mrad) ou boutons du carnet', 'Boutons <b>Élévation</b> : <b>− +</b> (0,1 mrad) · <b>−1 +1</b>'),
     halo: () => ['e+1', 'e-1'],
     check: (s) => Math.abs(s.elev - s.need1) <= TURRET_TOL || s.plate1Done,
@@ -195,7 +218,7 @@ const STEPS: StepDef[] = [
       if (!f.missed) return 'Regardez où arrive la balle : l’acier sonne, la terre saute. Faites sonner la plaque carrée.';
       return s.difficulty === 'assist'
         ? 'Manqué. Ramenez le losange sur la plaque : c’est lui, pas la croix, qui montre l’impact.'
-        : 'Manqué. Trop bas : montez l’élévation. Dévié par le vent : visez du côté d’où il vient, ou donnez de la dérive.';
+        : 'Manqué. Mesurez l’écart sur le réticule : un impact 2 mrad sous la plaque se corrige en ajoutant 2 mrad d’élévation. Même principe à la dérive, contre le vent.';
     },
     cmd: (s) => (s.difficulty === 'assist' ? '' : k(s, 'Dérive : <b>← →</b>', 'Dérive : boutons <b>G</b> et <b>D</b>')),
     halo: (s) => (s.difficulty === 'assist' ? ['fire'] : ['w-1', 'w+1']),
@@ -220,8 +243,8 @@ const STEPS: StepDef[] = [
   {
     id: 'plate2', title: 'La plaque ronde',
     text: (s) => (s.difficulty === 'assist'
-      ? `À vous : ${s.site.postShort}, couché, lunette. Plaque ronde à ${fr0(s.dist2)} m : ${fr1(s.need2)} mrad au ${s.caliber}, puis le losange sur l’acier.`
-      : `À vous : ${s.site.postShort}, couché, lunette. Plaque ronde à ${fr0(s.dist2)} m : télémètre, carnet (${fr1(s.need2)} mrad au ${s.caliber}), tourelle, vent, souffle.`),
+      ? `À vous : ${s.site.postShort}, couché, lunette. Plaque ronde à ${fr0(s.dist2)} m, où 1 mrad couvre ${milSize(1, s.dist2)} : ${fr1(s.need2)} mrad au ${s.caliber}, puis le losange sur l’acier.`
+      : `À vous : ${s.site.postShort}, couché, lunette. Plaque ronde à ${fr0(s.dist2)} m, où 1 mrad couvre ${milSize(1, s.dist2)} : télémètre, carnet (${fr1(s.need2)} mrad au ${s.caliber}), tourelle, vent, souffle.`),
     cmd: () => '',
     halo: () => [],
     check: (s) => s.plate2Done,
@@ -237,7 +260,7 @@ export class Tutorial {
   /** étapes validées, dans l'ordre (pour les tests) */
   validated: string[] = [];
   view: TutoView | null = null;
-  private flags: Flags = { looked: 0, moved: 0, atPost: false, zoomed: false, aimed: 0, ranged: false, book: false, held: 0, fired: false, missed: false, reloaded: false };
+  private flags: Flags = { looked: 0, moved: 0, atPost: false, zoomed: false, aimed: 0, studied: 0, ranged: false, book: false, held: 0, fired: false, missed: false, reloaded: false };
   private prev: { yaw: number; pitch: number; x: number; z: number; zoom: number; shots: number } | null = null;
   /** temps restant d'affichage de la coche avant de passer à l'étape suivante */
   private flash = 0;
@@ -285,6 +308,8 @@ export class Tutorial {
     // viser la plaque : le réticule reste dessus (à 12 mrad près) un court instant
     if (s.scope && s.aimErr1 < 12) f.aimed += s.dt;
     else f.aimed = Math.max(0, f.aimed - s.dt * 2);
+    // leçon du mrad : le temps passé, plaque dans le réticule, à comparer la cible aux graduations
+    if (!this.finished && STEPS[this.index].id === 'mrad' && s.state === 'play' && s.scope && s.aimErr1 < 12) f.studied += s.dt;
     // mesure : déclenchée (standard), ou lue en continu sur la plaque (assisté)
     if (s.ranged) f.ranged = true;
     if (s.difficulty === 'assist' && s.scope && s.range !== null && Math.abs(s.range - s.dist1) < 12 && s.aimErr1 < 12) f.ranged = true;

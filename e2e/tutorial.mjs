@@ -20,7 +20,7 @@ const check = (name, ok, detail = '') => {
   console.log(`${ok ? 'OK    ' : 'ÉCHEC '} ${name}${detail ? ' — ' + detail : ''}`);
 };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const ORDER = ['look', 'move', 'go', 'prone', 'scope', 'zoom', 'wind', 'range', 'book', 'elev', 'breath', 'fire', 'impact', 'reload', 'rack', 'plate2'];
+const ORDER = ['look', 'move', 'go', 'prone', 'scope', 'zoom', 'wind', 'range', 'mrad', 'book', 'elev', 'breath', 'fire', 'impact', 'reload', 'rack', 'plate2'];
 
 async function desktopPage(query, viewport = { width: 1280, height: 720 }) {
   const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
@@ -117,7 +117,7 @@ async function runTutorial(page, d, diff, errors, { early = false, shots = null 
   const G = (f, a) => page.evaluate(f, a);
   await d.begin();
   let s = await info(page);
-  check(`${label} : tutoriel lancé, carte affichée, étape 1 / 16`, !!s && s.step === 'look' && s.shown && /1 \/ 16/.test(s.card) && s.state === 'play', s ? s.card.slice(0, 80) : 'pas de tutoriel');
+  check(`${label} : tutoriel lancé, carte affichée, étape 1 / 17`, !!s && s.step === 'look' && s.shown && /1 \/ 17/.test(s.card) && s.state === 'play', s ? s.card.slice(0, 80) : 'pas de tutoriel');
   if (!s) return;
   const cmdOk = d.name === 'tactile' ? /pouce droit/i.test(s.card) && !/souris|moitié/i.test(s.card) : /souris/i.test(s.card);
   check(`${label} : la carte nomme la commande ${d.name === 'tactile' ? 'tactile (portrait)' : 'clavier/souris'}`, cmdOk);
@@ -143,7 +143,7 @@ async function runTutorial(page, d, diff, errors, { early = false, shots = null 
     const st = await G(() => ({ st: window.hr.game.state, inline: document.querySelector('[data-id=tutoBook]').innerText }));
     await d.bookClose(); await sleep(400);
     s = await info(page);
-    check(`${label} : le joueur peut faire autre chose (carnet ouvert à l’étape 1), l’étape attend`, st.st === 'book' && s.state === 'play' && s.step === 'look' && /Tutoriel 1 \/ 16/i.test(st.inline), st.inline.slice(0, 60));
+    check(`${label} : le joueur peut faire autre chose (carnet ouvert à l’étape 1), l’étape attend`, st.st === 'book' && s.state === 'play' && s.step === 'look' && /Tutoriel 1 \/ 17/i.test(st.inline), st.inline.slice(0, 60));
   }
   await stepDo('look', () => d.look());
   await stepDo('move', async () => { await d.walkOn(false); await sleep(2600); await d.walkOff(); });
@@ -165,10 +165,14 @@ async function runTutorial(page, d, diff, errors, { early = false, shots = null 
     check(`${label} : étape 8 « range » validée par la lecture continue sur la plaque (losange affiché)`, ok && s.r !== null && s.pred, `distance ${s.r?.toFixed(0)} m`);
     await sleep(1050);
   } else await stepDo('range', async () => { await G(() => window.hr.game.autoAim(window.hr.level.tutorial.near)); await d.range(); });
+  // leçon du mrad : la plaque gardée dans le réticule le temps de lire (6 s), l'étape se valide d'elle-même
+  s = await G(() => ({ step: window.hr.game.tutorial.stepId, card: document.querySelector('.tuto').innerText.replace(/\s+/g, ' '), d: window.hr.game.tutoSnap.dist1 }));
+  check(`${label} : étape 9 « mrad » explique l’angle (10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m) et le chiffre à la distance de la plaque`, s.step === 'mrad' && /10 cm à 100 m, 20 cm à 200 m, 1 m à 1.000 m/.test(s.card) && s.card.includes(`1 mrad couvre ${Math.max(1, Math.round(s.d / 10))} cm`), s.card.slice(0, 260));
+  await stepDo('mrad', async () => { await G(() => window.hr.game.autoAim(window.hr.level.tutorial.near)); }, { wait: 14000 });
   if (early) {
     let ok = true;
     try { await page.waitForFunction(() => window.hr.game.tutorial.validated.includes('book'), null, { timeout: 4000 }); } catch { ok = false; }
-    check(`${label} : étape 9 « book » validée d’office (carnet déjà ouvert en avance)`, ok);
+    check(`${label} : étape 10 « book » validée d’office (carnet déjà ouvert en avance)`, ok);
     await sleep(1050);
   } else {
     await stepDo('book', () => d.book());
@@ -232,7 +236,7 @@ async function runTutorial(page, d, diff, errors, { early = false, shots = null 
   await sleep(300);
   await d.elev(Math.round(n2.need * 10) - n2.clicks);
   s = await info(page);
-  check(`${label} : étape 16 « plate2 » en attente au poste, élévation du carnet annoncée (${n2.need.toFixed(1)} mrad)`, back && s.step === 'plate2' && !s.finished && s.card.includes(n2.need.toFixed(1).replace('.', ',')), s.card.slice(0, 110));
+  check(`${label} : étape 17 « plate2 » en attente au poste, élévation du carnet annoncée (${n2.need.toFixed(1)} mrad)`, back && s.step === 'plate2' && !s.finished && s.card.includes(n2.need.toFixed(1).replace('.', ',')), s.card.slice(0, 110));
   if (shots) await page.screenshot({ path: `e2e/out/${shots}-plaque2.png` });
   hit = false; tries = 0;
   while (!hit && tries < 6) {

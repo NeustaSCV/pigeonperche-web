@@ -117,7 +117,7 @@ Les touches sont lues par position physique : ZQSD sur un clavier français, WAS
 | Tirer | Clic gauche |
 | Retenir son souffle | Espace ou Maj, en lunette |
 | Grossissement | Molette |
-| Tourelle d'élévation | ↑ ↓ par clics de 0,1 mrad (Maj droite : 1 mrad) |
+| Tourelle d'élévation | ↑ ↓ par pas de 0,1 mrad (Maj droite : 1 mrad) |
 | Tourelle de dérive | ← → |
 | Télémètre | T (niveaux facile et standard) |
 | Recharger | R |
