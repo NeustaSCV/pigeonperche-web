@@ -6,8 +6,11 @@
 export interface Pcm {
   /** fréquence d'échantillonnage du fichier, Hz */
   sr: number;
-  /** mono, −1..1 */
+  /** mono (moyenne des voies), −1..1 */
   data: Float32Array;
+  /** voies gauche et droite d'un fichier stéréo ; absentes d'un fichier mono */
+  l?: Float32Array;
+  r?: Float32Array;
 }
 
 export const SAMPLE_FILES = {
@@ -22,7 +25,7 @@ export const SAMPLE_FILES = {
 } as const;
 export type SampleName = keyof typeof SAMPLE_FILES;
 
-/** Lit un WAV PCM 16 bits (mono, ou stéréo ramené en mono). Renvoie null si ce n'en est pas un. */
+/** Lit un WAV PCM 16 bits, mono ou stéréo (les deux voies sont alors gardées, en plus de leur moyenne). Renvoie null si ce n'en est pas un. */
 export function parseWav(buf: ArrayBuffer): Pcm | null {
   try {
     const v = new DataView(buf);
@@ -38,12 +41,18 @@ export function parseWav(buf: ArrayBuffer): Pcm | null {
         const n = Math.floor(Math.min(len, buf.byteLength - o - 8) / (2 * ch));
         if (n < 64) return null;
         const data = new Float32Array(n);
+        const l = ch === 2 ? new Float32Array(n) : undefined;
+        const r = ch === 2 ? new Float32Array(n) : undefined;
         for (let i = 0; i < n; i++) {
           let s = 0;
           for (let c = 0; c < ch; c++) s += v.getInt16(o + 8 + (i * ch + c) * 2, true);
           data[i] = s / ch / 32768;
+          if (l && r) {
+            l[i] = v.getInt16(o + 8 + i * 4, true) / 32768;
+            r[i] = v.getInt16(o + 10 + i * 4, true) / 32768;
+          }
         }
-        return { sr, data };
+        return l && r ? { sr, data, l, r } : { sr, data };
       }
       o += 8 + len + (len & 1);
     }

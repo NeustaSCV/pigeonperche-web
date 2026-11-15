@@ -347,15 +347,15 @@ export const TEST_VIEWS: Record<string, { at: [number, number, number, 'stand' |
 
 /**
  * Écho du tir : éperon au-dessus d'une vallée douce. Une croupe proche à l'ouest, le versant du bourg et le coteau d'en
- * face vers 1 km au nord, les collines boisées de l'horizon ; pays ouvert, queue courte.
+ * face vers 1 km au nord, les collines boisées de l'horizon ; la croupe et sa lisière renvoient un écho net, comme le versant de la maquette.
  * Distances et azimuts relevés sur la carte de hauteur (pentes tournées vers le site). Voir src/levels/README.md.
  */
 export const ECHO = {
   reliefs: [
-    { distance: 260, bearing: 270, size: 0.15 },
+    { distance: 260, bearing: 270, size: 0.33 },
     { distance: 950, bearing: 0, size: 0.5 },
     { distance: 1050, bearing: 330, size: 0.45 },
     { distance: 1250, bearing: 150, size: 0.35 },
   ],
-  tail: 0.75,
+  tail: 0.9,
 };

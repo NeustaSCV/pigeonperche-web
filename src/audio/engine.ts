@@ -5,15 +5,14 @@
 //   ambiance ─► ambBus ─► ambFilter (ralenti / lunette) ─► ambDuck (oreilles après un tir) ─┐
 //   joueur (pas, souffle, cœur, mécanique) ─► sfx ───────────────────────────────────────────┤
 //   impacts, véhicules ─► world ─────────────────────────────────────────────────────────────┼─► masterIn ─► compresseur ─► limiteur ─► volume ─► sortie
-//   tir (tampon cuit par arme, shot-bake.ts) + queue diffuse ─► shotBus ─────────────────────┤
+//   tir et ses échos (tampons cuits par arme et par carte, shot-bake.ts) ─► shotBus ─► volume (ni compresseur ni limiteur)
 //   envois ─► reverbIn ─► convolution « vallée » ────────────────────────────────────────────┤
-//   tir ─► echoIn ─► étalement ─► retards des reliefs de la carte ─► filtres / panoramiques ──┘
 
 import type { AmbienceState, IAudioEngine, ImpactKind, Landmarks, Surface } from './types';
 import { SampleBank, type SampleName } from './samples';
 import { BAKE_SEC, bakeShot, type BakedShot } from './shot-bake';
 import { SR } from './shot-dsp';
-import { DEFAULT_ECHO, MAX_ECHO_TAPS, echoPan, echoTaps, shotSound, type EchoSpec, type EchoTap, type ShotSound, type ShotSource } from './shot-params';
+import { DEFAULT_ECHO, echoPan, shotSound, type EchoSpec, type ShotSound, type ShotSource } from './shot-params';
 import { Ambience } from './ambience';
 import {
   Kit,
@@ -21,7 +20,6 @@ import {
   clamp01,
   finite,
   makeBuffers,
-  makeSmearIR,
   makeThump,
   makeValleyIR,
   rnd,
@@ -44,8 +42,6 @@ interface Graph {
   ui: GainNode;
   shotBus: GainNode;
   reverbIn: GainNode;
-  echoIn: GainNode;
-  echo: EchoChain[];
   amb: Ambience;
   breathF: BiquadFilterNode;
   breathG: GainNode;
@@ -74,31 +70,13 @@ interface Cont {
 }
 
 const AMB_LEVEL = 0.5;
-/** niveau de la détonation du .50 BMG à l'entrée du compresseur de sortie */
-const SHOT_GAIN = 2;
-/** étalonnage de la queue diffuse et des échos (mesurés en sortie de mixage : e2e/audio.mjs) */
-const TAIL_CAL = 1;
-const ECHO_CAL = 0.5;
+/** crête de la détonation du .50 BMG en sortie (le tampon cuit plafonne sous 1 : pas d'écrêtage possible à lui seul) */
+const SHOT_GAIN = 0.7;
 const MECH_GAIN = 0.16;
-/** queue diffuse : fréquence (Hz), constante de temps (s), gain de chaque bande */
-const TAIL_BANDS: ReadonlyArray<readonly [number, number, number]> = [
-  [140, 0.42, 1.0],
-  [420, 0.34, 0.9],
-  [1200, 0.22, 0.6],
-  [3200, 0.12, 0.32],
-  [7500, 0.06, 0.14],
-];
-
-interface EchoChain {
-  delay: DelayNode;
-  lp: BiquadFilterNode;
-  gain: GainNode;
-  pan: StereoPannerNode;
-}
-
 interface Baked {
   sound: ShotSound;
   shot: BakedShot;
+  echoBufs?: AudioBuffer[] | null;
   buffer: AudioBuffer | null;
 }
 
@@ -138,7 +116,6 @@ export class AudioEngine implements IAudioEngine {
   private volume = 0.8;
   private landmarks: Landmarks | null = null;
   private echoSpec: EchoSpec = DEFAULT_ECHO;
-  private taps: EchoTap[] = echoTaps(DEFAULT_ECHO);
   private samples = new SampleBank();
   private sampleBufs = new Map<SampleName, AudioBuffer>();
   private bakes = new Map<string, Baked>();
@@ -246,8 +223,8 @@ export class AudioEngine implements IAudioEngine {
 
   setEcho(spec: EchoSpec | null | undefined): void {
     this.echoSpec = spec ?? DEFAULT_ECHO;
-    this.taps = echoTaps(this.echoSpec);
-    this.run((n) => this.applyEcho(n));
+    // les échos sont cuits avec le tir : une autre carte, d'autres tampons
+    this.bakes.clear();
   }
 
   prepareShot(w: ShotSource): void {
@@ -280,28 +257,27 @@ export class AudioEngine implements IAudioEngine {
       v.connect(n.shotBus);
       src.start(t);
 
-      // échos des reliefs de la carte : chaque retard garde l'azimut de son relief, quel que soit le regard
-      const es = k.gain(Math.pow(10, p.echoBoostDb / 20));
-      v.connect(es);
-      es.connect(n.echoIn);
-      for (let i = 0; i < this.taps.length && i < n.echo.length; i++) n.echo[i].pan.pan.value = echoPan(this.taps[i].bearing, this.fx, this.fz);
-      // réverbération de vallée : un voile, dosé par la carte
-      const tailMap = clamp(finite(this.echoSpec.tail ?? 1, 1), 0, 2);
-      const rs = k.gain(0.1 * tailMap * (p.suppressed ? 0.3 : 1));
-      v.connect(rs);
-      rs.connect(n.reverbIn);
-
-      // queue diffuse : l'aigu meurt vite, le grave traîne ; stéréo décorrélée
-      const tg = k.gain(lvl * b.shot.ref * Math.pow(10, p.tailDb / 20) * TAIL_CAL * tailMap);
-      tg.connect(n.shotBus);
-      let end = t + BAKE_SEC;
-      const kt = p.tailK * (0.55 + 0.45 * tailMap);
-      for (const [f, tau, g] of TAIL_BANDS) {
-        const bg = g * (f >= 3000 ? 0.35 + 1.3 * p.tailBright : f >= 1000 ? 0.6 + p.tailBright : 1);
-        k.burst(tg, t + 0.006, { n: 'pink', f, q: 0.7, a: 0.02, d: tau * kt * 6.9, g: bg, pan: -0.7, rate: 1 });
-        end = Math.max(end, k.burst(tg, t + 0.011, { n: 'pink', f, q: 0.7, a: 0.02, d: tau * kt * 6.9, g: bg, pan: 0.7, rate: 0.83 }));
+      // échos des reliefs de la carte : chacun revient du côté de son relief, quel que soit le regard
+      if (!b.echoBufs) {
+        b.echoBufs = b.shot.echoes.map((e) => {
+          const eb = ctx.createBuffer(1, e.data.length, SR);
+          eb.getChannelData(0).set(e.data);
+          return eb;
+        });
       }
-      const last = this.taps.length ? this.taps[this.taps.length - 1].delay : 0;
+      const held: AudioNode[] = [v];
+      let end = t + BAKE_SEC;
+      b.shot.echoes.forEach((e, i) => {
+        const es = ctx.createBufferSource();
+        es.buffer = (b.echoBufs as AudioBuffer[])[i];
+        es.playbackRate.value = src.playbackRate.value;
+        const pn = k.pan(echoPan(e.bearing, this.fx, this.fz));
+        es.connect(pn);
+        pn.connect(v);
+        es.start(t + e.delay);
+        held.push(es, pn);
+        end = Math.max(end, t + e.delay + e.data.length / SR + 0.1);
+      });
       src.onended = () => {
         try {
           src.disconnect();
@@ -309,7 +285,7 @@ export class AudioEngine implements IAudioEngine {
           /* déjà déconnecté */
         }
       };
-      k.release(Math.max(end, t + last + 2.5) + 0.3, v, es, rs, tg);
+      k.release(end + 0.3, ...held);
 
       // oreilles : l'ambiance s'efface brièvement après un tir fort
       const duck = p.duck;
@@ -332,7 +308,7 @@ export class AudioEngine implements IAudioEngine {
     this.lastWeapon = w;
     if (had && had.shot.recorded === !!attack) return had;
     if (this.bakes.size > 5) this.bakes.clear();
-    const b: Baked = { sound: p, shot: bakeShot(p, attack), buffer: null };
+    const b: Baked = { sound: p, shot: bakeShot(p, attack, this.echoSpec), buffer: null };
     this.bakes.set(key, b);
     return b;
   }
@@ -366,17 +342,6 @@ export class AudioEngine implements IAudioEngine {
     };
     src.start(t);
     return true;
-  }
-
-  private applyEcho(n: Graph): void {
-    for (let i = 0; i < n.echo.length; i++) {
-      const c = n.echo[i];
-      const tap = this.taps[i];
-      c.gain.gain.value = tap ? tap.gain * ECHO_CAL : 0;
-      if (!tap) continue;
-      c.delay.delayTime.value = tap.delay;
-      c.lp.frequency.value = n.k.hz(tap.lowpass);
-    }
   }
 
   boltOpen(): void {
@@ -810,9 +775,10 @@ export class AudioEngine implements IAudioEngine {
     const ui = k.gain(0.9);
     ui.connect(masterIn);
 
-    // tir : le tampon est déjà saturé en douceur à la cuisson (shot-bake.ts) ; bus propre vers le mixage
+    // tir : tampon déjà saturé en douceur à la cuisson (shot-bake.ts). Il contourne le compresseur et le limiteur de
+    // sortie, qui rabotaient l'attaque de 4 dB et faisaient remonter le corps : il rejoint directement le volume.
     const shotBus = k.gain(1);
-    shotBus.connect(masterIn);
+    shotBus.connect(vol);
 
     // réverbération de vallée
     const reverbIn = k.gain(1);
@@ -822,32 +788,6 @@ export class AudioEngine implements IAudioEngine {
     reverbIn.connect(conv);
     conv.connect(reverbOut);
     reverbOut.connect(masterIn);
-
-    // échos discrets : versants à distance fixe, de plus en plus sourds et faibles
-    const echoIn = k.gain(1);
-    const echoHp = k.filter('highpass', 70, 0.5);
-    const smear = ctx.createConvolver();
-    smear.buffer = makeSmearIR(ctx);
-    const echoOut = k.gain(1.6);
-    const echoRev = k.gain(0.5);
-    echoIn.connect(echoHp);
-    echoHp.connect(smear);
-    const echo: EchoChain[] = [];
-    for (let i = 0; i < MAX_ECHO_TAPS; i++) {
-      const d = ctx.createDelay(16);
-      const lp = k.filter('lowpass', 2000, 0.6);
-      const g = k.gain(0);
-      const p = k.pan(0);
-      smear.connect(d);
-      d.connect(lp);
-      lp.connect(g);
-      g.connect(p);
-      p.connect(echoOut);
-      echo.push({ delay: d, lp, gain: g, pan: p });
-    }
-    echoOut.connect(masterIn);
-    echoOut.connect(echoRev);
-    echoRev.connect(reverbIn);
 
     // souffle
     const bS = k.loop('pink', 1.07);
@@ -904,8 +844,6 @@ export class AudioEngine implements IAudioEngine {
       ui,
       shotBus,
       reverbIn,
-      echoIn,
-      echo,
       amb: null as unknown as Ambience,
       breathF,
       breathG,
@@ -921,7 +859,6 @@ export class AudioEngine implements IAudioEngine {
     this.n = g;
     g.amb = new Ambience(k, ambBus, reverbIn, host);
     if (this.landmarks) g.amb.landmarks = this.landmarks;
-    this.applyEcho(g);
     return g;
   }
 

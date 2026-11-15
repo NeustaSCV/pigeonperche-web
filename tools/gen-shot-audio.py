@@ -4,8 +4,7 @@
 Usage : python3 tools/gen-shot-audio.py <dossier de la banque>
         (le dossier qui contient weapons/shots/, weapons/mech/ ; licences et auteurs : voir CREDITS.md)
 
-Attaques de tir : 0,26 à 0,30 s (0,15 s pour le petit calibre), une voie, 48 kHz, 16 bits ; coupe-bas à 45 Hz
-(24 dB/octave) ; fondu de sortie de 0,12 à 0,14 s.
+Attaques de tir : 0,30 s, stéréo, 48 kHz, 16 bits ; coupe-bas à 45 Hz (24 dB/octave) ; fondu de sortie de 0,12 s.
 Le jeu n'en garde que l'attaque et le corps : le grave, la queue et les échos sont synthétisés (src/audio/shot-bake.ts).
 Mécanique : culasse ouverte, culasse refermée, douille au sol ; mono, 32 kHz, 16 bits.
 Format : WAV PCM non compressé, lu par le jeu sans décodeur (src/audio/samples.ts), donc identique sur tous les navigateurs.
@@ -41,18 +40,21 @@ def fade_out(x, n):
     return x
 
 
-# attaques : une par classe de calibre ; voie retenue = celle dont l'attaque est la plus raide (0,3 à 1,4 ms de 10 à 90 %)
-# Les prises ont un retour net vers 0,22 s (butte du stand d'enregistrement) : le fondu de sortie commence à 0,12 s pour
-# l'effacer, l'écho du jeu étant celui de la carte. La prise « small » est celle d'un pistolet semi-automatique : on n'en garde que 0,15 s, avant le bruit de sa culasse.
-for name, rel, ch, dur, fade in [('shot-small.wav', 'weapons/shots/shot_small_01.wav', 1, 0.15, 0.09),
-                                 ('shot-intermediate.wav', 'weapons/shots/shot_intermediate_01.wav', 0, 0.26, 0.14),
-                                 ('shot-medium.wav', 'weapons/shots/shot_medium_01.wav', 1, 0.26, 0.14),
-                                 ('shot-magnum.wav', 'weapons/shots/shot_magnum_03.wav', 0, 0.26, 0.14),
-                                 ('shot-suppressed.wav', 'weapons/shots/shot_suppressed_01.wav', 0, 0.30, 0.12)]:
-    sr, x = load(rel, ch)
-    assert sr == 48000
-    x = signal.sosfilt(signal.butter(4, 45, 'highpass', fs=sr, output='sos'), x)
-    save(name, fade_out(x[: int(dur * sr)].copy(), int(fade * sr)), sr)
+# attaques : une par classe de calibre, en stéréo (les deux micros de la prise sont espacés : c'est ce qui donne sa
+# largeur au tir), 0,30 s avec un fondu de sortie de 0,12 s — exactement ce que la maquette retenue faisait entendre.
+for name, rel in [('shot-small.wav', 'weapons/shots/shot_small_01.wav'),
+                  ('shot-intermediate.wav', 'weapons/shots/shot_intermediate_01.wav'),
+                  ('shot-medium.wav', 'weapons/shots/shot_medium_01.wav'),
+                  ('shot-magnum.wav', 'weapons/shots/shot_magnum_03.wav'),
+                  ('shot-suppressed.wav', 'weapons/shots/shot_suppressed_01.wav')]:
+    sr, x = wavfile.read(os.path.join(SRC, rel))
+    assert sr == 48000 and x.ndim == 2
+    x = x.astype(np.float64) / 32768.0
+    x = signal.sosfilt(signal.butter(4, 45, 'highpass', fs=sr, output='sos'), x, axis=0)
+    x = x[: int(0.30 * sr)].copy()
+    n = int(0.12 * sr)
+    x[-n:] *= np.linspace(1, 0, n)[:, None]
+    save(name, x, sr)
 
 # mécanique : rééchantillonnée à 32 kHz
 for name, rel, dur in [('bolt-open.wav', 'weapons/mech/bolt_open_01.wav', 0.57), ('bolt-close.wav', 'weapons/mech/bolt_close_01.wav', 0.64),

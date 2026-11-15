@@ -19,7 +19,6 @@ Aucune effusion de sang : les cibles sont des plaques, des ballons, des silhouet
 - [Déploiement](#déploiement)
 - [Tests](#tests)
 - [Organisation du code](#organisation-du-code)
-- [Limites connues](#limites-connues)
 - [Licences](#licences)
 
 ## Installation
@@ -309,17 +308,6 @@ docs/captures/ images de ce README
 ```
 
 Pour ajouter une carte, lisez `src/levels/README.md` : un niveau est un dossier, reconnu sans toucher aux fichiers communs.
-
-## Limites connues
-
-- **Jamais joué de bout en bout par une personne sur les trois cartes.** Tout a été vérifié par tests automatisés et par lecture de captures. Les mouvements, le rythme et le confort restent à juger en jouant.
-- **Son** : synthétisé, sauf l'attaque du coup de feu et la culasse (huit enregistrements CC0, `CREDITS.md`) ; le tir de chaque arme est dérivé de sa fiche et l'écho des reliefs de la carte. Vérifié par des mesures (`e2e/audio.mjs`, `e2e/audio-mesures.py`) et non à l'oreille.
-- **Téléphone réel** : seul le niveau d'origine a été ouvert sur un iPhone. Les commandes tactiles sont testées dans un navigateur de bureau en fenêtre portrait.
-- **Mission standard automatisée** : le tireur automatique prend parfois un tir de plus sur une cible mobile (véhicule), selon l'instant où le coup part.
-- **Personnage** : silhouette simple, sans animation de visage.
-- **Ciel** : une seule photographie de ciel, éclaircie par niveau.
-- **Rivière de la carte facile** : vue de très haut et à la verticale, elle apparaît encore par plaques ; depuis le site de tir et à la lunette, elle est continue.
-- **Titre** : la lettre P manuscrite se lit un peu comme un R.
 
 ## Licences
 

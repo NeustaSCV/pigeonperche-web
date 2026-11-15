@@ -1,8 +1,9 @@
 // Paramètres sonores d'un coup de feu, dérivés de la fiche de l'arme (src/config/weapons.ts) : masse de balle,
 // vitesse, charge de poudre, type de bouche. Fonctions pures, sans Web Audio : testées dans tests/shot-audio.test.ts.
 //
-// Le tir est « hybride » : une courte attaque enregistrée (0,3 s, une par classe de calibre), puis le grave, la queue
-// et les échos synthétisés. Cinq attaques pour dix-sept armes : ce qui sépare deux armes d'une même classe est
+// Le tir est « hybride » : une courte attaque enregistrée (0,3 s, stéréo, une par classe de calibre), puis le grave,
+// la queue et les échos synthétisés. Les dosages sont ceux de la maquette retenue (attaque au premier plan, grave
+// d'appoint, queue vers −21 à −15 dB, premier écho d'un versant à 230 m à −17 dB) : ne pas les « assagir ». Cinq attaques pour dix-sept armes : ce qui sépare deux armes d'une même classe est
 // calculé ici (hauteur de lecture de l'attaque, poids et durée du coup sourd, niveau, queue, écho, gerbes du frein).
 
 export type MuzzleKind = 'none' | 'brake2' | 'brake3' | 'tank' | 'suppressor';
@@ -86,7 +87,7 @@ const CLASS_RATE: Record<Exclude<AttackClass, 'suppressed'>, [number, number]> =
   intermediate: [1.04, 0.98],
   medium: [1.06, 0.94],
   // l'attaque « magnum » est une prise de .30-06 : lue telle quelle vers le .300, abaissée de quatre demi-tons pour le .50
-  magnum: [1.05, 0.8],
+  magnum: [1.05, 0.84],
 };
 
 export function shotSound(w: ShotSource): ShotSound {
@@ -106,36 +107,33 @@ export function shotSound(w: ShotSource): ShotSound {
     rate = lerp(CLASS_RATE[attack][0], CLASS_RATE[attack][1], (power - lo) / (hi - lo));
   }
 
-  // Niveau : l'écart réel entre un .22 LR et un .50 BMG dépasse 40 dB ; le jeu en garde dix-sept avant le
-  // compresseur de sortie. Un frein renvoie le souffle vers le tireur (+1,5 à +2,5 dB) ; un modérateur l'étouffe.
-  let levelDb = -17 * Math.pow(1 - power, 1.3);
-  if (muzzle === 'tank') levelDb += 0.6;
-  else if (brake) levelDb += 0.3;
-  if (suppressed) levelDb = -23 - 6 * (1 - power);
-  levelDb = Math.min(0.6, levelDb);
+  // Niveau de crête du tir dans le mixage, relevé sur la maquette : .22 LR à −7,6 dB, du .223 au .50 presque à
+  // égalité (c'est la durée, le grave et la queue qui font la différence de force), modérateur à −10,7 dB.
+  let levelDb = -7.6 * Math.pow(1 - power, 2.5);
+  if (suppressed) levelDb = -10.7;
 
   const heavy = clamp01((power - 0.5) / 0.5);
   return {
     id: w.id, energyJ, s, power, muzzle, brake, suppressed, supersonic, attack, rate,
     blastT: 0.0002 * Math.cbrt(w.chargeGr / CHARGE_MIN),
-    // coup sourd : de 260 Hz (.22 LR) à 130 Hz (.50 BMG) au départ, il chute d'une octave ; c'est lui qui sépare
-    // un .338 d'un .50 partis de la même attaque (gain en cube de la puissance, moindre derrière un frein)
+    // coup sourd : de 260 Hz (.22 LR) à 130 Hz (.50 BMG) au départ, il chute d'une octave ; simple appoint sous
+    // l'attaque enregistrée (cube de la charge, rien sous le .223) : c'est lui qui sépare un .338 d'un .50
     thump: {
-      f0: 260 - 130 * s, f1: 110 - 50 * s, fTau: 0.025 + 0.04 * s, tau: 0.02 + 0.075 * s * s,
-      gain: suppressed ? 0 : (0.02 + 0.95 * Math.pow(power, 5)) * (brake ? 0.9 : 1),
+      f0: 260 - 130 * s, f1: 110 - 50 * s, fTau: 0.025 + 0.04 * s, tau: 0.02 + 0.065 * s,
+      gain: suppressed || s <= 0.3 ? 0 : 0.4 * s * s * s,
     },
-    body: { gain: suppressed ? 0 : 0.5 * heavy * heavy, tau: 0.02 + 0.07 * heavy * heavy },
+    body: { gain: 0, tau: 0.02 + 0.07 * heavy * heavy },
     side: {
       gain: muzzle === 'tank' ? 0.34 : muzzle === 'brake3' ? 0.26 : muzzle === 'brake2' ? 0.2 : 0,
       delay: muzzle === 'tank' ? 0.0009 : 0.0005,
       lowpass: muzzle === 'tank' ? 5200 : 9000,
     },
     levelDb, level: Math.pow(10, levelDb / 20),
-    drive: suppressed ? 1.05 : 1.15 + 0.9 * power,
-    tailK: suppressed ? 0.45 : 0.5 + 1.25 * Math.pow(power, 1.5),
-    tailBright: suppressed ? 0.1 : muzzle === 'none' ? 0.5 : 0.62,
-    tailDb: suppressed ? -34 : -27 + 7 * power,
-    echoBoostDb: suppressed ? -9 : 6 * power,
+    drive: 1.15 + 0.9 * s,
+    tailK: (0.5 + 1.15 * s) * (suppressed ? 0.5 : 1),
+    tailBright: suppressed ? 0.1 : 0.55,
+    tailDb: -21 + 6 * s - (suppressed ? 8 : 0),
+    echoBoostDb: 5 * s - (suppressed ? 8 : 0),
     duck: suppressed ? 0.03 : clamp01(0.1 + 0.72 * Math.pow(power / 0.8, 1.6)),
   };
 }
@@ -178,14 +176,16 @@ export interface EchoTap {
   gain: number;
   /** coupure du passe-bas : l'air mange l'aigu avec la distance */
   lowpass: number;
+  /** étalement du retour, s : un relief lointain ou large renvoie un son plus long et plus flou */
+  rough: number;
   bearing: number;
 }
 
 /**
- * Niveau du premier écho : un versant de taille 0,6 à 230 m revient 27 dB sous la détonation (la maquette, exprès
- * exagérée, le plaçait à −17 dB), puis −9 dB par doublement de la distance et 20·log10 de la taille.
+ * Niveau du premier écho : un versant de taille 0,6 à 230 m revient 17 dB sous la détonation (valeur de la maquette
+ * retenue), puis −9 dB par doublement de la distance et 20·log10 de la taille.
  */
-export const ECHO_REF_DB = -27;
+export const ECHO_REF_DB = -17;
 
 export function echoTaps(spec: EchoSpec | undefined | null): EchoTap[] {
   const reliefs = (spec ?? DEFAULT_ECHO).reliefs.filter((r) => r.distance > 30 && r.size > 0);
@@ -193,7 +193,7 @@ export function echoTaps(spec: EchoSpec | undefined | null): EchoTap[] {
     .map((r) => {
       const d = Math.min(r.distance, 2600);
       const db = ECHO_REF_DB - 9 * Math.log2(d / 230) + 20 * Math.log10(Math.min(1.2, r.size) / 0.6);
-      return { delay: (2 * d) / SOUND_SPEED, db, gain: Math.pow(10, db / 20), lowpass: 500 + 4500 * Math.exp(-d / 450), bearing: r.bearing };
+      return { delay: (2 * d) / SOUND_SPEED, db, gain: Math.pow(10, db / 20), lowpass: 500 + 4500 * Math.exp(-d / 450), rough: Math.min(0.4, 0.14 * Math.pow(d / 230, 0.6)), bearing: r.bearing };
     })
     .sort((a, b) => b.db - a.db)
     .slice(0, MAX_ECHO_TAPS)

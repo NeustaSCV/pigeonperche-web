@@ -75,11 +75,12 @@ describe('paramètres sonores dérivés des fiches', () => {
     const a = S('338lm'), b = S('50bmg');
     expect(a.attack).toBe('magnum');
     expect(b.attack).toBe('magnum');
-    expect(b.thump.gain / a.thump.gain).toBeGreaterThan(2);
+    // dosages de la maquette : le .50 est lu trois demi-tons plus bas, avec près de deux fois plus de coup sourd
+    expect(b.thump.gain / a.thump.gain).toBeGreaterThan(1.6);
     expect(a.rate - b.rate).toBeGreaterThan(0.12);
-    expect(b.thump.tau).toBeGreaterThan(a.thump.tau * 1.3);
-    expect(b.levelDb - a.levelDb).toBeGreaterThan(1.5);
-    expect(b.side.gain).toBeGreaterThan(a.side.gain);
+    expect(b.thump.tau).toBeGreaterThan(a.thump.tau * 1.1);
+    expect(b.tailK).toBeGreaterThan(a.tailK * 1.1);
+    expect(b.tailDb).toBeGreaterThan(a.tailDb + 1);
   });
 
   it('lit la bouche dans build.muzzle : frein, canon nu, modérateur', () => {
@@ -100,8 +101,9 @@ describe('paramètres sonores dérivés des fiches', () => {
     expect(p.attack).toBe('suppressed');
     expect(p.thump.gain).toBe(0);
     expect(p.side.gain).toBe(0);
-    expect(p.levelDb).toBeLessThan(S('22lr').levelDb - 5);
-    expect(p.levelDb).toBeLessThan(S('308').levelDb - 18);
+    // le plus discret de tous (−10,7 dB de crête dans la maquette), avec une queue et des échos 8 dB plus bas
+    for (const w of WEAPONS) if (w.id !== '308sub') expect(p.levelDb, w.id).toBeLessThan(shotSound(w).levelDb - 2.5);
+    expect(p.levelDb).toBeLessThan(S('308').levelDb - 9);
     expect(p.duck).toBeLessThan(0.05);
     expect(p.echoBoostDb).toBeLessThan(-6);
     // le .22 LR est subsonique lui aussi ; toutes les autres armes claquent
@@ -111,7 +113,7 @@ describe('paramètres sonores dérivés des fiches', () => {
 });
 
 describe('fichiers enregistrés', () => {
-  it('sont tous des WAV PCM lisibles, pour moins de 300 Ko au total', () => {
+  it('sont tous des WAV PCM lisibles, pour moins de 450 Ko au total', () => {
     let total = 0;
     for (const name of Object.keys(SAMPLE_FILES) as SampleName[]) {
       const b = file(name);
@@ -120,12 +122,14 @@ describe('fichiers enregistrés', () => {
       expect(p, name).not.toBeNull();
       expect(p.data.length / p.sr).toBeGreaterThan(0.1);
       expect(p.data.length / p.sr).toBeLessThan(0.7);
+      // les attaques de tir sont stéréo (deux micros espacés : la largeur du tir vient de là), la mécanique mono
+      expect(!!p.l && !!p.r, name).toBe(['small', 'intermediate', 'medium', 'magnum', 'suppressed'].includes(name));
       let pk = 0;
-      for (let i = 0; i < p.data.length; i++) pk = Math.max(pk, Math.abs(p.data[i]));
+      for (const c of p.l && p.r ? [p.l, p.r] : [p.data]) for (let i = 0; i < c.length; i++) pk = Math.max(pk, Math.abs(c[i]));
       expect(pk).toBeGreaterThan(0.5);
       expect(pk).toBeLessThan(1);
     }
-    expect(total).toBeLessThan(300 * 1024);
+    expect(total).toBeLessThan(450 * 1024);
     // rien d'autre n'est embarqué dans le dossier
     expect(readdirSync(DIR).filter((f) => !f.startsWith('.')).sort()).toEqual(Object.values(SAMPLE_FILES).slice().sort());
   });
@@ -140,7 +144,7 @@ describe('fichiers enregistrés', () => {
     new DataView(float).setUint16(20, 3, true); // format flottant annoncé
     expect(parseWav(float)).toBeNull();
     // tronqué au milieu des données : ce qui reste est lu, sans exception
-    expect(parseWav(file('magnum').slice(0, 9000))?.data.length).toBeGreaterThan(4000);
+    expect(parseWav(file('magnum').slice(0, 9000))?.data.length).toBeGreaterThan(2000);
   });
 });
 
@@ -226,14 +230,39 @@ describe('tampon cuit, hybride et repli', () => {
     }
   });
 
-  it('élargit l’image stéréo derrière un frein de bouche', () => {
-    const width = (id: string): number => {
-      const b = bakeShot(S(id), attack(id));
-      const side = new Float32Array(4800), mid = new Float32Array(4800);
-      for (let i = 0; i < 4800; i++) { side[i] = b.l[i] - b.r[i]; mid[i] = b.l[i] + b.r[i]; }
-      return rms(side) / rms(mid);
-    };
-    expect(width('65cm')).toBeGreaterThan(width('308') * 1.5);
+  const width = (id: string, rec: boolean): number => {
+    const b = bakeShot(S(id), rec ? attack(id) : null);
+    const side = new Float32Array(4800), mid = new Float32Array(4800);
+    for (let i = 0; i < 4800; i++) { side[i] = b.l[i] - b.r[i]; mid[i] = b.l[i] + b.r[i]; }
+    return rms(side) / rms(mid);
+  };
+
+  it('garde la largeur stéréo de l’enregistrement (les deux micros de la prise), comme la maquette', () => {
+    for (const id of ['223', '308', '338lm', '50bmg']) expect(width(id, true), id).toBeGreaterThan(0.4);
+  });
+
+  it('sans fichier, élargit l’image stéréo derrière un frein de bouche', () => {
+    expect(width('65cm', false)).toBeGreaterThan(width('308', false) * 1.2);
+  });
+
+  it('cuit la queue et un écho par relief de la carte, aux niveaux de la maquette', () => {
+    const b = bakeShot(S('308'), attack('308'), ECHO_STANDARD);
+    expect(b.echoes.length).toBe(echoTaps(ECHO_STANDARD).length);
+    for (let i = 1; i < b.echoes.length; i++) expect(b.echoes[i].delay).toBeGreaterThan(b.echoes[i - 1].delay);
+    const win = (x: Float32Array, a: number, z: number): number => dB(rms(x.subarray(Math.round(a * SR), Math.round(z * SR))));
+    // queue diffuse : 20 à 32 dB sous les cinq premières millisecondes, entre 100 et 300 ms (maquette : −22 dB)
+    const tail = win(b.l, 0.1, 0.3) - win(b.l, 0, 0.005);
+    expect(tail).toBeGreaterThan(-32);
+    expect(tail).toBeLessThan(-14);
+    // premier écho (versant à 450 m) : audible, 10 à 30 dB sous la détonation
+    const e = b.echoes[0].data;
+    let pk = 0;
+    for (let i = 0; i < e.length; i++) pk = Math.max(pk, Math.abs(e[i]));
+    expect(dB(pk)).toBeGreaterThan(-30);
+    expect(dB(pk)).toBeLessThan(-8);
+    // carte ouverte : moins de queue
+    const o = bakeShot(S('308'), attack('308'), ECHO_AVANCE);
+    expect(win(o.l, 0.3, 0.6)).toBeLessThan(win(b.l, 0.3, 0.6) - 6);
   });
 });
 
@@ -251,8 +280,13 @@ describe('écho des cartes', () => {
     expect(echoTaps({ reliefs: [] })).toEqual([]);
   });
 
-  it('reste à un niveau crédible : aucun retour au-dessus de −30 dB, bien sous les −17 dB de la maquette', () => {
-    for (const spec of [ECHO_FACILE, ECHO_STANDARD, ECHO_AVANCE, DEFAULT_ECHO]) for (const t of echoTaps(spec)) expect(t.db).toBeLessThan(-30);
+  it('reprend le niveau de la maquette : versant de taille 0,6 à 230 m à −17 dB, −9 dB par doublement de distance', () => {
+    const [t] = echoTaps({ reliefs: [{ distance: 230, bearing: 0, size: 0.6 }] });
+    expect(t.db).toBeCloseTo(-17, 6);
+    expect(echoTaps({ reliefs: [{ distance: 460, bearing: 0, size: 0.6 }] })[0].db).toBeCloseTo(-26, 6);
+    for (const spec of [ECHO_FACILE, ECHO_STANDARD, ECHO_AVANCE, DEFAULT_ECHO]) for (const x of echoTaps(spec)) expect(x.db).toBeLessThan(-17);
+    // chaque carte a au moins un retour audible, sauf le plateau ouvert du niveau avancé
+    for (const spec of [ECHO_FACILE, ECHO_STANDARD, DEFAULT_ECHO]) expect(Math.max(...echoTaps(spec).map((x) => x.db))).toBeGreaterThan(-30);
   });
 
   it('est plus présent dans la vallée du niveau standard que sur le plateau du niveau avancé', () => {
