@@ -72,6 +72,8 @@ export interface HudState {
   guide: { label: string; hint: string; bearing: number; dist: number; arrived: boolean } | null;
   /** relèvement de la cible de l'objectif en cours (rad, 0 = nord, sens horaire) ; null s'il n'y en a pas */
   targetBearing: number | null;
+  /** téléphone, en lunette : direction de la cible hors du champ, en degrés (0 = haut, sens horaire) ; null si elle est dans le champ */
+  scopeArrow: number | null;
   prompt: string;
   heart: number;
   air: number;
@@ -263,6 +265,7 @@ export class UI {
         </div>
         <div class="bc"><div class="prompt" data-id="prompt"></div></div>
         <div class="tc"><div class="toast" data-id="toast"></div></div>
+        <i class="sc-arrow hidden" data-id="scArrow"></i>
         <div class="compass" data-id="compass">
           <div class="tape"><div class="strip" data-id="cStrip">${compassStrip()}</div><i class="mark" data-id="cMark"></i><i class="tgt hidden" data-id="cTgt"><b></b></i></div>
           <div class="needle"></div>
@@ -552,6 +555,13 @@ export class UI {
         }
       }
     }
+    // --- téléphone, en lunette : flèche au bord du champ vers la cible de l'objectif ---
+    const sa = s.scope ? s.scopeArrow : null;
+    this.cls('scArrow', 'hidden', sa === null);
+    if (sa !== null) {
+      const key = String(Math.round(sa / 2) * 2);
+      if (this.last.scA !== key) { this.last.scA = key; this.el.scArrow.style.setProperty('--a', key + 'deg'); }
+    }
     // --- boussole et repère du poste conseillé ---
     this.cls('compass', 'off', s.scope);
     if (!s.scope) {
@@ -561,6 +571,7 @@ export class UI {
         this.last.cTx = tx;
         this.el.cStrip.style.transform = `translateX(${tx}px)`;
       }
+      // (la flèche de lunette, sur téléphone, est mise à jour plus bas)
       // repère de la cible : losange bleu, distinct du triangle doré du pas de tir
       const tb = s.targetBearing;
       this.cls('cTgt', 'hidden', tb === null);

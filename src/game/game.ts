@@ -574,7 +574,7 @@ export class Game {
   }
 
   private blankHud(): HudState {
-    return { visible: false, scope: false, objective: null, index: 0, weapon: null, mag: 0, chambered: true, busy: '', stance: '', post: null, heading: 0, guide: null, targetBearing: null, prompt: '', heart: 60, air: 1, breath: 'normal', zoom: 8, elev: 0, wind: 0, range: null, rangeFlat: null, hold: '', windSpeed: null, windRel: 0, alert: 0, alarm: false, fps: 60, showFps: this.showFps };
+    return { visible: false, scope: false, objective: null, index: 0, weapon: null, mag: 0, chambered: true, busy: '', stance: '', post: null, heading: 0, guide: null, targetBearing: null, scopeArrow: null, prompt: '', heart: 60, air: 1, breath: 'normal', zoom: 8, elev: 0, wind: 0, range: null, rangeFlat: null, hold: '', windSpeed: null, windRel: 0, alert: 0, alarm: false, fps: 60, showFps: this.showFps };
   }
 
   private buildTargets(): void {
@@ -1355,11 +1355,24 @@ export class Game {
     h.heading = inScopeView ? sc.yaw : pl.yaw;
     // boussole : relèvement de la première cible encore debout de l'objectif en cours (elle peut bouger)
     h.targetBearing = null;
+    h.scopeArrow = null;
     for (const id of this.mission.step?.targets ?? []) {
       const t = this.targets.get(id);
       if (!t || t.done || !t.active) continue;
       const a = t.aimPoint(this.v4c);
       h.targetBearing = Math.atan2(a.x - pl.pos.x, -(a.z - pl.pos.z));
+      if (this.touch && inScopeView) {
+        // téléphone : chercher une cible à la lunette au doigt est long ; une flèche au bord du champ donne sa direction
+        // tant qu'elle n'y est pas entrée
+        const eye = pl.eye(this.v1);
+        const dx = a.x - eye.x, dy = a.y - eye.y, dz = a.z - eye.z;
+        let dyaw = Math.atan2(dx, -dz) - sc.yaw;
+        dyaw = ((dyaw + Math.PI * 3) % (Math.PI * 2)) - Math.PI;
+        const dpitch = Math.atan2(dy, Math.hypot(dx, dz)) - sc.pitch;
+        const across = dyaw * Math.cos(sc.pitch);
+        const field = Math.atan((2 * REF_SCOPE_R * Math.tan((REF_FOV * Math.PI) / 360)) / this.rifle.zoom);
+        if (Math.hypot(across, dpitch) > field * 0.7) h.scopeArrow = (Math.atan2(across, dpitch) * 180) / Math.PI;
+      }
       break;
     }
     const want = this.mission.step ? this.data.stepPost[this.mission.step.id] : undefined;
