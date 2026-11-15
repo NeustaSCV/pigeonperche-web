@@ -3,6 +3,7 @@ import type { WeaponDef } from '../config/weapons';
 import type { Difficulty } from '../levels/types';
 import type { ImpactReport } from './shots';
 import type { Target } from './targets';
+import { SKILL_PER_STEP } from '../shared/scores-core.mjs';
 
 export type { Difficulty };
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { assist: 'Assisté', standard: 'Standard', real: 'Réaliste' };
@@ -97,6 +98,14 @@ export class Mission {
     this.cur.weapon = def.caliber;
     if (this.alertZone) this.addAlert(def.alert * 0.5);
   }
+  /** points des tirs d'adresse (plein centre, cible en mouvement), plafonnés à SKILL_PER_STEP par objectif de la carte */
+  skill = 0;
+  /** Bonus d'un tir d'adresse ; renvoie les points réellement accordés. */
+  addSkill(points: number): number {
+    const got = Math.max(0, Math.min(Math.round(points), this.steps.length * SKILL_PER_STEP - this.skill));
+    this.skill += got;
+    return got;
+  }
   private addAlert(v: number): void {
     this.alert = Math.min(100, this.alert + v);
     if (this.alert >= 100 && !this.alarm) {
@@ -153,7 +162,7 @@ export class Mission {
     if (this.running && this.completeT < 0 && this.currentTargets().every((t) => t.done)) this.completeT = 0.8;
   }
   score(): { total: number; accuracy: number; discretion: number; grade: string } {
-    const base = this.stats.reduce((a, s) => a + s.points, 0);
+    const base = this.stats.reduce((a, s) => a + s.points, 0) + this.skill;
     const discretion = this.alarm ? 0 : Math.round(2000 * (1 - this.alert / 100));
     const diff = this.difficulty === 'real' ? 1.5 : this.difficulty === 'standard' ? 1.2 : 1;
     const total = Math.round((base + discretion) * diff);

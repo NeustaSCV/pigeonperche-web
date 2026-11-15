@@ -111,6 +111,22 @@ export abstract class Target {
     }
     return best;
   }
+  /**
+   * Écart du point d'impact au centre de la zone touchée, en fraction de sa demi-taille (0 = centre, 1 = bord),
+   * mesuré perpendiculairement à la trajectoire ; null si la zone est inconnue. Sert au bonus « plein centre ».
+   */
+  hitOffset(part: string, point: Vector3, dir: Vector3): number | null {
+    const c = this.colliders.find((x) => x.part === part);
+    if (!c) return null;
+    c.node.updateWorldMatrix(true, false);
+    _a.setFromMatrixPosition(c.node.matrixWorld).sub(point);
+    // distance du centre à la droite de tir
+    const miss = _a.sub(_d.copy(dir).multiplyScalar(_a.dot(dir))).length();
+    // demi-taille utile : le rayon, ou la plus petite des deux grandes demi-dimensions d'une boîte (plaque mince)
+    const h = c.half;
+    const size = c.shape === 'sphere' ? c.r : [h.x, h.y, h.z].sort((p, q) => q - p)[1];
+    return size > 1e-4 ? miss / size : null;
+  }
   /** point à viser (centre de la zone utile) */
   abstract aimPoint(out: Vector3): Vector3;
   /** position prévue du point à viser dans dt secondes */

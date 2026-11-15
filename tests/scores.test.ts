@@ -139,6 +139,8 @@ describe('bornes du score par niveau', () => {
       m.difficulty = meta.difficulty;
       // meilleur cas : chaque objectif en un tir instantané à la portée maximale de la carte, aucune alerte
       m.stats = steps.map(() => ({ shots: 1, hits: 1, time: 0, distance: range, weapon: '', points: Math.round(1000 + 600 + 300 + range * 0.5) }));
+      // et tous les tirs d'adresse possibles (plafond par objectif)
+      m.addSkill(1e9);
       const best = m.score().total;
       const b = scoreBounds(id)!;
       expect(best).toBeLessThanOrEqual(b.max);

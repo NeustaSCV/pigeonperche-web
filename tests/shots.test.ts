@@ -33,6 +33,9 @@ function plane(eye: Vector3, los: Vector3, range: number): any {
       return da < 0 && db >= 0 ? { t: da / (da - db), part: 'plan' } : null;
     },
     onHit: () => ({ kind: 'steel', success: true }),
+    // relevés du tir d'adresse (écart au centre, vitesse de la cible) : cible immobile, zone inconnue
+    hitOffset: () => null,
+    predict: (_dt: number, out: Vector3) => out.copy(c),
   };
 }
 

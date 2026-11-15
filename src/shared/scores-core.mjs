@@ -17,6 +17,11 @@ export const GRADES = ['Tireur d’élite', 'Tireur de précision', 'Tireur conf
  * Ce qui borne un score, par niveau : nombre d'objectifs, coefficient du préréglage d'aides (Mission.score) et
  * portée maximale de la carte. tests/scores.test.ts vérifie ces valeurs contre les données des niveaux.
  */
+/** Tirs d'adresse (src/game/skill.ts) : points d'un tir en plein centre, d'un tir sur cible en mouvement, plafond par objectif. */
+export const SKILL_CENTRE = 250;
+export const SKILL_MOVING = 400;
+export const SKILL_PER_STEP = 650;
+
 export const LEVEL_RULES = {
   facile: { steps: 8, factor: 1, range: 1500 },
   standard: { steps: 10, factor: 1.2, range: 2600 },
@@ -31,7 +36,7 @@ export const LEVEL_RULES = {
 export function scoreBounds(level) {
   const r = LEVEL_RULES[level];
   if (!r) return null;
-  return { min: Math.floor(r.steps * 1000 * r.factor), max: Math.ceil((r.steps * (1900 + r.range * 0.5) + 2000) * r.factor) };
+  return { min: Math.floor(r.steps * 1000 * r.factor), max: Math.ceil((r.steps * (1900 + SKILL_PER_STEP + r.range * 0.5) + 2000) * r.factor) };
 }
 
 /**

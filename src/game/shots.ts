@@ -42,6 +42,10 @@ export interface ImpactReport {
   target: Target | null;
   result: HitResult | null;
   campCrack: number;
+  /** écart au centre de la zone touchée (0 = centre, 1 = bord), null hors cible ou inconnu */
+  offset: number | null;
+  /** vitesse de la cible à l'impact, m/s */
+  speed: number;
 }
 export interface Prediction {
   point: Vector3;
@@ -170,6 +174,9 @@ export class Shots {
     return f;
   }
 
+  private skA = new Vector3();
+  private skB = new Vector3();
+
   fire(eye: Vector3, los: Vector3, def: WeaponDef, elevMil: number, windMil: number, disperse = true): Bullet {
     const s: BulletState = { x: 0, y: 0, z: 0, vx: 0, vy: 0, vz: 0, t: 0 };
     const flight = this.launch(eye, los, def, elevMil, windMil, this.wind.time, disperse ? (def.moa * 0.2909) / 3 / 1000 : 0, s);
@@ -251,12 +258,17 @@ export class Shots {
       if (out) { out.point.copy(p); out.tof = s.t; out.target = target; out.velocity = v; }
       if (emit) {
         let result: HitResult | null = null;
+        let offset: number | null = null, speed = 0;
         if (target) {
-          result = target.onHit({ part, point: p, dir: new Vector3(s.vx, s.vy, s.vz).normalize(), energy, weapon: b.def }, this.ctx);
+          const dir = new Vector3(s.vx, s.vy, s.vz).normalize();
+          // relevés avant onHit, qui peut arrêter ou faire tomber la cible
+          offset = target.hitOffset(part, p, dir);
+          speed = target.predict(0.2, this.skA).distanceTo(target.predict(0, this.skB)) / 0.2;
+          result = target.onHit({ part, point: p, dir, energy, weapon: b.def }, this.ctx);
           kind = result.kind;
         }
         b.pos.copy(p);
-        this.onImpact({ bullet: b, kind, point: p, distance: p.distanceTo(b.origin), tof: s.t, energy, velocity: v, target, result, campCrack: b.campCrack });
+        this.onImpact({ bullet: b, kind, point: p, distance: p.distanceTo(b.origin), tof: s.t, energy, velocity: v, target, result, campCrack: b.campCrack, offset, speed });
       }
       b.alive = false;
       return true;

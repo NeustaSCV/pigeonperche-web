@@ -10,6 +10,8 @@ import { CLICK_MIL, RETICLE_HOLD_MIL, SIGHT_HEIGHT, WEAPONS, weaponById, type We
 import { Engine, REF_FOV, REF_SCOPE_R, type QualityName, type View } from '../core/engine';
 import { Input } from '../core/input';
 import { report, showError } from '../core/diag';
+import { Praise } from '../ui/praise';
+import { assessHit, skillDetail } from './skill';
 import { Preloader, meteredConnection, preloadList } from '../core/preload';
 import { showBackdrop } from '../ui/backdrop';
 import { canFullscreen, goFullscreen, installGestureGuards, isTablet, isTouchDevice, lockPortrait, needsHomeScreenTip, safeInsets } from '../core/device';
@@ -346,6 +348,8 @@ export class Game {
     }
   }
 
+  private praiseEl: Praise | null = null;
+  private get praise(): Praise { return (this.praiseEl ??= new Praise(document.getElementById('ui') ?? document.body)); }
   private loading = false;
   private backdrop: HTMLElement | null = null;
   private preloader: Preloader | null = null;
@@ -845,6 +849,12 @@ export class Game {
       this.mission.failed = lost;
       this.mission.running = false;
       this.mission.onFail(lost);
+    }
+    // tir d'adresse sur une cible de l'objectif : bonus et compliment (plein centre, cible en mouvement)
+    const skill = ok && r.target && pending.includes(r.target) ? assessHit(r.offset, r.speed) : null;
+    if (skill) {
+      const got = this.mission.addSkill(skill.bonus);
+      this.praise.show(skill.title, skillDetail(skill, got, r.distance));
     }
     const sub = `${fr(r.distance)} m · ${fr(r.tof, 2)} s de vol · ${fr(r.energy)} J`;
     this.ui.toast(text, sub, ok ? 3.4 : 2.4);
