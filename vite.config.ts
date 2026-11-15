@@ -66,9 +66,14 @@ function commonAssets(): string[] {
   return out;
 }
 
+/** Images de fond du menu (src/ui/backdrop.ts) : tous les .jpg de public/assets/menu/, dans l'ordre des noms. */
+function menuImages(): string[] {
+  try { return readdirSync(join('public', 'assets/menu')).filter((f) => f.endsWith('.jpg')).sort().map((f) => `assets/menu/${f}`); } catch { return []; }
+}
+
 export default defineConfig({
   base: './',
-  define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()), __COMMON_ASSETS__: JSON.stringify(commonAssets()) },
+  define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()), __COMMON_ASSETS__: JSON.stringify(commonAssets()), __MENU_IMAGES__: JSON.stringify(menuImages()) },
   plugins: [deviceLog(), scoresApi()],
   server: { port: 5173, host: '127.0.0.1' },
   build: { target: 'es2022', chunkSizeWarningLimit: 4000 },

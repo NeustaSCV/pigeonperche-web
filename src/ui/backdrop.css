@@ -1,0 +1,20 @@
+/* Fond du menu avant le chargement de la carte : images des cibles en fondu enchaîné, lunette au premier plan.
+   Les mouvements (parallaxe) sont posés par src/ui/backdrop.ts. */
+#backdrop { position: fixed; inset: 0; overflow: hidden; background: #070807; pointer-events: none; }
+#backdrop .bd { position: absolute; inset: -4%; background-size: cover; background-position: center; opacity: 0; transition: opacity 2.4s ease; will-change: transform, opacity; }
+#backdrop .bd.on { opacity: 1; }
+
+/* lunette : placée sous le titre, à droite ; elle passe derrière le tableau des scores, qui a son propre fond */
+#backdrop .scope { --d: min(62vh, 46vw); position: absolute; width: var(--d); height: var(--d); left: 71vw; top: 61vh; margin: calc(var(--d) / -2) 0 0 calc(var(--d) / -2); will-change: transform; }
+/* l'ombre portée à l'extérieur assombrit le décor autour du champ, sans le cacher */
+#backdrop .ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 200vmax rgba(4, 5, 4, 0.6), inset 0 0 0 calc(var(--d) * 0.016) #0b0b0a, inset 0 0 0 calc(var(--d) * 0.021) #2b2a27, inset 0 0 calc(var(--d) * 0.1) calc(var(--d) * 0.045) rgba(0, 0, 0, 0.72); }
+#backdrop .ret { position: absolute; inset: 0; }
+#backdrop .ret i { position: absolute; background: rgba(8, 8, 8, 0.86); }
+#backdrop .ret .h { left: 6%; right: 6%; top: 50%; height: 1.4px; margin-top: -0.7px; }
+#backdrop .ret .v { top: 6%; bottom: 6%; left: 50%; width: 1.4px; margin-left: -0.7px; }
+#backdrop .ret .t { width: 1.4px; height: calc(var(--d) * 0.016); top: 50%; margin-top: calc(var(--d) * -0.008); }
+#backdrop .ret .u { height: 1.4px; width: calc(var(--d) * 0.016); left: 50%; margin-left: calc(var(--d) * -0.008); }
+
+/* téléphone en portrait : la lunette tient dans l'espace libre entre le sous-titre et « Commencer » */
+html.touch.portrait #backdrop .scope { --d: min(42vw, 18vh); left: 50vw; top: 31.5vh; }
+html.touch.portrait #backdrop .ring { box-shadow: 0 0 0 200vmax rgba(4, 5, 4, 0.66), inset 0 0 0 calc(var(--d) * 0.02) #0b0b0a, inset 0 0 0 calc(var(--d) * 0.027) #2b2a27, inset 0 0 calc(var(--d) * 0.1) calc(var(--d) * 0.045) rgba(0, 0, 0, 0.72); }

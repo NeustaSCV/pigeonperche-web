@@ -27,7 +27,7 @@ const st = (page) => page.evaluate(() => ({ ready: window.hr.game.ready, state: 
   await page.waitForTimeout(1500);
   const s = await st(page);
   check('menu affiché sans carte', s.ready === false && s.state === 'menu' && s.on.join() === 'menu', JSON.stringify(s));
-  check('fond d’images en place', s.backdrop && s.bg.includes('fond-1.jpg'), s.bg);
+  check('fond d’images en place', s.backdrop && s.bg.includes('assets/menu/'), s.bg);
   check('aucun fichier lourd demandé avant le clic', heavy(reqs).length === 0, heavy(reqs).slice(0, 4).join(' '));
   check('menu en moins de 5 s', menuMs < 5000, menuMs + ' ms');
   console.log(`menu affiché en ${menuMs} ms, ${reqs.length} requêtes`);
