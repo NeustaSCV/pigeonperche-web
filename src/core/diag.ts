@@ -25,9 +25,35 @@ export function showError(title: string, detail: string): void {
   box.textContent += `${title}\n${detail}\n\n`;
 }
 
+/**
+ * Vrai si l'adresse est celle d'un script du jeu (même origine, fichier .js / .mjs / .ts). Les scripts qu'un
+ * navigateur ou une extension injecte dans la page (Brave sur iOS : `__firefox__`, DarkReader…) s'exécutent sous
+ * l'adresse de la page elle-même, ou sous une autre origine : leurs erreurs ne regardent pas le joueur.
+ */
+export function ownScript(url: string, origin: string = location.origin): boolean {
+  if (!url) return false;
+  try {
+    const u = new URL(url, origin);
+    return u.origin === origin && /\.(m?js|tsx?)$/.test(u.pathname);
+  } catch { return false; }
+}
+/** Vrai si la pile d'appels passe par un script du jeu. */
+export function ownStack(stack: string, origin: string = location.origin): boolean {
+  return (stack.match(/(?:https?|file):\/\/[^\s)]+/g) ?? []).some((f) => ownScript(f.replace(/(:\d+)+$/, ''), origin));
+}
+
 export function installDiagnostics(): void {
-  window.addEventListener('error', (e) => showError('Erreur', `${e.message}\n${e.filename}:${e.lineno}\n${e.error?.stack ?? ''}`));
-  window.addEventListener('unhandledrejection', (e) => showError('Erreur (promesse)', String(e.reason?.stack ?? e.reason)));
+  window.addEventListener('error', (e) => {
+    const stack = String(e.error?.stack ?? '');
+    if (!ownScript(e.filename) && !ownStack(stack)) return;
+    showError('Erreur', `${e.message}\n${e.filename}:${e.lineno}\n${stack}`);
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    const stack = e.reason?.stack;
+    // une promesse rejetée sans pile est gardée : on ne sait pas d'où elle vient
+    if (typeof stack === 'string' && stack && !ownStack(stack)) return;
+    showError('Erreur (promesse)', String(stack ?? e.reason));
+  });
   window.addEventListener('pagehide', () => report('pagehide'));
   if (!on) return;
   const c = document.createElement('canvas');
