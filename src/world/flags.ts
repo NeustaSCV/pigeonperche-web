@@ -37,6 +37,8 @@ export function buildFlags(engine: Engine, wind: Wind, group: Group, list: numbe
     'flag',
   );
   const im = new InstancedMesh(geo, mat, list.length);
+  // étoffe qui flotte au vent : ni balle ni télémètre ne s'y arrêtent (le mât, lui, est solide)
+  im.userData.soft = true;
   const d = new Object3D();
   const c = new Color();
   list.forEach(([x, y, z, h, color], i) => {

@@ -157,7 +157,7 @@ On marche librement sur tout le site de tir, jusqu'à une limite visible : rebor
 
 Après trois tirs manqués de suite sur une même cible, un encart « Conseil » rappelle la marche à suivre (mesurer la distance, lire le carnet, reporter l'élévation sur la tourelle, corriger le vent), avec les chiffres de l'arme en main et l'écart mesuré des impacts ; il signale aussi une arme mal adaptée à la distance et propose mieux au râtelier. Il ne met pas le jeu en pause et se ferme par Entrée (ou son bouton, au doigt) ; un bouton « Conseil » reste alors à l'écran pour le rouvrir. Sur téléphone, il se lit dans la lunette, sans quitter la visée. Il se coupe au menu (« Conseils : Sans »).
 
-Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours ; un losange bleu y marque la direction de la cible.
+Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours ; un losange bleu y marque la direction de la cible. Au sol aussi : debout, trois chevrons dorés aux pieds du tireur indiquent le chemin du pas de tir ; une fois en position, un cercle l'entoure, dont les pointes bleues donnent la direction des cibles de l'objectif (les pointes pâles, plus courtes, celles des objectifs suivants).
 
 ### Le mrad, l'élévation et le vent
 

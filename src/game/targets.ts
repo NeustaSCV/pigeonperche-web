@@ -10,8 +10,11 @@ import {
   MeshBasicMaterial,
   MeshStandardMaterial,
   Object3D,
+  Raycaster,
   SphereGeometry,
   Vector3,
+  type Intersection,
+  type Material,
 } from 'three';
 import type { ImpactKind } from '../audio/types';
 import type { WeaponDef } from '../config/weapons';
@@ -90,6 +93,11 @@ function hitCollider(c: Collider, a: Vector3, b: Vector3): number {
   return t0;
 }
 
+/** zone renvoyée par `segment` quand la balle touche le décor d'une cible et non une zone utile */
+export const DECOR = 'decor';
+const _ray = new Raycaster();
+const _hits: Intersection[] = [];
+
 export abstract class Target {
   group = new Group();
   colliders: Collider[] = [];
@@ -103,13 +111,52 @@ export abstract class Target {
     this.colliders.push(c);
     return c;
   }
+  /**
+   * Le décor dessiné avec la cible (mât, cadre, pied, socle) est solide : il arrête la balle et renvoie le télémètre.
+   * Faux pour un personnage, dont les zones utiles couvrent déjà la silhouette.
+   */
+  decorSolid = true;
+  /** matière du décor, pour le bruit et l'éclat de l'impact */
+  decorKind: 'metal' | 'wood' = 'metal';
+  private decor: Mesh[] | null = null;
+  /** racines des maillages du décor ; par défaut le groupe de la cible */
+  protected decorRoots: Object3D[] | null = null;
   segment(a: Vector3, b: Vector3): { t: number; part: string } | null {
     let best: { t: number; part: string } | null = null;
     for (const c of this.colliders) {
       const t = hitCollider(c, a, b);
       if (t >= 0 && (!best || t < best.t)) best = { t, part: c.part };
     }
-    return best;
+    // les zones utiles passent avant le décor : une balle qui les atteint compte, même si un montant les frôle
+    return best ?? (this.decorSolid ? this.decorHit(a, b) : null);
+  }
+  /** Premier maillage visible de la cible traversé par a→b (hors zones utiles) : `part` vaut alors DECOR. */
+  protected decorHit(a: Vector3, b: Vector3): { t: number; part: string } | null {
+    if (!this.decor) {
+      this.decor = [];
+      for (const root of this.decorRoots ?? [this.group]) root.traverse((o) => {
+        const m = o as Mesh;
+        if (!m.isMesh || (m as any).isSkinnedMesh || (m as any).isInstancedMesh) return;
+        const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as Material | undefined;
+        if (!mat || mat.transparent || !mat.depthWrite) return;
+        this.decor!.push(m);
+      });
+    }
+    if (!this.decor.length) return null;
+    const len = _d.copy(b).sub(a).length();
+    if (len < 1e-6) return null;
+    _ray.set(a, _d.divideScalar(len));
+    _ray.far = len;
+    let best = -1;
+    for (const m of this.decor) {
+      let vis = true;
+      for (let o: Object3D | null = m; o; o = o.parent) if (!o.visible) { vis = false; break; }
+      if (!vis) continue;
+      _hits.length = 0;
+      m.raycast(_ray, _hits);
+      for (const h of _hits) if (best < 0 || h.distance < best) best = h.distance;
+    }
+    return best < 0 ? null : { t: best / len, part: DECOR };
   }
   /**
    * Écart du point d'impact au centre de la zone touchée, en fraction de sa demi-taille (0 = centre, 1 = bord),
@@ -138,6 +185,32 @@ export abstract class Target {
   abstract onHit(h: HitInfo, ctx: TargetCtx): HitResult;
 }
 
+/**
+ * Décor mobile (rotor et nacelles d'une grande roue…) : il arrête la balle et renvoie le télémètre, sans rien valoir.
+ * La collision suit les maillages visibles de `roots`. `over` : cibles portées par ce décor, qui gardent la priorité
+ * quand le même segment les traverse.
+ */
+export class SolidProp extends Target {
+  constructor(id: string, label: string, roots: Object3D[], readonly over: Target[] = [], kind: 'metal' | 'wood' = 'metal') {
+    super(id, label);
+    this.decorRoots = roots;
+    this.decorKind = kind;
+    roots[0].getWorldPosition(this.group.position);
+  }
+  segment(a: Vector3, b: Vector3): { t: number; part: string } | null {
+    const hit = this.decorHit(a, b);
+    if (!hit) return null;
+    for (const t of this.over) { const h = t.active ? t.segment(a, b) : null; if (h && h.part !== DECOR) return null; }
+    return hit;
+  }
+  aimPoint(out: Vector3): Vector3 {
+    return out.copy(this.group.position);
+  }
+  onHit(): HitResult {
+    return { kind: this.decorKind };
+  }
+}
+
 const std = (engine: Engine, color: number, rough = 0.7, metal = 0, key = 'tgt'): MeshStandardMaterial =>
   engine.setupMaterial(new MeshStandardMaterial({ color, roughness: rough, metalness: metal }), undefined, key);
 
@@ -148,6 +221,7 @@ export class SteelPlate extends Target {
   private av = 0;
   constructor(engine: Engine, id: string, label: string, pos: Vector3, public size: number, round: boolean) {
     super(id, label);
+    this.decorKind = 'wood';
     const toS = new Vector3(-pos.x, 0, -pos.z).normalize();
     this.group.position.copy(pos);
     this.group.rotation.y = Math.atan2(toS.x, toS.z);
@@ -492,6 +566,7 @@ export class Drone extends Target {
 
 // ---------------------------------------------------------------- personnage ciblable (sentinelle)
 function humanColliders(t: Target, ch: CharacterMesh): void {
+  t.decorSolid = false;
   const head = new Object3D();
   head.position.set(0, 0.13, 0);
   ch.rig.head.add(head);

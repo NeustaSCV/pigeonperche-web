@@ -17,7 +17,7 @@ import { GeoBuilder } from '../../core/builder';
 import type { Engine } from '../../core/engine';
 import type { Mission } from '../mission';
 import type { ImpactReport } from '../shots';
-import { Target, type HitInfo, type HitResult, type TargetCtx } from '../targets';
+import { DECOR, Target, type HitInfo, type HitResult, type TargetCtx } from '../targets';
 
 const UP = new Vector3(0, 1, 0);
 const v3 = (x: number, y: number, z: number): Vector3 => new Vector3(x, y, z);
@@ -723,7 +723,7 @@ export class ClockFace extends Target {
   /** Le disque seulement : un impact dans un coin du carré englobant passe à côté du cadran. */
   segment(a: Vector3, b: Vector3): { t: number; part: string } | null {
     const hit = super.segment(a, b);
-    if (!hit) return null;
+    if (!hit || hit.part === DECOR) return hit;
     const p = this.node.worldToLocal(this.tmp.lerpVectors(a, b, hit.t));
     return Math.hypot(p.x, p.y) <= this.d / 2 ? hit : null;
   }

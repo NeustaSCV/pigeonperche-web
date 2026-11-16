@@ -24,6 +24,8 @@ import { TouchControls, type TouchFrame } from '../ui/touch';
 import { Rifle, buildRifleModel, type RifleParts } from '../weapons/rifle';
 import { handleRifle, shoulderMount } from '../weapons/handling';
 import { Scope } from '../weapons/scope';
+import { GroundGuide, type GroundGuideState } from '../world/groundguide';
+import { solidifyAround } from '../world/solidify';
 import { Colliders } from '../world/colliders';
 import { Fx } from '../world/fx';
 import { ShotFx, type GroundKind } from '../world/shotfx';
@@ -455,8 +457,17 @@ export class Game {
         dustColor: (x, z, out) => this.terrain.dustColorAt(x, z, out),
       }, this.touch || e.q.name === 'low');
       e.scene.add(this.shotFx.group);
+      this.groundGuide = new GroundGuide((x, z, nearY) => Math.max(this.terrain.heightAt(x, z), this.col.surfaceAt(x, z, nearY)));
+      e.scene.add(this.groundGuide.group);
       this.ctx = { fx: this.fx, wind: this.wind, terrain: this.terrain, time: 0 };
       this.buildTargets();
+      // autour des cibles, tout ce qui se voit arrête la balle et renvoie le télémètre (toiles, mâts, rochers…)
+      {
+        const centers: Vector3[] = [];
+        for (const t of this.targets.values()) for (const dt of [0, 8, 16, 24]) centers.push(t.predict(dt, new Vector3()));
+        solidifyAround([this.sceneryGroup, this.veg.group], centers, 14, this.col);
+        this.col.buildExtra();
+      }
       const bad = checkLevel(this.data, [...this.targets.keys()], this.weapons.map((w) => w.id));
       if (bad.length) throw new Error(`Niveau « ${this.data.id} » incohérent :\n- ${bad.join('\n- ')}`);
       this.player = new Player(e, this.terrain, this.col, {
@@ -1024,7 +1035,8 @@ export class Game {
     const len = R - skip;
     let best = R;
     const hit = new Vector3();
-    if (this.terrain.raycast(from.x, from.y, from.z, far.x, far.y, far.z, hit, 3)) best = eye.distanceTo(hit);
+    // pas d'un mètre : une crête frôlée par la visée ne passe pas entre deux sondes
+    if (this.terrain.raycast(from.x, from.y, from.z, far.x, far.y, far.z, hit, 1)) best = eye.distanceTo(hit);
     // la surface de l'eau renvoie le télémètre : sans elle, on mesurerait le fond à travers la mer
     const water = this.data.terrain.waterLevel;
     if (water != null && dir.y < -1e-6 && eye.y > water) {
@@ -1041,6 +1053,11 @@ export class Game {
     return best;
   }
   private losFrom = new Vector3();
+  private groundGuide!: GroundGuide;
+  private groundState: GroundGuideState = { x: 0, y: 0, z: 0, arrow: null, ring: null };
+  private ringNow: number[] = [];
+  private ringLater: number[] = [];
+  private ringSet = { now: this.ringNow, later: this.ringLater };
   private v4c = new Vector3();
 
   // ------------------------------------------------------------------ caméras
@@ -1491,6 +1508,30 @@ export class Game {
       else if (this.mission.index === 0 && this.gameTime < 60 && !(tuto && tuto.active)) prompt = '<b>C</b> accroupi · <b>X</b> couché · <b>Tab</b> carnet';
     }
     h.prompt = prompt;
+    // --- guidage au sol : flèche vers le pas de tir quand on marche debout, cercle des cibles une fois arrivé ---
+    {
+      const gs = this.groundState;
+      const show = this.state === 'play' && sc.amount < 0.5 && !this.bc;
+      gs.arrow = null;
+      gs.ring = null;
+      if (show && h.guide) {
+        gs.x = pl.pos.x; gs.y = pl.pos.y; gs.z = pl.pos.z;
+        if (!h.guide.arrived) { if (pl.stance === 'stand') gs.arrow = h.guide; }
+        else if (want && post === want) {
+          const now = this.ringNow, later = this.ringLater;
+          now.length = 0; later.length = 0;
+          const steps = this.mission.steps;
+          for (let i = this.mission.index; i < steps.length; i++) for (const id of steps[i].targets) {
+            const t = this.targets.get(id);
+            if (!t || t.done || !t.active) continue;
+            const a = t.aimPoint(this.v4c);
+            (i === this.mission.index ? now : later).push(Math.atan2(a.x - pl.pos.x, -(a.z - pl.pos.z)));
+          }
+          gs.ring = this.ringSet;
+        }
+      }
+      this.groundGuide.update(dtReal, show ? gs : null);
+    }
     this.ui.hud(h, dtReal);
     // --- commandes tactiles ---
     if (this.touchCtl) {

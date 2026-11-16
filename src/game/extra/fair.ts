@@ -183,8 +183,13 @@ export class FairWheel {
       this.cabs.push(c);
       this.group.add(c);
     }
+    // parties mobiles : hors du BVH fixe des collisions, elles sont testées sur leur maillage (voir SolidProp)
+    this.moving = [this.rotor, ...this.cabs];
+    for (const o of this.moving) o.userData.moving = true;
     this.setTime(0);
   }
+  /** rotor et nacelles : ce qui tourne */
+  readonly moving: Object3D[];
   /** Angle (rad, sens horaire vu de face) de la nacelle i au temps t ; 0 = en haut. */
   cabinAngle(i: number, t: number): number {
     return (i / this.o.cabins) * Math.PI * 2 + this.o.rotation.angle(t);

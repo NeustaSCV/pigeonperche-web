@@ -53,6 +53,8 @@ export class Floater {
   /** dernier instant appliqué au groupe */
   time = -1;
   constructor(s: FloatSpec) {
+    // flottant : hors des collisions fixes (voir CarrierBody)
+    this.group.userData.moving = true;
     this.x = s.x;
     this.z = s.z;
     this.level = s.level;

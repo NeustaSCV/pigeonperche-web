@@ -226,6 +226,14 @@ partout et demandait de reprendre chaque effet qui lit la profondeur ; la second
 fragments, sur téléphone surtout. À l'œil nu rien ne change (0,2 m).
 
 Ce qu'une carte doit savoir :
+- **autour des cibles, tout ce qui se voit est solide** : la balle s'y arrête et le télémètre le mesure. Trois
+  mécanismes s'en chargent sans rien demander à la carte : le décor dessiné dans le groupe d'une cible (mât, pied,
+  cadre) est testé sur son maillage (`Target.decorHit`, zone `DECOR`, les zones utiles gardent la priorité) ; après la
+  pose des cibles, `world/solidify.ts` ajoute aux collisions les maillages opaques et fixes du décor, de la végétation
+  et des bâtiments situés à moins de 14 m d'une cible (second BVH, `col.buildExtra()`) ; la surface de l'eau renvoie
+  le télémètre. Ce qu'une carte doit signaler : un décor **qui bouge** (`userData.moving = true`, puis une cible
+  inerte `SolidProp` ou `CarrierBody` sur ses maillages, comme la grande roue ou les bouées) et une étoffe qui
+  flotte (`userData.soft = true`). Les matières translucides (vitres) et découpées (feuillage) restent traversables ;
 - un objet **visible, proche du site et absent des collisions** (fanion, manche à air, décor non solide) doit être
   déclaré, sinon la lunette peut voir à travers quand on le vise de près : `h.col.soft.push({ x, y, z, r })` (sphère
   englobante) ou `LevelScene.viewObstacles()`. Le lierre de `Masonry.ivy(engine, wind, col)` le fait seul si on lui

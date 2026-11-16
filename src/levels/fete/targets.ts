@@ -3,7 +3,7 @@
 // tape-fort, globes de la guirlande. Une seule cible bouge : la roue, par à-coups, avec des arrêts francs.
 import type { Engine } from '../../core/engine';
 import { CarouselFigure, FairBalloon, FairBulb, OrderedSeries, StrikerBell, WheelPlate, type FairCarousel, type FairWheel } from '../../game/extra/fair';
-import { SteelPlate, type Target } from '../../game/targets';
+import { SolidProp, SteelPlate, type Target } from '../../game/targets';
 import { CAROUSEL, STRIKER, WHEEL, GARLAND } from './map';
 import type { Anchors } from './scenery';
 
@@ -32,6 +32,8 @@ export function buildTargets(e: Engine, A: Anchors, wheel: FairWheel, carousel: 
     new SteelPlate(e, 'plate1', 'Plaque carrée', A.plate1, 0.45, false),
     new SteelPlate(e, 'plate2', 'Plaque ronde', A.plate2, 0.6, true),
     ...balloons, ...plates, ...figures, bell, ...bulbs,
+    // rotor et nacelles de la grande roue : ils tournent, donc hors des collisions fixes
+    new SolidProp('roue-structure', 'Grande roue', wheel.moving, plates),
   ];
   return { list, plates, figures, bell, garland };
 }

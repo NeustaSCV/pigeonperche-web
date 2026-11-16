@@ -13,7 +13,7 @@ import type { LevelPhysics } from '../levels/types';
 import type { Colliders, SurfaceTag } from '../world/colliders';
 import type { Terrain } from '../world/terrain';
 import type { Wind, WindSample } from '../world/wind';
-import type { HitResult, Target, TargetCtx } from './targets';
+import { DECOR, type HitResult, type Target, type TargetCtx } from './targets';
 
 export interface Bullet {
   s: BulletState;
@@ -219,7 +219,11 @@ export class Shots {
     for (const t of this.targets) {
       if (!t.active) continue;
       const h = t.segment(this.a, this.b);
-      if (h && h.t < bestT) { bestT = h.t; target = t; part = h.part; }
+      if (!h || h.t >= bestT) continue;
+      bestT = h.t;
+      // décor d'une cible (mât, pied, cadre) : un obstacle comme un autre, sans effet sur la cible
+      if (h.part === DECOR) { target = null; kind = t.decorKind; }
+      else { target = t; part = h.part; }
     }
     const seg = this.a.distanceTo(this.b);
     const d = this.col.segment(this.a, this.b, this.hit, this.tag);

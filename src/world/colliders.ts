@@ -49,6 +49,11 @@ export class Colliders {
     if (idx) for (let i = 0; i < idx.count; i++) push(idx.getX(i));
     else for (let i = 0; i < p.count; i++) push(i);
   }
+  /** Triangles déjà en espace monde : neuf nombres par triangle. */
+  addTriangles(xyz: number[], tag: SurfaceTag): void {
+    const t = TAGS.indexOf(tag);
+    for (let i = 0; i < xyz.length; i += 3) { this.pos.push(xyz[i], xyz[i + 1], xyz[i + 2]); this.tag.push(t); }
+  }
   addMesh(mesh: Mesh, tag: SurfaceTag): void {
     mesh.updateWorldMatrix(true, false);
     this.addGeometry(mesh.geometry, mesh.matrixWorld, tag);
@@ -63,6 +68,24 @@ export class Colliders {
     this.tag = [];
   }
 
+  /**
+   * Second BVH, construit après le premier avec ce qui a été ajouté depuis (`addGeometry`, `addMesh`) : les décors
+   * proches des cibles, connus seulement une fois celles-ci posées. Balles et lignes de visée voient les deux.
+   */
+  buildExtra(): number {
+    const n = this.pos.length / 9;
+    if (!n) return 0;
+    const g = new BufferGeometry();
+    g.setAttribute('position', new BufferAttribute(new Float32Array(this.pos), 3));
+    this.tagAttr2 = new Float32Array(this.tag);
+    this.bvh2 = new MeshBVH(g);
+    this.pos = [];
+    this.tag = [];
+    return n;
+  }
+  private bvh2: MeshBVH | null = null;
+  private tagAttr2!: Float32Array;
+
   /** Premier impact sur le segment a→b. Renvoie la distance depuis a, ou -1. */
   segment(a: Vector3, b: Vector3, outPoint?: Vector3, outTag?: { tag: SurfaceTag }): number {
     if (!this.bvh) return -1;
@@ -71,12 +94,17 @@ export class Colliders {
     if (len < 1e-6) return -1;
     this.ray.origin.copy(a);
     this.ray.direction.copy(d).divideScalar(len);
-    const hit = this.bvh.raycastFirst(this.ray, DoubleSide, 0, len) as any;
+    let bvh = this.bvh, tags = this.tagAttr;
+    let hit = bvh.raycastFirst(this.ray, DoubleSide, 0, len) as any;
+    if (this.bvh2) {
+      const h2 = this.bvh2.raycastFirst(this.ray, DoubleSide, 0, hit ? hit.distance : len) as any;
+      if (h2 && (!hit || h2.distance < hit.distance)) { hit = h2; bvh = this.bvh2; tags = this.tagAttr2; }
+    }
     if (!hit) return -1;
     if (outPoint) outPoint.copy(hit.point);
     if (outTag) {
-      const index = this.bvh.geometry.getIndex()!;
-      outTag.tag = TAGS[this.tagAttr[index.getX(hit.faceIndex * 3)]] ?? 'stone';
+      const index = bvh.geometry.getIndex()!;
+      outTag.tag = TAGS[tags[index.getX(hit.faceIndex * 3)]] ?? 'stone';
     }
     return hit.distance;
   }
