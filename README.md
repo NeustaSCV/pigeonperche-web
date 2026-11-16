@@ -159,6 +159,8 @@ Après trois tirs manqués de suite sur une même cible, un encart « Conseil »
 
 Couché, l'arme repose sur son bipied. Accroupi contre un appui, elle tremble deux fois plus ; sans appui, quatre fois plus. Le pouls monte quand on court et met une vingtaine de secondes à redescendre. Une boussole et une flèche guident vers le poste conseillé pour l'objectif en cours ; un losange bleu y marque la direction de la cible. Au sol aussi : debout, trois chevrons dorés aux pieds du tireur indiquent le chemin du pas de tir ; une fois en position, un cercle l'entoure, dont les pointes bleues donnent la direction des cibles de l'objectif (les pointes pâles, plus courtes, celles des objectifs suivants).
 
+Le décor réagit aux balles. Une vitre traversée se brise, plus ou moins selon l'énergie à l'impact : sous 250 J (une .22 LR) la balle perce un trou étoilé ; au-delà le carreau tombe ; au-dessus de 2 500 J il est soufflé. Un carreau déjà fêlé cède au coup suivant. Une balle qui traverse la couronne d'un arbre en fait tomber des feuilles et des brindilles. Ni les vitres ni le feuillage n'arrêtent ou ne dévient la balle : ce sont des repères pour voir où elle est passée.
+
 ### Le mrad, l'élévation et le vent
 
 Tout le réglage se fait en mrad (milliradian). Un mrad est un angle : il couvre 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. Le réticule est gradué dans cette unité, et les tourelles avancent par pas de 0,1 mrad.

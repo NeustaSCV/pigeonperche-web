@@ -1,6 +1,7 @@
 // Collisions : segments 2D pour le joueur, surfaces de marche, et un BVH unique pour balles et lignes de visée.
 import { BufferAttribute, BufferGeometry, DoubleSide, Line3, Matrix4, Ray, Vector3, type Mesh } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
+import { Glass } from './glass';
 
 export type SurfaceTag = 'stone' | 'wood' | 'metal' | 'dirt' | 'rock';
 const TAGS: SurfaceTag[] = ['stone', 'wood', 'metal', 'dirt', 'rock'];
@@ -28,6 +29,8 @@ export class Colliders {
    */
   soft: { x: number; y: number; z: number; r: number }[] = [];
   bvh: MeshBVH | null = null;
+  /** vitres : traversées par la balle, mais elles se brisent (voir world/glass.ts) */
+  glass = new Glass();
   private pos: number[] = [];
   private tag: number[] = [];
   private tagAttr!: Float32Array;
@@ -66,6 +69,7 @@ export class Colliders {
     this.bvh = new MeshBVH(g);
     this.pos = [];
     this.tag = [];
+    this.glass.build();
   }
 
   /**

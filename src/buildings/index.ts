@@ -363,6 +363,8 @@ export function flattenArea(placed: PlacedBuilding, margin = 8, area: 'lot' | 'b
 /** Ce que l'adaptateur attend des collisions du jeu (src/world/colliders.ts, classe Colliders). */
 export interface ColliderSink {
   addGeometry(g: BufferGeometry, m: Matrix4 | null, tag: any): void;
+  /** vitres laissées traversables : le jeu les fait se briser au passage de la balle */
+  glass?: { add(g: BufferGeometry, m: Matrix4 | null): void };
   segs: { ax: number; az: number; bx: number; bz: number; r: number; y0: number; y1: number; box?: boolean }[];
 }
 export interface ColliderOptions {
@@ -381,7 +383,7 @@ export function registerBuildingColliders(placed: PlacedBuilding, col: ColliderS
   let n = 0;
   for (const p of placed.building.collision) {
     const tag = p.tag === 'glass' ? o.glassAs ?? null : p.tag;
-    if (!tag) continue;
+    if (!tag) { if (p.tag === 'glass') col.glass?.add(p.geometry, placed.matrix); continue; }
     col.addGeometry(p.geometry, placed.matrix, tag);
     n += p.triangles;
   }

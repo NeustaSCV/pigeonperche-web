@@ -132,5 +132,7 @@ export function kitMeshes(engine: Engine, k: Kit, tex: KitTextures, col: Collide
     const mat = engine.setupMaterial(new MeshStandardMaterial({ color: 0xffffff, roughness: 0.12, metalness: 0.2, vertexColors: true }), undefined, 'glass');
     const m = new Mesh(k.glass.build(), mat);
     group.add(m);
+    // la balle traverse la fenêtre (le mur derrière l'arrête) et la brise
+    col.glass.add(m.geometry, null);
   }
 }

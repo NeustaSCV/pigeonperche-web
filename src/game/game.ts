@@ -24,6 +24,8 @@ import { TouchControls, type TouchFrame } from '../ui/touch';
 import { Rifle, buildRifleModel, type RifleParts } from '../weapons/rifle';
 import { handleRifle, shoulderMount } from '../weapons/handling';
 import { Scope } from '../weapons/scope';
+import { Canopies } from '../world/canopy';
+import { GlassFx } from '../world/glassfx';
 import { GroundGuide, type GroundGuideState } from '../world/groundguide';
 import { solidifyAround } from '../world/solidify';
 import { Colliders } from '../world/colliders';
@@ -603,6 +605,29 @@ export class Game {
     this.shots = new Shots(this.terrain, this.col, this.wind, this.ctx, { waterLevel: this.data.terrain.waterLevel, alertZone: this.data.alertZone, physics: this.physics });
     this.shots.targets = [...this.targets.values()];
     this.shots.onImpact = (r) => this.onImpact(r);
+    // décor cassable : vitres brisées selon l'énergie de la balle, feuilles au passage dans une couronne
+    this.glassFx = new GlassFx(this.fx);
+    this.engine.scene.add(this.glassFx.group);
+    this.shots.onGlass = (pane, p, dir, energy, bullet) => {
+      this.glassFx.hit(pane, p, dir, energy);
+      const inCam = this.bc !== null && this.bc.bullet === bullet;
+      this.audio.impact('glass', p.x, p.y, p.z, inCam ? 0.03 : p.distanceTo(bullet.origin) / 343, energy);
+    };
+    this.canopies.collect(this.veg.group);
+    this.shots.canopies = this.canopies;
+    {
+      const fol = this.terrain.palette.foliage ?? [1, 1, 1];
+      // plus clair que le feuillage en place : les feuilles qui tombent doivent se détacher sur la couronne
+      const leaf: [number, number, number] = [0.5 * fol[0], 0.62 * fol[1], 0.22 * fol[2]];
+      this.shots.onLeaves = (p, dir, energy) => {
+        this.leavesShed++;
+        const k = Math.min(2.2, 0.6 + energy / 1800);
+        // feuilles : légères, emportées par le vent ; brindilles : sombres, elles tombent ; un voile de débris fins
+        this.fx.puff(p, { count: Math.round(16 * k), speed: 1.3 * k, dir: this.v4c.copy(dir).multiplyScalar(0.8), spread: 1.8, life: 3.2, size: [0.13, 0.1], rgb: leaf, alpha: 1, gravity: 1.6, drag: 1.8, wind: 0.8, fade: 0.4 });
+        this.fx.puff(p, { count: Math.round(4 * k), speed: 1.4 * k, dir, life: 1.4, size: [0.06, 0.04], color: 0x4a3826, alpha: 1, gravity: 9.8, drag: 0.6, wind: 0, fade: 0.5 });
+        this.fx.puff(p, { count: Math.round(3 * k), speed: 0.5, life: 1.8, size: [0.3, 1.4 * k], rgb: [leaf[0] * 1.3, leaf[1] * 1.3, leaf[2] * 1.6], alpha: 0.3, drag: 1.6, wind: 0.7 });
+      };
+    }
     this.mission = new Mission(this.targets, this.data.steps, this.data.alertZone);
     this.mission.difficulty = this.difficulty;
     this.mission.bonusMax = this.data.bonusMax ?? 0;
@@ -1053,6 +1078,10 @@ export class Game {
     return best;
   }
   private losFrom = new Vector3();
+  private glassFx!: GlassFx;
+  private canopies = new Canopies();
+  /** nombre de couronnes d'arbres traversées (tests) */
+  leavesShed = 0;
   private groundGuide!: GroundGuide;
   private groundState: GroundGuideState = { x: 0, y: 0, z: 0, arrow: null, ring: null };
   private ringNow: number[] = [];

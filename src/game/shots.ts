@@ -10,7 +10,9 @@ import { machAt, makeFlight, stepFlight, type Flight } from '../ballistics/fligh
 import { GAME_AIR, GRAIN_KG, zeroAngle, type BulletState } from '../ballistics/solver';
 import { SIGHT_HEIGHT, type WeaponDef } from '../config/weapons';
 import type { LevelPhysics } from '../levels/types';
+import type { Canopies } from '../world/canopy';
 import type { Colliders, SurfaceTag } from '../world/colliders';
+import type { Pane } from '../world/glass';
 import type { Terrain } from '../world/terrain';
 import type { Wind, WindSample } from '../world/wind';
 import { DECOR, type HitResult, type Target, type TargetCtx } from './targets';
@@ -29,6 +31,9 @@ export interface Bullet {
   /** plus petite distance au campement en vol supersonique */
   campCrack: number;
   id: number;
+  /** carreaux et couronnes d'arbres déjà traversés par cette balle (un effet par objet) */
+  panes?: Set<Pane>;
+  trees?: Set<number>;
 }
 export interface ImpactReport {
   bullet: Bullet;
@@ -117,6 +122,13 @@ export class Shots {
   bullets: Bullet[] = [];
   targets: Target[] = [];
   onImpact: (r: ImpactReport) => void = () => {};
+  /** la balle traverse un carreau (elle continue) : point, direction unitaire, énergie en joules */
+  onGlass: (pane: Pane, point: Vector3, dir: Vector3, energy: number, bullet: Bullet) => void = () => {};
+  /** la balle entre dans la couronne d'un arbre (elle continue) */
+  onLeaves: (point: Vector3, dir: Vector3, energy: number, bullet: Bullet) => void = () => {};
+  /** couronnes des arbres du niveau, ou null */
+  canopies: Canopies | null = null;
+  private crossed: { pane: Pane; d: number }[] = [];
   private acc = 0;
   private ws: WindSample = { x: 0, z: 0, speed: 0, gust: 0 };
   private hit = new Vector3();
@@ -255,6 +267,26 @@ export class Shots {
         const tt = (this.a.y - wy) / Math.max(1e-6, this.a.y - this.b.y);
         if (tt >= 0 && tt < bestT) { bestT = tt; target = null; kind = 'water'; }
       }
+    }
+    // --- décor traversé sans arrêt, jusqu'à l'obstacle éventuel : vitres qui se brisent, feuillage qui tombe ---
+    if (emit) {
+      const reach = Math.min(1, bestT) * seg;
+      const energy = 0.5 * b.def.bulletGr * GRAIN_KG * v * v;
+      const glass = this.col.glass;
+      if (glass?.panes.length && glass.cross(this.a, this.b, reach, this.crossed)) {
+        for (const c of this.crossed) {
+          if (b.panes?.has(c.pane)) continue;
+          (b.panes ??= new Set()).add(c.pane);
+          const p = new Vector3().copy(this.b).sub(this.a).multiplyScalar(c.d / seg).add(this.a);
+          if (p.distanceTo(b.origin) < MUZZLE_CLEAR) continue;
+          this.onGlass(c.pane, p, new Vector3(s.vx, s.vy, s.vz).normalize(), energy, b);
+        }
+      }
+      this.canopies?.enter(this.a, this.b, b.trees ?? null, (i, x, y, z) => {
+        (b.trees ??= new Set()).add(i);
+        const p = new Vector3(x, y, z);
+        if (p.distanceTo(this.a) <= reach) this.onLeaves(p, new Vector3(s.vx, s.vy, s.vz).normalize(), energy, b);
+      });
     }
     if (bestT <= 1) {
       const p = new Vector3().lerpVectors(this.a, this.b, bestT);

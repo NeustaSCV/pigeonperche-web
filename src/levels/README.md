@@ -234,6 +234,11 @@ Ce qu'une carte doit savoir :
   le télémètre. Ce qu'une carte doit signaler : un décor **qui bouge** (`userData.moving = true`, puis une cible
   inerte `SolidProp` ou `CarrierBody` sur ses maillages, comme la grande roue ou les bouées) et une étoffe qui
   flotte (`userData.soft = true`). Les matières translucides (vitres) et découpées (feuillage) restent traversables ;
+- **décor cassable**, sans effet sur la trajectoire : les vitres (triangles `glass` des bâtiments de la banque, sauf
+  `glassStops` ; fenêtres de `world/kit.ts`) sont regroupées en carreaux par `world/glass.ts` (`col.glass`) et se
+  brisent au passage de la balle selon son énergie (`world/glassfx.ts`) ; les couronnes des arbres sont relevées sur
+  la végétation posée (`world/canopy.ts`) et perdent des feuilles. Une carte n'a rien à déclarer ; une vitre faite à
+  la main s'ajoute par `h.col.glass.add(geometrie, matrice)` avant `col.build()` ;
 - un objet **visible, proche du site et absent des collisions** (fanion, manche à air, décor non solide) doit être
   déclaré, sinon la lunette peut voir à travers quand on le vise de près : `h.col.soft.push({ x, y, z, r })` (sphère
   englobante) ou `LevelScene.viewObstacles()`. Le lierre de `Masonry.ivy(engine, wind, col)` le fait seul si on lui
