@@ -33,6 +33,8 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 #menu h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(48px, 7.4vw, 108px); letter-spacing: 0.2em; margin: 0; line-height: 1; text-shadow: 0 2px 40px rgba(0, 0, 0, 0.5); }
 #menu .sub { color: var(--dim); letter-spacing: 0.34em; text-transform: uppercase; font-size: 12px; margin: 18px 0 44px 4px; }
 .menu-list { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.m-links { display: contents; }
+.m-guide .sh { display: none; }
 .mbtn { background: none; border: 0; padding: 9px 4px; font-size: 17px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--dim); cursor: pointer; position: relative; transition: color 0.2s, padding 0.25s; text-align: left; }
 .mbtn:hover, .mbtn:focus-visible { color: var(--ink); padding-left: 22px; outline: none; }
 .mbtn:hover::before, .mbtn:focus-visible::before { content: ''; position: absolute; left: 0; top: 50%; width: 14px; height: 1px; background: var(--gold); }
@@ -242,7 +244,7 @@ html.touch #menu .opt, html.touch #menu .opt-note { grid-column: 2; }
 html.touch #menu .m-start { grid-row: 1; } html.touch #menu .o-diff { grid-row: 1; }
 html.touch #menu .m-help { grid-row: 2; } html.touch #menu .opt-note { grid-row: 2; margin: 0 0 0 110px; max-width: 300px; }
 html.touch #menu .m-scores { grid-row: 3; } html.touch #menu .o-qual { grid-row: 3; }
-html.touch #menu .m-fs { grid-row: 4; }
+html.touch #menu .m-guide { grid-row: 4; } html.touch #menu .m-fs { grid-row: 5; }
 html.touch #menu .o-vol { grid-row: 4; } html.touch #menu .o-tuto { grid-row: 5; } html.touch #menu .o-coach { grid-row: 6; }
 html.touch #menu .foot { position: static; margin-top: 10px; }
 html.touch .card { padding: 16px 20px; max-height: calc(100% - 16px); }
@@ -447,11 +449,11 @@ html.touch.portrait #menu .opt-pair .opt { flex: 1 1 0; min-width: 0; gap: 6px; 
 html.touch.portrait #menu .opt-pair .opt > span { width: auto; font-size: 9.5px; letter-spacing: 0.1em; }
 /* niveau sans tutoriel : le volume prend la place du tutoriel dans la paire (voir hud.ts) */
 /* dernière rangée : Commandes, Scores, Plein écran (ce dernier absent là où le navigateur ne l'offre pas) */
-html.touch.portrait #menu .m-help, html.touch.portrait #menu .m-scores, html.touch.portrait #menu .m-fs { font-size: 13px; letter-spacing: 0.12em; }
-html.touch.portrait #menu .m-help { order: 7; grid-column: 1; }
-html.touch.portrait #menu .m-scores { order: 8; grid-column: 2; text-align: center; }
-html.touch.portrait #menu .no-fs .m-scores { text-align: right; grid-column: 2 / -1; }
-html.touch.portrait #menu .m-fs { order: 9; grid-column: 3; text-align: right; }
+/* portrait : Commandes, Lunette, Scores (et Plein écran) sur une seule rangée */
+html.touch.portrait #menu .m-links { display: flex; order: 7; grid-column: 1 / -1; justify-content: space-between; align-items: center; gap: 6px; }
+html.touch.portrait #menu .m-links .mbtn { flex: none; padding-left: 0; padding-right: 0; min-height: 44px; font-size: 12.5px; letter-spacing: 0.1em; }
+html.touch.portrait #menu .m-help { order: 1; } html.touch.portrait #menu .m-guide { order: 2; } html.touch.portrait #menu .m-scores { order: 3; } html.touch.portrait #menu .m-fs { order: 4; }
+html.touch.portrait #menu .m-guide .lg { display: none; } html.touch.portrait #menu .m-guide .sh { display: inline; }
 html.touch.portrait .opt { gap: 10px; padding: 0 2px; }
 html.touch.portrait .opt > span { width: 84px; flex: none; font-size: 10.5px; letter-spacing: 0.18em; }
 html.touch.portrait .opt .seg { flex: 1; }

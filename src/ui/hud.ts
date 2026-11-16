@@ -10,9 +10,13 @@ import type { CampaignId, LevelId } from '../levels/types';
 import { Reticle } from '../weapons/scope';
 import type { TutoView } from '../game/tutorial';
 import type { Advice } from '../game/coach';
+import { guideHtml, initGuide } from './guide';
 import { touchHelpHtml } from './touch';
 
-export type ScreenName = 'loading' | 'menu' | 'brief' | 'pause' | 'fail' | 'end' | 'rack' | 'book' | 'help' | 'scores';
+/** ancre d'adresse qui ouvre « Régler la lunette » (lien direct) */
+const GUIDE_HASH = '#lunette';
+
+export type ScreenName = 'loading' | 'menu' | 'brief' | 'pause' | 'fail' | 'end' | 'rack' | 'book' | 'help' | 'scores' | 'guide';
 
 export interface UIHandlers {
   start(): void;
@@ -316,9 +320,12 @@ export class UI {
             <div class="opt o-tuto" data-id="tutoRow"><span>Tutoriel</span><div class="seg" data-id="segTuto"></div></div>
             <div class="opt o-coach"><span>Conseils</span><div class="seg" data-id="segCoach"></div></div>
           </div>
+          <div class="m-links">
+          <button class="mbtn m-guide" data-act="guide"><span class="lg">Régler la lunette</span><span class="sh">Lunette</span></button>
           <button class="mbtn m-help" data-act="help">Commandes</button>
           <button class="mbtn m-scores" data-act="scores">Scores</button>
           ${init.fullscreen ? '<button class="mbtn m-fs" data-act="fullscreen">Plein écran</button>' : ''}
+          </div>
         </div>
         <div class="foot">${touch ? 'Jouez au casque.' : 'Jouez au casque. Clic pour capturer la souris, Échap pour la libérer.'}${init.homeTip ? `<span class="hometip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>Sans les barres de Safari : <i>Partager</i>, puis <i>Sur l’écran d’accueil</i>.</span>` : ''}</div>
         <div class="boards"><div class="boards-h"><span>Meilleurs scores</span><i data-mode></i></div><div class="boards-g">${boardCols}</div></div>
@@ -334,6 +341,10 @@ export class UI {
         <div class="local-scores hidden" data-id="localRow"><span data-id="localT"></span><button data-act="clearLocal" data-id="localB">Effacer</button></div>
         <div class="row-btn help-back"><button class="mbtn" data-act="closeHelp">Retour</button></div></div></div>
 
+      <div class="screen veil-full" id="guide"><div class="card wide" data-id="guideCard"><div class="kicker">Mode d’emploi<button class="xclose g-close" data-act="closeGuide">Retour</button></div><h2>Régler la lunette</h2>
+        <div data-id="guideBody"></div>
+        <div class="row-btn help-back"><button class="mbtn" data-act="closeGuide">Retour</button></div></div></div>
+
       <div class="screen veil-full" id="scores"><div class="card scroll"><div class="kicker">Meilleurs scores<button class="xclose" data-act="closeScores">Retour</button></div>
         ${allBoards}
         <p class="boards-note">Les cinq premiers de chaque carte. Classement <span data-mode></span>.</p>
@@ -344,6 +355,7 @@ export class UI {
         <div class="opt"><span>Volume</span><input type="range" min="0" max="100" data-id="vol2" /></div>
         <div class="menu-list" style="margin-top:18px">
           <button class="mbtn primary" data-act="resume">Reprendre</button>
+          <button class="mbtn" data-act="guide">Régler la lunette</button>
           <button class="mbtn" data-act="help">Commandes</button>
           <button class="mbtn hidden" data-act="skipTuto" data-id="pauseSkip">Passer le tutoriel</button>
           <button class="mbtn" data-act="restart">Recommencer la mission</button>
@@ -374,7 +386,7 @@ export class UI {
       `,
     );
     root.querySelectorAll<HTMLElement>('[data-id]').forEach((e) => (this.el[e.dataset.id!] = e));
-    for (const n of ['loading', 'menu', 'brief', 'pause', 'fail', 'end', 'rack', 'book', 'help', 'scores'] as ScreenName[]) this.screens.set(n, root.querySelector('#' + n)!);
+    for (const n of ['loading', 'menu', 'brief', 'pause', 'fail', 'end', 'rack', 'book', 'help', 'scores', 'guide'] as ScreenName[]) this.screens.set(n, root.querySelector('#' + n)!);
     this.el.hud = root.querySelector('#hud')!;
 
     const seg = (host: HTMLElement, items: [string, string][], sel: string, cb: (k: string) => void): void => {
@@ -432,6 +444,9 @@ export class UI {
       v.value = String(Math.round(init.volume * 100));
       v.addEventListener('input', () => h.setVolume(Number(v.value) / 100));
     }
+    // lien direct ou ancre saisie à la main, et Échap pour revenir
+    window.addEventListener('hashchange', () => { if (this.guideLinked && (this.current === 'menu' || this.current === 'pause')) this.openGuide(); });
+    window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && this.current === 'guide' && this.guideFrom === 'menu') this.closeGuide(); });
     let helpFrom: ScreenName | null = 'menu';
     root.addEventListener('click', (e) => {
       const t = e.target as HTMLElement;
@@ -454,6 +469,8 @@ export class UI {
       else if (act === 'continue') h.continueBrief();
       else if (act === 'help') { helpFrom = this.current; this.show('help'); }
       else if (act === 'closeHelp') this.show(helpFrom);
+      else if (act === 'guide') this.openGuide();
+      else if (act === 'closeGuide') this.closeGuide();
       else if (act === 'take') h.pickWeapon(this.rackSel);
       else if (act === 'close') h.close();
       else if (act === 'skipTuto') h.skipTutorial();
@@ -490,6 +507,8 @@ export class UI {
   }
 
   show(name: ScreenName | null): void {
+    // quitter « Régler la lunette », par quelque chemin que ce soit, retire son ancre de l'adresse
+    if (this.current === 'guide' && name !== 'guide' && location.hash === GUIDE_HASH) history.replaceState(null, '', location.pathname + location.search);
     this.current = name;
     for (const [n, e] of this.screens) e.classList.toggle('on', n === name);
   }
@@ -774,6 +793,31 @@ export class UI {
    * décomposée par distance — tableau large sur ordinateur, fiches de deux lignes sur écran tactile (portrait 375 px).
    * Dans les deux cas le modèle de traînée de l'arme (G1 ou G7) est affiché.
    */
+  // --- « Régler la lunette » : contenu posé à la première ouverture ; l'adresse `#lunette` y mène directement ---
+  private guideFrom: ScreenName | null = 'menu';
+  private guideReady = false;
+  openGuide(): void {
+    if (this.current === 'guide') return;
+    if (!this.guideReady) {
+      this.guideReady = true;
+      this.el.guideBody.innerHTML = guideHtml(this.touch);
+      initGuide(this.el.guideBody);
+    }
+    this.guideFrom = this.current;
+    this.el.guideCard.scrollTop = 0;
+    this.show('guide');
+    // l'adresse suit la page (lien à partager), sans ajouter d'entrée à l'historique
+    if (location.hash !== GUIDE_HASH) history.replaceState(null, '', GUIDE_HASH);
+  }
+  closeGuide(): void {
+    if (this.current !== 'guide') return;
+    this.show(this.guideFrom);
+  }
+  /** L'adresse demande-t-elle la page (lien direct) ? */
+  get guideLinked(): boolean {
+    return location.hash === GUIDE_HASH;
+  }
+
   openBook(data: BookData, log: ShotLog[], elev: number, wind: number): void {
     const def = data.def;
     this.el.bookT.textContent = `${def.name} · ${def.caliber}`;

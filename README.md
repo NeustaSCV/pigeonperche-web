@@ -163,6 +163,8 @@ Le décor réagit aux balles. Une vitre traversée se brise, plus ou moins selon
 
 ### Le mrad, l'élévation et le vent
 
+Le jeu embarque un mode d'emploi illustré, « Régler la lunette », ouvert depuis l'accueil ou la pause, et directement par l'adresse du jeu suivie de `#lunette`. Cinq chapitres (le mrad, lire le réticule, l'élévation, la dérive, corriger après un tir), des schémas que l'on manipule et des vues de la lunette ; ses chiffres viennent du même calcul que le carnet de tir.
+
 Tout le réglage se fait en mrad (milliradian). Un mrad est un angle : il couvre 10 cm à 100 m, 20 cm à 200 m, 1 m à 1 000 m. Le réticule est gradué dans cette unité, et les tourelles avancent par pas de 0,1 mrad.
 
 - **Élévation** : la balle tombe en route. Le carnet de tir donne, pour la distance mesurée, l'angle qui compense cette chute ; on l'affiche à la tourelle d'élévation.

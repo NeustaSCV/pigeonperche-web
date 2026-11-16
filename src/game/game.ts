@@ -346,6 +346,8 @@ export class Game {
     }
     this.backdrop = showBackdrop();
     this.ui.show('menu');
+    // lien direct vers « Régler la lunette » (adresse terminée par #lunette)
+    if (this.ui.guideLinked) this.ui.openGuide();
     if (this.params.get('preload') !== '0' && !meteredConnection()) {
       this.preloader = new Preloader();
       const start = (): void => this.preloader?.start(preloadList({ terrainDir: this.data.terrain.dir, sky: this.engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_2k.hdr' }));

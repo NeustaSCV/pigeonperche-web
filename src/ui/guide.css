@@ -1,0 +1,59 @@
+/* « Régler la lunette » : page d'explication (voir guide.ts) */
+#guide { align-items: center; justify-content: center; }
+#guide .card { max-width: 780px; width: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 26px 34px 30px; scrollbar-width: thin; }
+#guide .kicker { display: flex; align-items: center; justify-content: space-between; }
+#guide h2 { margin-bottom: 10px; }
+.g-nav { position: sticky; top: -26px; z-index: 2; display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; margin: 0 0 6px; background: rgba(14, 15, 14, 0.94); border-bottom: 1px solid var(--line); }
+.g-nav button, .g-seg button, .g-pad button { background: none; border: 1px solid var(--line); color: var(--dim); font: inherit; font-size: 12px; letter-spacing: 0.08em; padding: 7px 11px; cursor: pointer; }
+.g-nav button:hover, .g-seg button:hover, .g-pad button:hover { color: var(--ink); border-color: var(--dim); }
+.g-nav i { font-style: normal; color: var(--gold); margin-right: 7px; }
+#guide section { padding-top: 22px; scroll-margin-top: 44px; }
+#guide h3 { font-family: var(--serif); font-weight: 400; font-size: 23px; letter-spacing: 0.04em; margin: 0 0 12px; display: flex; align-items: baseline; gap: 12px; }
+#guide h3 i { font-style: normal; font-family: var(--sans); font-size: 12px; color: #14120e; background: var(--gold); width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; flex: none; transform: translateY(-3px); }
+#guide p { color: var(--dim); font-size: 14.5px; line-height: 1.65; margin: 0 0 13px; user-select: text; -webkit-user-select: text; }
+#guide p b { color: var(--ink); font-weight: 500; }
+#guide .g-lead { color: var(--ink); font-size: 15.5px; }
+.g-fig { margin: 4px 0 10px; border: 1px solid var(--line); background: rgba(0, 0, 0, 0.28); }
+.g-fig svg { display: block; width: 100%; height: auto; font-family: var(--sans); }
+.g-ctl { display: grid; grid-template-columns: 170px 1fr 92px; align-items: center; gap: 12px; margin: 0 0 10px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--dim); }
+.g-ctl input { width: 100%; }
+.g-ctl b { color: var(--gold); font-weight: 500; text-align: right; text-transform: none; letter-spacing: 0; font-size: 14px; }
+.g-seg { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.g-seg button.sel { color: #14120e; background: var(--gold); border-color: var(--gold); }
+.g-pad { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 14px; }
+.g-pad button { color: var(--ink); min-width: 96px; }
+.g-pad button:active { background: var(--gold); border-color: var(--gold); color: #14120e; }
+.g-pad .alt { margin-left: auto; color: var(--gold); }
+#guide .g-formula { color: var(--ink); font-family: var(--serif); font-size: 17px; text-align: center; padding: 10px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+#guide .g-note { font-size: 12.5px; color: var(--faint); color: rgba(242, 237, 227, 0.5); border-left: 2px solid var(--gold); padding-left: 10px; }
+.g-dope { width: 100%; border-collapse: collapse; margin: 0 0 14px; font-size: 12.5px; }
+.g-dope th { text-align: left; font-weight: 400; color: var(--faint); color: rgba(242, 237, 227, 0.5); letter-spacing: 0.12em; text-transform: uppercase; font-size: 10.5px; padding: 6px 8px 6px 0; white-space: nowrap; }
+.g-dope td { text-align: right; padding: 6px 4px; color: var(--dim); border-bottom: 1px solid var(--line); white-space: nowrap; }
+.g-dope td b { color: var(--gold); font-weight: 500; }
+.g-photo { margin: 4px 0 14px; }
+.g-photo img { display: block; width: 100%; height: auto; border: 1px solid var(--line); }
+.g-photo figcaption { font-size: 12px; color: rgba(242, 237, 227, 0.5); padding-top: 6px; }
+.g-wrap-t { overflow-x: auto; }
+
+html.touch #guide { padding: var(--sat) calc(var(--sar) + 8px) var(--sab) calc(var(--sal) + 8px); }
+html.touch #guide .card { touch-action: pan-y; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding: 16px 18px 22px; }
+html.touch .g-nav { top: -16px; }
+html.touch .g-nav button, html.touch .g-seg button, html.touch .g-pad button { min-height: 44px; padding: 8px 12px; }
+html.touch .g-ctl input { min-height: 44px; }
+html.touch.portrait #guide { padding: calc(var(--sat) + 8px) calc(var(--sar) + 8px) calc(max(var(--sab), 10px) + 8px) calc(var(--sal) + 8px); }
+html.touch.portrait #guide .card { padding: 14px 14px 20px; }
+html.touch.portrait #guide h3 { font-size: 20px; }
+html.touch.portrait .g-ctl { grid-template-columns: 1fr 86px; }
+html.touch.portrait .g-ctl span { grid-column: 1 / -1; margin-bottom: -8px; }
+html.touch.portrait .g-nav { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+html.touch.portrait .g-nav button { white-space: nowrap; flex: none; }
+html.touch.portrait .g-dope { font-size: 11.5px; }
+html.touch.portrait .g-pad button { min-width: 0; flex: 1 1 40%; }
+html.touch.portrait .g-pad .alt { flex-basis: 100%; }
+/* bouton de retour en tête de page, sur ordinateur aussi : la page est longue */
+#guide .g-close { display: block; background: none; border: 1px solid var(--line); color: var(--ink); padding: 8px 16px; font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; cursor: pointer; }
+#guide .g-close:hover { border-color: var(--gold); color: var(--gold); }
+/* écran étroit : le schéma garde une largeur lisible et se fait glisser de côté */
+html.touch.portrait .g-fig { overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+html.touch.portrait .g-fig svg { min-width: 540px; }
+html.touch.portrait #guide .g-lead::after { content: ' Téléphone tenu droit : les schémas se font glisser de côté.'; color: var(--gold); }
