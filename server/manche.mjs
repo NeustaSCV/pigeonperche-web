@@ -8,6 +8,10 @@
 // Le temps est calé sur l'horloge : une manche de 4 minutes commence à chaque multiple de 5 minutes (xx:00, xx:05…),
 // suivie d'une minute de salon. Le classement de la manche qui s'achève est gardé (« partie précédente ») et versé
 // aux records de toujours (meilleurs et pires scores).
+//
+// Tireurs automatiques : dès qu'un joueur humain est dans la salle, des robots occupent les places libres jusqu'à
+// dix tireurs ; ils cèdent leur place aux humains qui arrivent et s'en vont quand le dernier humain part. Ils tirent
+// peu et mal : une cible en vue toutes les quelques secondes, avec une chance de toucher qui fond avec la distance.
 
 export const MAX_JOUEURS = 10;
 export const RETOUR_MS = 5000;          // délai avant de reparaître sur un autre emplacement
@@ -18,24 +22,32 @@ export const CYCLE_MS = MANCHE_MS + PAUSE_MS;   // 5 minutes : les manches comme
 export const RECORDS_MAX = 20;          // lignes gardées dans chaque liste de records
 const V_MAX = 1000;                     // m/s : aucune balle du jeu ne va plus vite
 const TOL_DIST = 40;                    // m : écart admis entre la distance annoncée et celle des emplacements
+export const ROBOT_ATTENTE_MS = [5000, 14000];   // délai entre deux tirs d'un robot : entre 5 et 14 s
+export const ROBOT_VISEE_MS = 2000;      // temps pendant lequel un robot tient sa cible avant de tirer
+const ROBOT_VITESSE = 700;              // m/s : vitesse moyenne prêtée à sa balle pour le temps de vol
+/** Chance qu'un robot touche à la distance `d` : 20 % à 400 m, 10 % à 800 m, 4 % au-delà de 2 km. */
+export const adresseRobot = (d) => Math.max(0.04, Math.min(0.2, 80 / Math.max(d, 1)));
 
 /** Points d'une touche : un point par tranche de 10 m. */
 export const pointsPour = (dist) => Math.max(1, Math.round(dist / 10));
 /** Du meilleur au pire : les points, puis le moins de touches subies, puis le plus de touches réussies. */
 export const parRang = (a, b) => b.points - a.points || a.subies - b.subies || b.touches - a.touches;
 
-const propre = (s) => String(s ?? '').replace(/[\u0000-\u001f<>&"']/g, '').replace(/\s+/g, ' ').trim().slice(0, 16);
+const propre = (s, n = 16) => String(s ?? '').replace(/[\u0000-\u001f<>&"']/g, '').replace(/\s+/g, ' ').trim().slice(0, n);
 
 /**
  * @param {{ emplacements: { nom: string, x: number, y: number, z: number }[], now?: () => number,
  *           later?: (fn: () => void, ms: number) => unknown, rand?: () => number,
- *           records?: { meilleurs?: object[], pires?: object[] }, onRecords?: (r: object) => void }} opt
+ *           records?: { meilleurs?: object[], pires?: object[] }, onRecords?: (r: object) => void,
+ *           robots?: string[], voit?: (a: string, b: string) => boolean }} opt
+ *   `robots` : pseudos des tireurs automatiques (liste vide : aucun robot) ; `voit` : ligne de visée entre deux
+ *   emplacements (par défaut tout le monde se voit)
  */
-export function createManche({ emplacements, now = Date.now, later = (fn, ms) => setTimeout(fn, ms), rand = Math.random, records = {}, onRecords = () => {} }) {
+export function createManche({ emplacements, now = Date.now, later = (fn, ms) => setTimeout(fn, ms), rand = Math.random, records = {}, onRecords = () => {}, robots = [], voit = () => true }) {
   const joueurs = new Map();            // id → { id, pseudo, robot, emp, vivant, points, touches, tirs, subies, dernierTir, send }
   const spectateurs = new Map();        // id → send
   let suivant = 1, numero = 0, precedente = null;
-  let meilleurs = [...(records.meilleurs ?? [])], pires = [...(records.pires ?? [])];
+  let meilleurs = (records.meilleurs ?? []).filter((l) => !l.robot), pires = (records.pires ?? []).filter((l) => !l.robot);
 
   const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)); return emplacements.filter((e) => !pris.has(e.nom) && e.nom !== sauf); };
   const tirage = (sauf) => { const l = libres(sauf); return l.length ? l[Math.floor(rand() * l.length)].nom : null; };
@@ -49,18 +61,88 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   let phase = temps().phase;
   const pseudoLibre = (p) => { let q = p, n = 2; const pris = new Set([...joueurs.values()].map((j) => j.pseudo.toLowerCase())); while (pris.has(q.toLowerCase())) q = `${p.slice(0, 13)} ${n++}`; return q; };
 
+  /** Applique à l'arrivée de la balle la touche de `tireur` sur `cible`, distants de `d` mètres. */
+  const engage = (tireur, cible, d, tof) => {
+    const id = tireur.id, idc = cible.id, empTireur = tireur.emp, empCible = cible.emp, n = numero;
+    later(() => {
+      // même manche, la cible encore là et debout, le tireur toujours dans la salle
+      const t = joueurs.get(id), c = joueurs.get(idc);
+      if (n !== numero || phase !== 'jeu' || !t || !c || !c.vivant || c.emp !== empCible) return;
+      c.vivant = false; c.subies++; t.touches++; const pts = pointsPour(d); t.points += pts;
+      pointe(c, null); for (const q of joueurs.values()) if (q.vise === idc) pointe(q, null);
+      diffuse({ t: 'touche', tireur: id, cible: idc, emp: empCible, de: empTireur, dist: Math.round(d), points: pts, scores: [...joueurs.values()].map(vue) });
+      later(() => {
+        const k = joueurs.get(idc); if (!k || k.vivant) return;
+        k.emp = tirage(k.emp) ?? k.emp; k.vivant = true;
+        diffuse({ t: 'retour', id: k.id, emp: k.emp });
+      }, RETOUR_MS);
+    }, tof * 1000);
+  };
+  /**
+   * Reflet de lunette : celui qui est visé reçoit, pour lui seul, l'annonce qu'un tireur le tient dans sa lunette
+   * (il verra un éclat à son emplacement). `cible` nul : le tireur ne vise plus personne.
+   */
+  const pointe = (j, cible) => {
+    const avant = j.vise ?? null, apres = cible && cible.id !== j.id && cible.vivant && j.vivant && phase === 'jeu' ? cible.id : null;
+    if (avant === apres) return;
+    j.vise = apres;
+    if (avant != null) joueurs.get(avant)?.send({ t: 'vise', par: j.id, actif: false });
+    if (apres != null) cible.send({ t: 'vise', par: j.id, actif: true });
+  };
+  const ecart = (a, b) => { const p = lieu(a.emp), q = lieu(b.emp); return Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z); };
+
+  // ---------- tireurs automatiques ----------
+  const entre = (pseudo, robot, send) => {
+    const emp = tirage(); if (!emp) return null;
+    const id = suivant++;
+    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, send };
+    joueurs.set(id, j); return j;
+  };
+  const tourRobot = (id) => later(() => {
+    const j = joueurs.get(id); if (!j) return;                       // le robot est parti : sa boucle s'arrête
+    if (phase === 'jeu' && j.vivant) {
+      const enVue = [...joueurs.values()].filter((c) => c.id !== id && c.vivant && voit(j.emp, c.emp));
+      if (enVue.length) {
+        // il épaule, tient sa cible deux secondes (elle voit son reflet), puis tire
+        const c = enVue[Math.floor(rand() * enVue.length)], touche = rand() < adresseRobot(ecart(j, c)), n = numero;
+        pointe(j, c);
+        later(() => {
+          const moi = joueurs.get(id), cible = joueurs.get(c.id);
+          if (moi && cible && n === numero && phase === 'jeu' && moi.vivant && cible.vivant && moi.vise === cible.id) {
+            const d = ecart(moi, cible); moi.dernierTir = now(); moi.tirs++; diffuse({ t: 'tir', id });
+            if (touche) engage(moi, cible, d, d / ROBOT_VITESSE);
+          }
+          if (moi) pointe(moi, null);
+        }, ROBOT_VISEE_MS);
+      }
+    }
+    tourRobot(id);
+  }, ROBOT_ATTENTE_MS[0] + rand() * (ROBOT_ATTENTE_MS[1] - ROBOT_ATTENTE_MS[0]));
+  /** Ajuste le nombre de robots : les places libres quand un humain est là, aucun sinon. */
+  const equilibre = () => {
+    if (!robots.length) return;                                     // pas de liste : la salle ne gère aucun robot
+    const bots = [...joueurs.values()].filter((j) => j.robot), voulu = robots.length && humains() ? Math.max(0, MAX_JOUEURS - humains()) : 0;
+    for (const j of bots.slice(voulu)) { joueurs.delete(j.id); diffuse({ t: 'part', id: j.id }); }
+    for (let k = bots.length; k < voulu; k++) {
+      const libresN = robots.filter((n) => ![...joueurs.values()].some((j) => j.pseudo === propre(n, 24))); if (!libresN.length) break;
+      const j = entre(libresN[Math.floor(rand() * libresN.length)], true, () => {}); if (!j) break;
+      diffuse({ t: 'arrive', joueur: vue(j) }); tourRobot(j.id);
+    }
+  };
+
   const debut = () => {
     numero++; phase = 'jeu';
     for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; }
     diffuse({ t: 'debut', ...temps(), joueurs: [...joueurs.values()].map(vue) });
   };
   const fin = () => {
+    for (const j of joueurs.values()) j.vise = null;
     const classement = [...joueurs.values()].sort(parRang).map(ligne);
     phase = 'pause';
     if (classement.length) {
       precedente = { fin: now(), classement };
-      // records de toujours : seuls ceux qui ont tiré au moins une fois comptent
-      const actifs = classement.filter((l) => l.tirs > 0).map((l) => ({ ...l, date: now() }));
+      // records de toujours : les humains qui ont tiré au moins une fois ; les robots n'y entrent jamais
+      const actifs = classement.filter((l) => l.tirs > 0 && !l.robot).map((l) => ({ ...l, date: now() }));
       if (actifs.length) {
         meilleurs = [...meilleurs, ...actifs].sort(parRang).slice(0, RECORDS_MAX);
         pires = [...pires, ...actifs].sort((a, b) => parRang(b, a)).slice(0, RECORDS_MAX);
@@ -76,14 +158,13 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   return {
     /** Entrée d'un joueur. Renvoie son identifiant, ou null si la salle est pleine. `robot` : tireur automatique. */
     join(pseudo, send, { robot = false } = {}) {
-      if (joueurs.size >= MAX_JOUEURS) { send({ t: 'complet' }); return null; }
-      const emp = tirage(); if (!emp) { send({ t: 'complet' }); return null; }
-      const id = suivant++;
-      const j = { id, pseudo: pseudoLibre(propre(pseudo) || `Tireur ${id}`), robot, emp, vivant: true, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, send };
-      joueurs.set(id, j);
-      send({ t: 'bienvenue', id, ...temps(), joueurs: [...joueurs.values()].map(vue) });
-      diffuse({ t: 'arrive', joueur: vue(j) }, id);
-      return id;
+      if (humains() >= MAX_JOUEURS || (robot && joueurs.size >= MAX_JOUEURS)) { send({ t: 'complet' }); return null; }
+      if (!robot && joueurs.size >= MAX_JOUEURS) { const b = [...joueurs.values()].find((q) => q.robot); if (b) { joueurs.delete(b.id); diffuse({ t: 'part', id: b.id }); } }
+      const j = entre(pseudo, robot, send); if (!j) { send({ t: 'complet' }); return null; }
+      send({ t: 'bienvenue', id: j.id, ...temps(), joueurs: [...joueurs.values()].map(vue) });
+      diffuse({ t: 'arrive', joueur: vue(j) }, j.id);
+      if (!robot) equilibre();
+      return j.id;
     },
     /** Entrée d'un spectateur : il reçoit tout, n'occupe aucun emplacement. Refusée s'il n'y a aucun joueur humain. */
     watch(send) {
@@ -92,7 +173,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       send({ t: 'bienvenue', id, spectateur: true, ...temps(), joueurs: [...joueurs.values()].map(vue) });
       return id;
     },
-    leave(id) { if (spectateurs.delete(id)) return; if (joueurs.delete(id)) diffuse({ t: 'part', id }); },
+    leave(id) { if (spectateurs.delete(id)) return; const p = joueurs.get(id); if (p) pointe(p, null); for (const q of joueurs.values()) if (q.vise === id) q.vise = null; if (joueurs.delete(id)) { diffuse({ t: 'part', id }); equilibre(); } },
     /**
      * Un tir. `annonce` : { cible?: id du joueur que la balle atteint, dist?: m, tof?: s }.
      * Renvoie 'ok', ou la raison du refus.
@@ -107,27 +188,17 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (annonce.cible == null) return 'ok';
       const c = joueurs.get(Number(annonce.cible)); if (!c || c.id === id) return 'cible inconnue';
       if (!c.vivant) return 'cible couchée';
-      const a = lieu(j.emp), b = lieu(c.emp), d = Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+      const d = ecart(j, c);
       const dist = Number(annonce.dist), tof = Number(annonce.tof);
       if (!(Math.abs(dist - d) <= TOL_DIST)) return 'distance';
       if (!(tof >= d / V_MAX && tof <= 12)) return 'temps de vol';
-      const empTireur = j.emp, empCible = c.emp, n = numero;
-      later(() => {
-        // à l'arrivée de la balle : même manche, la cible encore là et debout, le tireur toujours dans la salle
-        const tireur = joueurs.get(id), cible = joueurs.get(c.id);
-        if (n !== numero || phase !== 'jeu' || !tireur || !cible || !cible.vivant || cible.emp !== empCible) return;
-        cible.vivant = false; cible.subies++; tireur.touches++; const pts = pointsPour(d); tireur.points += pts;
-        diffuse({ t: 'touche', tireur: id, cible: cible.id, emp: empCible, de: empTireur, dist: Math.round(d), points: pts, scores: [...joueurs.values()].map(vue) });
-        later(() => {
-          const k = joueurs.get(cible.id); if (!k || k.vivant) return;
-          k.emp = tirage(k.emp) ?? k.emp; k.vivant = true;
-          diffuse({ t: 'retour', id: k.id, emp: k.emp });
-        }, RETOUR_MS);
-      }, tof * 1000);
+      engage(j, c, d, tof);
       return 'ok';
     },
+    /** Le joueur `id` tient le joueur `cible` dans sa lunette (nul : plus personne). */
+    aim(id, cible) { const j = joueurs.get(id); if (!j) return 'inconnu'; pointe(j, cible == null ? null : joueurs.get(Number(cible)) ?? null); return 'ok'; },
     /** Ce que le menu et le salon d'attente affichent, sans entrer dans la salle. */
-    resume: () => ({ ...temps(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, places: MAX_JOUEURS - joueurs.size,
+    resume: () => ({ ...temps(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, robots: joueurs.size - humains(), places: MAX_JOUEURS - humains(),
       joueurs: [...joueurs.values()].sort(parRang).map(ligne), precedente, meilleurs: meilleurs.slice(0, 5), pires: pires.slice(0, 5) }),
     etat: () => [...joueurs.values()].map(vue),
     nombre: () => joueurs.size,

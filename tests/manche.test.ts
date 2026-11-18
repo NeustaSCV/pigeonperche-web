@@ -1,14 +1,16 @@
 // Manche multijoueur de la Ville nouvelle : arbitrage du serveur (server/manche.mjs), sans réseau.
 import { describe, expect, it } from 'vitest';
 // @ts-ignore module JavaScript du serveur, sans déclarations de types
-import { createManche, pointsPour, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, MANCHE_MS, PAUSE_MS } from '../server/manche.mjs';
+import { createManche, pointsPour, adresseRobot, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, MANCHE_MS, PAUSE_MS, ROBOT_ATTENTE_MS, ROBOT_VISEE_MS } from '../server/manche.mjs';
+// @ts-ignore
+import { ROBOTS } from '../server/robots.mjs';
 
 const LIEUX = Array.from({ length: 12 }, (_, i) => ({ nom: `E${i}`, x: i * 500, y: 180, z: 0 }));
 
-function salle() {
+function salle(opt: any = {}) {
   let t = 0; const attente: { a: number; fn: () => void }[] = [];
   const gardes: any[] = [];
-  const m = createManche({ emplacements: LIEUX, now: () => t, later: (fn: () => void, ms: number) => attente.push({ a: t + ms, fn }), rand: () => 0, onRecords: (r: any) => gardes.push(r) });
+  const m = createManche({ emplacements: LIEUX, now: () => t, later: (fn: () => void, ms: number) => attente.push({ a: t + ms, fn }), rand: () => 0, onRecords: (r: any) => gardes.push(r), ...opt });
   // fait avancer l'horloge en exécutant les minuteries dans l'ordre du temps
   const avance = (ms: number) => { const but = t + ms; for (;;) { let i = -1; attente.forEach((x, k) => { if (x.a <= but && (i < 0 || x.a < attente[i].a)) i = k; }); if (i < 0) break; const x = attente.splice(i, 1)[0]; t = Math.max(t, x.a); x.fn(); } t = but; };
   const entre = (pseudo: string) => { const recu: any[] = []; const id = m.join(pseudo, (x: any) => recu.push(x)); return { id, recu }; };
@@ -97,5 +99,64 @@ describe('manche multijoueur', () => {
     expect(id).toBeLessThan(0); expect(vu.at(-1)).toMatchObject({ t: 'bienvenue', spectateur: true });
     expect(m.resume()).toMatchObject({ connectes: 3, humains: 2, spectateurs: 1 });
     expect(m.etat()[0].robot).toBe(true); expect(autre.id).not.toBeNull();
+  });
+  it('remplit les places libres de robots dès qu’un humain est là, leur fait céder la place, et les renvoie quand il part', () => {
+    const { m, entre } = salle({ robots: ROBOTS });
+    expect(m.resume()).toMatchObject({ connectes: 0, robots: 0 });
+    const a = entre('Anna');
+    expect(m.resume()).toMatchObject({ connectes: MAX_JOUEURS, humains: 1, robots: MAX_JOUEURS - 1, places: MAX_JOUEURS - 1 });
+    const bots = m.etat().filter((j: any) => j.robot);
+    expect(new Set(bots.map((j: any) => j.pseudo)).size).toBe(MAX_JOUEURS - 1);
+    expect(bots.every((j: any) => ROBOTS.includes(j.pseudo))).toBe(true);
+    expect(new Set(m.etat().map((j: any) => j.emp)).size).toBe(MAX_JOUEURS);
+    expect(a.recu.filter((x: any) => x.t === 'arrive' && x.joueur.robot)).toHaveLength(MAX_JOUEURS - 1);
+    const b = entre('Bob');
+    expect(b.id).not.toBeNull();
+    expect(m.resume()).toMatchObject({ connectes: MAX_JOUEURS, humains: 2, robots: MAX_JOUEURS - 2 });
+    m.leave(b.id); expect(m.resume()).toMatchObject({ humains: 1, robots: MAX_JOUEURS - 1 });
+    m.leave(a.id); expect(m.resume()).toMatchObject({ connectes: 0, humains: 0, robots: 0 });
+  });
+  it('fait tirer les robots sur ce qu’ils voient seulement, et applique leurs touches comme celles des joueurs', () => {
+    // un seul robot (salle réduite à deux emplacements) ; rand = 0 : il tire au plus tôt et touche à tous les coups
+    const deux = LIEUX.slice(0, 2);
+    const aveugle = salle({ robots: ROBOTS, emplacements: deux, voit: () => false });
+    const a0 = aveugle.entre('Anna'); aveugle.avance(60_000);
+    expect(a0.recu.some((x: any) => x.t === 'tir' || x.t === 'touche')).toBe(false);
+    const { m, avance, entre } = salle({ robots: ROBOTS, emplacements: deux });
+    const a = entre('Anna'); const bot = m.etat().find((j: any) => j.robot);
+    avance(ROBOT_ATTENTE_MS[0] + 10);
+    expect(a.recu.at(-1)).toEqual({ t: 'vise', par: bot.id, actif: true });     // il épaule : sa cible voit le reflet
+    avance(ROBOT_VISEE_MS);
+    expect(a.recu.filter((x: any) => x.t === 'tir')).toEqual([{ t: 'tir', id: bot.id }]);
+    expect(a.recu.at(-1)).toEqual({ t: 'vise', par: bot.id, actif: false });
+    avance(2000);
+    const t = a.recu.find((x: any) => x.t === 'touche');
+    expect(t).toMatchObject({ tireur: bot.id, cible: a.id, dist: 500, points: pointsPour(500) });
+    expect(m.etat().find((j: any) => j.id === a.id).vivant).toBe(false);
+    expect(adresseRobot(400)).toBeCloseTo(0.2); expect(adresseRobot(800)).toBeCloseTo(0.1); expect(adresseRobot(3000)).toBe(0.04);
+  });
+  it('n’inscrit jamais un robot aux records de toujours, mais le garde au classement de la partie', () => {
+    const deux = LIEUX.slice(0, 2);
+    const { m, avance, entre, gardes } = salle({ robots: ROBOTS, emplacements: deux });
+    const a = entre('Anna'); const bot = m.etat().find((j: any) => j.robot);
+    avance(CADENCE_MS); expect(m.shot(a.id, {})).toBe('ok');
+    avance(MANCHE_MS);                                             // le robot touche à tous les coups (rand = 0)
+    const r = m.resume();
+    expect(r.precedente.classement.map((l: any) => l.pseudo)).toEqual([bot.pseudo, 'Anna']);
+    expect(r.precedente.classement[0].points).toBeGreaterThan(0);
+    expect(r.meilleurs.map((l: any) => l.pseudo)).toEqual(['Anna']);
+    expect(r.pires.map((l: any) => l.pseudo)).toEqual(['Anna']);
+    expect(gardes.at(-1).meilleurs.some((l: any) => l.robot)).toBe(false);
+  });
+  it('n’annonce le reflet de lunette qu’à celui qui est visé, et l’éteint quand le tireur vise ailleurs ou s’en va', () => {
+    const { m, entre } = salle();
+    const a = entre('Anna'), b = entre('Bob'), c = entre('Chloé');
+    const vus = (j: any) => j.recu.filter((x: any) => x.t === 'vise');
+    expect(m.aim(a.id, b.id)).toBe('ok'); m.aim(a.id, b.id);
+    expect(vus(b)).toEqual([{ t: 'vise', par: a.id, actif: true }]); expect(vus(c)).toEqual([]); expect(vus(a)).toEqual([]);
+    m.aim(a.id, c.id);
+    expect(vus(b).at(-1)).toEqual({ t: 'vise', par: a.id, actif: false }); expect(vus(c)).toEqual([{ t: 'vise', par: a.id, actif: true }]);
+    m.leave(a.id);
+    expect(vus(c).at(-1)).toEqual({ t: 'vise', par: a.id, actif: false });
   });
 });

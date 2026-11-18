@@ -2,12 +2,12 @@
 import { chromium } from 'playwright';
 import { mkdirSync } from 'node:fs';
 mkdirSync('e2e/out', { recursive: true });
-const VUES = [['La Médiathèque', -0.28, 0], ['Grue de la piscine', -0.5, 0.6], ['Le Carrepoint', -0.3, 0], ['Lycée hôtelier', -0.22, 0.5]];
+const VUES = [['La Médiathèque', -0.12, 3.14], ['Grue de la piscine', -0.5, 0.6], ['Le Carrepoint', -0.3, 0], ['Lycée hôtelier', -0.22, 0.5]];
 const browser = await chromium.launch({ headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-webgl'] });
 for (const mode of ['dessin']) {
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 }, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => console.log('ERREUR', String(e).slice(0, 300)));
-  await page.goto((process.env.HR_URL || 'http://127.0.0.1:5173/') + 'ville.html');
+  await page.goto((process.env.HR_URL || 'http://127.0.0.1:5173/') + 'ville.html?solo');
   await page.waitForFunction(() => window.ville, null, { timeout: 120000 });
   await page.addStyleTag({ content: '#bar, #info, #tir, #tags, #retour { display: none !important; }' });
   for (let i = 0; i < VUES.length; i++) {

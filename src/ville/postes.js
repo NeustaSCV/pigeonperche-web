@@ -201,8 +201,7 @@ export function buildPostes({ scene, EMP, groundY, bats, hash, centre, voirie = 
       const mat = panneau(texte, fond, lettres, w, h);
       if (genre === 'totem') { cyl(g, 0.35, 0.3, 13, M.rouge, ux * 9, sol, uz * 9, 8); enseigne(g, mat, w, 2.2, ux * 9, sol + 13, uz * 9, dc + Math.PI / 2, false); }
       else if (genre === 'plaque') { cyl(g, 0.05, 0.05, 3.2, M.acier, ux * 5, sol, uz * 5, 6); enseigne(g, panneau(texte, fond, lettres, 2.4, 0.5), 2.4, 0.5, ux * 5, sol + 2.7, uz * 5, dc + Math.PI / 2, false); enseigne(g, mat, w * 1.6, h * 1.6, -ux * 1.0, pl - 3.2, -uz * 1.0, dc, false); }
-      else if (e.type === 'toit' || e.type === 'clocher' || e.type === 'chateau') enseigne(g, mat, w, h, -ux * 9, pl + 1.6, -uz * 9, dc);           // derrière le tireur, face au centre
-      else enseigne(g, mat, w, h, ux * 6.5, Math.max(toit, sol + 3) + 1.6, uz * 6.5, dc);                                                         // sur le toit, sous le perchoir
+      // (pas de panneau au nom du lieu sur les bâtiments : ils gâchaient la vue ; restent les totems et les plaques de rue)
     }
     // silhouette du tireur (cible de démonstration), masquée quand on occupe le poste
     if (e.type === 'arbre') { e.ox = ux * 1.45; e.oz = uz * 1.45; }

@@ -67,6 +67,20 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     scene.add(g); gerbes.push({ g, mat, voile, nuage, parts, k, t0: performance.now() });
   };
 
+  // reflets de lunette : un éclat clair à l'emplacement de chaque tireur qui nous tient dans sa lunette
+  const reflets = new Map(), matReflet = new THREE.MeshBasicMaterial({ color: 0xfff6d8, transparent: true, opacity: 0.95, depthTest: false, blending: THREE.AdditiveBlending });
+  const geoReflet = new THREE.SphereGeometry(1, 10, 8);
+  /** Allume ou éteint le reflet de l'emplacement `nom`. */
+  const reflet = (nom, actif) => {
+    let m = reflets.get(nom);
+    if (!actif) { if (m) { scene.remove(m); reflets.delete(nom); } return; }
+    const e = EMP.find((q) => q.nom === nom); if (!e || m) return;
+    m = new THREE.Mesh(geoReflet, matReflet); m.frustumCulled = false; m.renderOrder = 11;
+    const p = meta.postes[nom]; m.position.set(p[0], p[1], p[2]);          // à hauteur d'œil (la scène est à plat)
+    scene.add(m); reflets.set(nom, m);
+  };
+  const eteindreReflets = () => { for (const nom of [...reflets.keys()]) reflet(nom, false); };
+
   // encart du tir
   const box = document.createElement('div'); box.id = 'tir'; document.body.appendChild(box);
 
@@ -167,6 +181,8 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
       if (now >= fin) { f.rotation.x = 0; couches.delete(nom); } else f.rotation.x = Math.min(Math.PI / 2, f.rotation.x + 0.12);   // se couche, sans plus
     }
     if (impact.visible && now > impactFin) impact.visible = false;
+    // l'éclat scintille et garde une taille apparente à peu près constante, pour rester « léger » à toute distance
+    for (const m of reflets.values()) { const d = m.position.distanceTo(camera.position); m.scale.setScalar(d * (state.scope ? 0.0009 : 0.0022) * (0.75 + 0.35 * Math.sin(now * 0.019) + 0.2 * Math.sin(now * 0.047))); }
     for (let i = gerbes.length - 1; i >= 0; i--) {
       const b = gerbes[i], age = (now - b.t0) / 1000, DUREE = 2.2;
       if (age > DUREE) { scene.remove(b.g); b.mat.dispose(); b.voile.dispose(); gerbes.splice(i, 1); continue; }
@@ -188,6 +204,6 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     const e = EMP.find((q) => q.nom === nom); if (!e || nom === state.post) return;
     centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); couches.set(nom, performance.now() + 5000);
   };
-  const changerPoste = () => { t.elev = 0; for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
-  return { update, tirer, vise, solution, texteCorrection, changerPoste, effetTouche, dansBatiment, centre, etat: t, arme: W };
+  const changerPoste = () => { t.elev = 0; eteindreReflets(); for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
+  return { update, tirer, vise, solution, texteCorrection, changerPoste, effetTouche, reflet, eteindreReflets, reflets, dansBatiment, centre, etat: t, arme: W };
 }

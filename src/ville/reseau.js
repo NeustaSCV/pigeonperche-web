@@ -166,8 +166,10 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
       if (m.id === moi) { releve(); allerA(m.emp, true); }
       majOccupes();
     },
+    // reflet de lunette : ce tireur nous tient (ou ne nous tient plus) dans sa lunette
+    vise(m) { const j = joueurs.get(m.par); if (j) tir.reflet(j.emp, m.actif); },
     // fin de manche : retour au salon pour une minute, avec le classement qui vient de tomber
-    fin(m) { horloge(m); dernierClassement = m.classement; releve(); annonce = 'Manche terminée.'; montreSalon(true); lisEtat(); },
+    fin(m) { tir.eteindreReflets(); horloge(m); dernierClassement = m.classement; releve(); annonce = 'Manche terminée.'; montreSalon(true); lisEtat(); },
     debut(m) { charge(m.joueurs); horloge(m); releve(); annonce = 'Nouvelle manche.'; majOccupes(); montreSalon(false); },
     complet() { annonce = 'La salle est complète (10 tireurs).'; quitter(); },
     vide() { annonce = 'Plus aucun joueur dans la salle.'; quitter(); },
@@ -195,6 +197,14 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
     const c = res.touche ? joueurA(res.touche.nom) : null;
     fetch('./api/manche/tir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, ...(c ? { cible: c.id, dist: res.dist, tof: res.tof } : {}) }) }).catch(() => {});
   };
+  // on signale au serveur le joueur qu'on tient dans sa lunette : lui seul verra notre reflet
+  let tenu = null;
+  setInterval(() => {
+    if (!state.enLigne) { tenu = null; return; }
+    const e = state.scope && !state.couche && !state.pause ? tir.vise() : null, c = e ? joueurA(e.nom) : null, id = c ? c.id : null;
+    if (id === tenu) return; tenu = id;
+    fetch('./api/manche/vise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, cible: id }) }).catch(() => {});
+  }, 300);
   montreSalon(true);
   if (params.get('auto') !== null && pseudo) rejoindre(params.get('auto') === 'spectateur' ? 'spectateur' : 'joueur');   // contrôles automatisés
   return { joueurs, moi: () => moi, role: () => role, phase: () => phase, majOccupes, rejoindre, quitter };
