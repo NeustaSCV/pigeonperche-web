@@ -76,6 +76,7 @@ export default defineConfig({
   define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()), __COMMON_ASSETS__: JSON.stringify(commonAssets()), __MENU_IMAGES__: JSON.stringify(menuImages()) },
   plugins: [deviceLog(), scoresApi()],
   server: { port: 5173, host: '127.0.0.1' },
-  build: { target: 'es2022', chunkSizeWarningLimit: 4000 },
+  // deux pages : le jeu (index.html) et la carte « Ville nouvelle » en mode visite (ville.html)
+  build: { target: 'es2022', chunkSizeWarningLimit: 4000, rollupOptions: { input: { main: resolve('index.html'), ville: resolve('ville.html') } } },
   test: { include: ['tests/**/*.test.ts'] },
 } as any);

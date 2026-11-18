@@ -51,6 +51,12 @@ Modifications: models were decimated and repacked as GLB with glTF-Transform; tr
 - **Cartes « Lieux oubliés »** (La Fête foraine, Le Phare, Le Château d'eau) : aucun asset ajouté. Attractions de foire, terrasses et plates-formes, mer et houle, bouées, caboteur, canot, grue, convoi, signal, vannes, drone, lunette et horloge sont de la géométrie et des shaders procéduraux (`src/levels/fete|phare|plaine/`, `src/game/extra/`, `src/world/sea.ts`) ; les bâtiments viennent de la banque ci-dessous.
 - **Arbres** : les modèles Poly Haven comptent plus de deux millions de triangles ; leur feuillage a été recuit en cartes alpha (`tools/assets/bake_cards.py`) et les troncs décimés avec glTF-Transform (`tools/assets/build-models.mjs`).
 
+## Carte « Ville nouvelle » (`public/ville/`, `src/ville/`)
+
+Relief, emprises et hauteurs des bâtiments, arbres, voirie, plans d'eau et photos aériennes proviennent de données publiques de l'[IGN](https://geoservices.ign.fr/) (LiDAR HD : modèles numériques de surface et de terrain à 1 m ; BD ORTHO à 20 cm ; BD TOPO), diffusées sous [Licence Ouverte 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/) (Etalab). Source : IGN. Les données ont été rééchantillonnées, simplifiées et recadrées pour le jeu, et la carte a été légèrement bombée.
+
+Les perchoirs, enseignes, équipements de toiture et silhouettes sont de la géométrie procédurale créée pour le jeu. Les noms de rues, de lieux et d'enseignes sont cités en texte simple, sans logo, à titre descriptif : le jeu n'est ni affilié à leurs propriétaires ni approuvé par eux.
+
 ## Banque de bâtiments (`src/buildings/bank/`)
 
 Les 21 bâtiments abandonnés et les 14 haltes routières de `src/buildings/bank/` viennent de la banque de bâtiments créée par l'auteur du jeu pour un autre de ses projets, « Watt Now? » (dossier `batiment/` : modules JavaScript procéduraux, géométrie à facettes, couleur par sommet, textures dessinées au canvas ; aucun fichier 3D ni image tiers). Copie du 2026-11-14, sans la visionneuse ni le dossier `vendor/` ; les modifications faites dans la copie sont marquées « PIGEON PERCHÉ » dans le code (import des utilitaires de géométrie depuis le paquet `three` du jeu, relevé des ouvertures dans `commun/atelier.js`). L'adaptateur `src/buildings/` (fusion par matière, niveaux de détail, collisions, points d'intérêt) est écrit pour ce jeu.

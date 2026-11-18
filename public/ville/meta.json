@@ -1,0 +1,109 @@
+{
+ "taille": 4400,
+ "pas": 8,
+ "ox": -2297.0,
+ "oz": -1136.0,
+ "dalles": 3,
+ "lointain": 24000,
+ "altSol": 162.8553466796875,
+ "eiffel": {
+  "azimut": 66.39,
+  "distance": 20282,
+  "angleSommet": 0.00718,
+  "angleHorizon": 0.00027
+ },
+ "postes": {
+  "theatre": [
+   -40.5,
+   190.5,
+   36.5
+  ],
+  "eiffel": [
+   12.0,
+   190.4,
+   -14.0
+  ],
+  "pres": [
+   -359.5,
+   184.6,
+   357.5
+  ]
+ },
+ "reperes": {
+  "Mairie de Mongnigny": [
+   -341.0,
+   1529.3
+  ],
+  "Village, église Saint-Martin": [
+   -999.4,
+   1394.5
+  ],
+  "Centre commercial de la Sourderie": [
+   -146.8,
+   1515.0
+  ],
+  "Bassin de la Sourderie": [
+   368.2,
+   1898.0
+  ],
+  "Centre aquatique du Lac": [
+   -196.8,
+   2123.8
+  ],
+  "Les Prés": [
+   -456.0,
+   413.8
+  ],
+  "Place Claudel": [
+   -55.6,
+   479.8
+  ],
+  "Église et campanile": [
+   202.4,
+   173.8
+  ],
+  "Château d'eau": [
+   -944.8,
+   180.9
+  ],
+  "Vélodrome": [
+   -507.0,
+   -520.9
+  ],
+  "Place de la Paix Céleste": [
+   -450.2,
+   -724.8
+  ],
+  "Gare": [
+   205.4,
+   -440.0
+  ],
+  "Tour Eiffel": null,
+  "Théâtre": [
+   0,
+   0
+  ],
+  "Arcades du Lac": [
+   64.0,
+   1688.0
+  ]
+ },
+ "grues": [
+  {
+   "nom": "Grue de la piscine",
+   "x": -190.5,
+   "z": 2149.5,
+   "sol": 162.0,
+   "cap": 0,
+   "d_theatre": 2158
+  },
+  {
+   "nom": "Grue de l'île de la Sourderie",
+   "x": 248.2,
+   "z": 1808.0,
+   "sol": 160.2,
+   "cap": 315,
+   "d_theatre": 1825
+  }
+ ]
+}

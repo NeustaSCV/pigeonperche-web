@@ -324,6 +324,7 @@ export class UI {
           <button class="mbtn m-guide" data-act="guide"><span class="lg">Régler la lunette</span><span class="sh">Lunette</span></button>
           <button class="mbtn m-help" data-act="help">Commandes</button>
           <button class="mbtn m-scores" data-act="scores">Scores</button>
+          <a class="mbtn m-ville" href="./ville.html" style="text-decoration:none;text-align:center">Ville nouvelle (visite)</a>
           ${init.fullscreen ? '<button class="mbtn m-fs" data-act="fullscreen">Plein écran</button>' : ''}
           </div>
         </div>
