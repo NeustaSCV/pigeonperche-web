@@ -451,13 +451,15 @@ export class UI {
     seg(this.el.segTuto, [['on', 'Avec'], ['off', 'Sans']], init.tutorial ? 'on' : 'off', (k) => h.setTutorial(k === 'on'));
     seg(this.el.segCoach, [['on', 'Avec'], ['off', 'Sans']], init.coach === false ? 'off' : 'on', (k) => h.setCoach(k === 'on'));
     this.el.tutoRow.classList.toggle('hidden', init.difficulty === 'real' || !init.hasTutorial);
-    // cadre multijoueur : nombre de tireurs connectés à la manche, relu toutes les 10 s tant que l'accueil est affiché
+    // cadre multijoueur : nombre d'humains connectés à la manche, relu toutes les 10 s tant que l'accueil est affiché
     {
       const n = this.el.mjN;
       const lire = (): void => {
         if (this.current !== 'menu' && this.current !== 'loading') return;
         fetch('./api/manche/etat').then((r) => (r.ok ? r.json() : null)).then((e) => {
-          n.textContent = !e ? '' : e.connectes > 0 ? `${e.connectes} connecté${e.connectes > 1 ? 's' : ''}` : 'Personne en ligne';
+          // les humains seulement (joueurs et spectateurs) : les robots qui complètent la salle ne comptent pas
+          const k = !e ? 0 : (e.humains ?? 0) + (e.spectateurs ?? 0);
+          n.textContent = !e ? '' : k > 0 ? `${k} connecté${k > 1 ? 's' : ''}` : 'Personne en ligne';
           // classement global du multijoueur, sous les scores du solo (mêmes lignes que les tableaux du solo)
           const lignes = (l: any[] | undefined): string => (l?.length
             ? l.map((x, i) => `<li><span class="rk">${i + 1}</span><span class="nm">${escapeHtml(String(x.pseudo ?? ''))}</span><span class="sc">${fr(Number(x.points) || 0)}</span><span class="ac">${Number(x.touches) || 0}/${Number(x.tirs) || 0}</span></li>`).join('')
