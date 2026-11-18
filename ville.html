@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <!-- Ville nouvelle, mode visite. Relief, bâtiments et photos aériennes : IGN, Licence Ouverte (voir CREDITS.md). -->
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- mobile : pas de zoom de page (double toucher, pincement), contenu étendu sous les encoches (viewport-fit=cover), comme index.html -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#070807" />
+    <meta name="format-detection" content="telephone=no" />
     <title>Pigeon perché — Ville nouvelle</title>
     <style>
       html, body { margin: 0; height: 100%; background: #000; overflow: hidden; font: 13px/1.4 'Avenir Next', Avenir, 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; color: #f2ede3; }
@@ -123,6 +126,124 @@
       .s-boards li.vide { color: var(--faint); font-size: 12px; } .s-boards li.vide::before { content: none; }
       @media (max-width: 1100px) { #salon { padding: 24px 5vw; } .s-cadre, .s-boards { margin-left: 0; } #salon::before { background: rgba(7, 9, 8, 0.72); } }
       @media (max-width: 620px) { .s-boards-g { grid-template-columns: 1fr; } .s-opt input { width: 100%; } }
+      /* ==================================================================================================
+         APPAREIL TACTILE (html.touch, posé par ville.js ; commandes : src/ville/tactile.js). Mêmes conventions que le
+         jeu solo : marges sûres --sal/--sar/--sat/--sab, cibles d'au moins 44 px, boutons ronds, « Tirer » cerclé d'or.
+         --lx, --ly, --lr : centre et rayon de la lunette, calculés pour que les commandes ne la recouvrent jamais.
+         ================================================================================================== */
+      :root { --sal: env(safe-area-inset-left, 0px); --sar: env(safe-area-inset-right, 0px); --sat: env(safe-area-inset-top, 0px); --sab: env(safe-area-inset-bottom, 0px); --bas: max(var(--sab), 10px); --lx: 50vw; --ly: 50vh; --lr: 47vh; --enc: 270px; --col: 148px; }
+      html.touch.serre { --enc: 248px; }
+      html.touch, html.touch body { position: fixed; inset: 0; width: 100%; height: 100%; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; touch-action: manipulation; }
+      @supports (height: 100dvh) { html.touch, html.touch body { height: 100dvh; } }
+      html.touch * { -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+      html.touch input { -webkit-user-select: text; user-select: text; }
+      html.touch canvas#view, html.touch canvas#scope { position: fixed; left: 0; top: 0; width: 100%; height: 100%; touch-action: none; cursor: default; -webkit-user-drag: none; }
+      /* boutons du jeu */
+      #touch { position: fixed; inset: 0; display: none; pointer-events: none; }
+      #touch.on { display: block; }
+      .tb { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; box-sizing: border-box; width: 52px; height: 52px; padding: 0; border-radius: 50%; border: 1px solid rgba(242, 237, 227, 0.42); background: rgba(14, 15, 14, 0.34); color: #f2ede3; font: inherit; -webkit-appearance: none; appearance: none; pointer-events: auto; touch-action: none; transition: background 0.12s, border-color 0.12s, transform 0.12s, opacity 0.2s; }
+      .tb svg { width: 46%; height: 46%; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; } .tb svg .f { fill: currentColor; stroke: none; }
+      .tb span { font-size: 7.5px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(242, 237, 227, 0.62); pointer-events: none; line-height: 1; }
+      .tb b { font-weight: 400; font-size: 17px; pointer-events: none; }
+      .tb.down { background: rgba(231, 181, 101, 0.82); border-color: #e7b565; color: #14120e; transform: scale(0.94); } .tb.down span { color: #14120e; }
+      /* sous le pouce droit : « Tirer » dans l'angle (lunette à l'œil seulement), « Épauler / Œil nu » à côté */
+      .tb-tirer { right: calc(var(--sar) + 14px); bottom: calc(var(--bas) + 4px); width: 78px; height: 78px; border-color: #e7b565; border-width: 1.5px; display: none; }
+      .tb-tirer svg { width: 44%; height: 44%; } .tb-tirer.attente { opacity: 0.4; }
+      #touch.scope:not(.spect) .tb-tirer { display: flex; }
+      .tb-epauler { right: calc(var(--sar) + 102px); bottom: calc(var(--bas) + 4px); width: 60px; height: 60px; }
+      #touch.couche .tb, #touch.couche .tg-zoom { display: none; }
+      /* grossissement : deux boutons autour de la valeur (le pincement à deux doigts fait la même chose) */
+      .tg-zoom { position: absolute; right: calc(var(--sar) + 14px); bottom: calc(var(--bas) + 92px); display: none; align-items: center; gap: 2px; }
+      #touch.scope .tg-zoom { display: flex; }
+      .tg-zoom .tb { position: static; width: 46px; height: 44px; border-radius: 6px; }
+      .tg-zoom output { min-width: 40px; text-align: center; font: 15px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; font-variant-numeric: tabular-nums; color: #f2ede3; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8); }
+      /* en bas à droite : rappel de l'arme à l'œil nu (au-dessus du bouton), dernier résultat lunette à l'œil (au-dessus du grossissement) */
+      html.touch #tir { right: calc(var(--sar) + 14px); bottom: calc(var(--bas) + 74px); padding: 0; }
+      html.touch #tir.epaule { bottom: calc(var(--bas) + 146px); max-width: calc(50vw - var(--lr) - var(--sar) - 24px); box-sizing: border-box; padding: 7px 9px; font-size: 11.5px; line-height: 1.35; }
+      html.touch .t-msg { min-height: 0; } html.touch .t-aide:empty { display: none; }
+      /* en haut à gauche : l'observateur */
+      html.touch #viseur { left: calc(var(--sal) + 14px); top: calc(var(--sat) + 8px); gap: 4px; max-width: 46vw; } html.touch .v-cible { max-height: 100px; overflow: hidden; }
+      html.touch.scope-pose #viseur { max-width: calc(50vw - var(--lr) - var(--sal) - 22px); }
+      html.touch .v-lieu { font-size: 16px; line-height: 1.12; } html.touch .v-ligne b { font-size: 20px; line-height: 1.1; } html.touch .v-corr { font-size: 13px; flex-wrap: wrap; column-gap: 6px; line-height: 1.25; }
+      html.touch #viseur span { font-size: 9px; letter-spacing: 0.18em; }
+      html.touch body.outils #viseur { top: calc(var(--sat) + 120px); }
+      html.touch body.spectateur:not(.outils) #viseur { top: calc(var(--sat) + 62px); }
+      /* l'encart des tourelles, sous le pouce gauche : schéma, emplacement, effet, valeur réglée, quatre boutons, valeur d'un cran */
+      html.touch #tourelles { top: auto; right: auto; left: calc(var(--sal) + 10px); bottom: var(--bas); width: 200px; height: var(--enc); transform: none; padding: 8px 6px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: auto; touch-action: none; }
+      html.touch .tr-bloc { display: block; padding: 0; margin: 0; border: 0; }
+      html.touch .tr-tete { gap: 7px; align-items: flex-start; min-height: 40px; } html.touch .tr-tete > div { flex: 1; } html.touch .tr-titre { display: flex; align-items: baseline; justify-content: space-between; height: 15px; }
+      html.touch .tr-picto { width: 36px; height: 36px; margin: 1px 0 0 1px; }
+      html.touch .tr-tete span { font-size: 10px; letter-spacing: 0.2em; margin-bottom: 1px; } html.touch .tr-tete em { font-size: 10px; line-height: 1.3; }
+      html.touch .tr-tete .regle { display: flex; align-items: baseline; gap: 4px; } html.touch .tr-tete .regle b { font-weight: 400; font-size: 19px; line-height: 15px; color: #e7b565; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      html.touch .tr-tete .regle span { font-size: 8.5px; letter-spacing: 0.14em; color: rgba(242, 237, 227, 0.55); margin: 0; }
+      html.touch .tr-touches { display: flex; gap: 4px; margin-top: 4px; }
+      html.touch #tourelles button { flex: 1 1 0; min-width: 0; height: 44px; padding: 0; box-sizing: border-box; font: 15px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; font-variant-numeric: tabular-nums; color: #f2ede3; background: rgba(14, 15, 14, 0.5); border: 1px solid rgba(242, 237, 227, 0.42); border-radius: 6px; -webkit-appearance: none; appearance: none; touch-action: none; }
+      html.touch #tourelles button.down { color: #14120e; background: #e7b565; border-color: #e7b565; }
+      html.touch .tr-aide p { font-size: 10px; margin: 0 0 4px 2px; white-space: nowrap; }
+      html.touch #tourelles .tr-aide button { width: 100%; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+      html.touch.serre .tr-effet { display: none; } html.touch.serre .tr-tete { min-height: 30px; } html.touch.serre .tr-picto { width: 28px; height: 28px; }
+      /* tableau de la manche, replié : temps restant et ses points, puis le vent ; un toucher le déplie */
+      html.touch #manche { top: calc(var(--sat) + 8px); right: calc(var(--sar) + 10px); min-width: 0; padding: 0; pointer-events: auto; max-height: calc(100% - var(--sat) - var(--bas) - 16px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; font-size: 12.5px; z-index: 3; }
+      .m-resume { display: grid; grid-template-columns: auto 1fr auto; align-items: baseline; column-gap: 10px; box-sizing: border-box; width: 100%; min-width: 172px; min-height: 44px; padding: 6px 10px; text-align: left; font: inherit; color: #f2ede3; background: none; border: 0; -webkit-appearance: none; appearance: none; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .m-resume b { font-weight: 400; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: #e7b565; }
+      .m-resume u { text-decoration: none; text-align: right; color: #e7b565; } .m-resume i { font-style: normal; color: rgba(242, 237, 227, 0.5); grid-row: 1 / span 2; grid-column: 3; align-self: center; } .m-resume > * { pointer-events: none; }
+      .m-resume em { grid-column: 1 / span 2; font-style: normal; font-size: 11px; color: rgba(242, 237, 227, 0.62); }
+      html.touch #manche .m-corps { display: block; padding: 6px 10px 4px; border-top: 1px solid rgba(242, 237, 227, 0.16); min-width: 236px; max-width: calc(100vw - var(--sal) - var(--sar) - 40px); }
+      html.touch #manche .m-corps small { max-width: none; }
+      .m-menu { display: flex; align-items: center; min-height: 44px; margin-top: 4px; border-top: 1px solid rgba(242, 237, 227, 0.16); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(242, 237, 227, 0.62); text-decoration: none; }
+      html.touch.scope-pose:not(.portrait) #manche:not(:has(.m-corps)) { max-width: calc(50vw - var(--lr) - var(--sar) - 18px); }
+      /* retour au menu : dans le tableau déplié pendant la manche ; visible au salon et hors ligne */
+      html.touch #retour { right: calc(var(--sar) + 10px); top: calc(var(--sat) + 4px); min-height: 44px; display: flex; align-items: center; padding: 0 6px; z-index: 6; }
+      html.touch.en-manche body:not(.au-salon) #retour { display: none; }
+      html.touch #couche { padding: 0 24px; font-size: 22px; } html.touch #couche small { display: block; margin-top: 10px; line-height: 1.7; letter-spacing: 0.16em; }
+      html.touch.touche #tags, html.touch.touche #viseur, html.touch.touche #tir { visibility: hidden; }      /* écran « touché » : rien ne se mêle au message */
+      /* spectateur : la liste des emplacements, à portée de doigt */
+      html.touch #bar { left: calc(var(--sal) + 10px); top: calc(var(--sat) + 8px); max-width: calc(100vw - var(--sal) - var(--sar) - 210px); }
+      html.touch #bar button, html.touch #bar select { min-height: 44px; font-size: 14px; } html.touch #bar select { max-width: 100%; }
+      html.touch body.spectateur:not(.outils) #bar span { display: none; }
+      html.touch.portrait body.spectateur:not(.outils):not(.au-salon) #bar { right: calc(var(--sar) + 10px); max-width: none; flex-wrap: nowrap; }
+      html.touch.portrait body.spectateur:not(.outils) #bar select { flex: 1 1 0; min-width: 0; } html.touch.portrait body.spectateur:not(.outils) #bar button { flex: none; white-space: nowrap; }
+      html.touch.portrait body.spectateur:not(.outils) #manche, html.touch.portrait body.spectateur:not(.outils) #viseur { top: calc(var(--sat) + 60px); }
+      html.touch.portrait body.spectateur #viseur { max-width: calc(100vw - var(--sal) - var(--sar) - 240px); }
+      html.touch #info { left: calc(var(--sal) + 10px); bottom: calc(var(--bas) + 70px); font-size: 9px; white-space: pre-wrap; max-width: 60vw; }
+
+      /* --- portrait (la tenue du téléphone) : la lunette en haut, l'encart à gauche, la colonne de droite au pouce droit --- */
+      html.touch.portrait { --col: 148px; }                             /* « Œil nu » + « Tirer » côte à côte, comme en solo */
+      html.touch.portrait #viseur, html.touch.portrait.scope-pose #viseur { max-width: calc(100vw - var(--sal) - var(--sar) - 216px); }
+      html.touch.portrait #tourelles { width: calc(100vw - var(--sal) - var(--sar) - var(--col) - 30px); max-width: 260px; bottom: calc(var(--bas) + 2px); }
+      html.touch.portrait #tir.epaule { width: var(--col); max-width: none; max-height: calc(var(--enc) - 148px); overflow: hidden; }
+      @media (max-width: 379px) { html.touch.portrait { --col: 134px; } html.touch.portrait .tb-tirer { width: 74px; height: 74px; } html.touch.portrait .tb-epauler { right: calc(var(--sar) + 94px); width: 54px; height: 54px; } html.touch.portrait #tourelles { padding: 8px 4px; } html.touch.portrait .tg-zoom output { min-width: 34px; } }
+      /* téléphone tenu à l'horizontale : l'écran de rotation du jeu solo (src/ui/style.css, #rotate) */
+      #rotate { position: fixed; inset: 0; z-index: 50; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #070807; pointer-events: auto; padding: 24px; touch-action: none; }
+      html.turn #rotate { display: flex; }
+      #rotate svg { width: 132px; height: 132px; fill: none; stroke: rgba(242, 237, 227, 0.28); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; } #rotate svg .g { stroke: #e7b565; }
+      #rotate h2 { font: 400 26px 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; letter-spacing: 0.08em; margin: 26px 0 8px; color: #f2ede3; }
+      #rotate p { color: rgba(242, 237, 227, 0.62); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; margin: 0; }
+
+      /* --- salon --- */
+      html.touch #salon { touch-action: pan-y; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; align-content: stretch; grid-template-rows: auto 1fr auto; gap: 12px; padding: calc(var(--sat) + 46px) calc(var(--sar) + 16px) calc(var(--bas) + 6px) calc(var(--sal) + 18px); }
+      html.touch .s-plan, html.touch #salon::before { position: fixed; } html.touch #salon::before { background: rgba(7, 9, 8, 0.74); } html.touch.portrait #salon::before { background: rgba(7, 9, 8, 0.86); }
+      html.touch #salon h1 { font-size: clamp(30px, 10.4vw, 64px); letter-spacing: 0.14em; line-height: 1.08; }
+      html.touch .s-sub { margin: 10px 0 14px 3px; font-size: 10.5px; letter-spacing: 0.22em; line-height: 1.8; }
+      html.touch .s-cadre, html.touch .s-boards { width: auto; max-width: none; margin-left: 0; } html.touch .s-cadre { padding: 12px 12px 10px; } html.touch .s-cadre + .s-cadre { margin-top: 12px; }
+      html.touch .s-boards { align-self: start; padding: 12px 12px 10px; }
+      html.touch .s-cadre-t { top: 8px; right: 10px; font-size: 9px; }
+      html.touch .s-opt { align-items: center; gap: 10px; min-height: 44px; padding: 0 2px 6px; }
+      html.touch .s-opt > span { width: 76px; flex: none; font-size: 10px; letter-spacing: 0.18em; }
+      html.touch .s-opt input { flex: 1; width: auto; min-width: 0; height: 44px; border-radius: 0; }
+      html.touch .s-vote { padding-top: 26px; } html.touch.portrait .s-vote .s-opt { flex-wrap: wrap; row-gap: 0; padding-bottom: 8px; } html.touch.portrait .s-vote .s-opt > span { flex: 0 0 100%; height: 20px; line-height: 20px; } html.touch .s-seg { flex: 1; } html.touch .s-seg button { flex: 1 1 auto; min-height: 44px; padding: 5px 8px; font-size: 11.5px; letter-spacing: 0.08em; white-space: nowrap; }
+      html.touch .s-rang { gap: 4px 16px; } html.touch .s-go { min-height: 48px; padding: 10px 18px; font-size: 15px; letter-spacing: 0.18em; } html.touch .s-lien { min-height: 44px; font-size: 12.5px; letter-spacing: 0.12em; }
+      html.touch .s-go:hover:not(:disabled) { background: rgba(231, 181, 101, 0.1); color: var(--ink); } html.touch .s-go:active:not(:disabled) { background: var(--gold); color: #14120e; }
+      html.touch .s-boards-g { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; } html.touch .s-boards-g section:last-child { grid-column: 1 / -1; order: -1; }
+      html.touch .s-avert { position: static; margin: 0 2px; font-size: 10px; letter-spacing: 0.1em; line-height: 1.5; }
+      /* tablette à l'horizontale : l'entrée à gauche, les classements à droite, l'avertissement en bas sur toute la largeur */
+      html.touch:not(.portrait) #salon { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; column-gap: 18px; padding-top: calc(var(--sat) + 12px); }
+      html.touch:not(.portrait) #salon h1 { font-size: clamp(26px, 8.4vh, 56px); } html.touch:not(.portrait) .s-sub { margin: 6px 0 10px 3px; }
+      html.touch:not(.portrait) .s-boards { margin-top: 44px; } html.touch:not(.portrait) .s-avert { grid-column: 1 / -1; }
+      /* saisie du pseudo : il ne reste que le cadre d'entrée, en haut, au-dessus du clavier virtuel */
+      html.touch #salon.saisie { padding-top: calc(var(--sat) + 8px); align-content: start; grid-template-rows: auto; }
+      html.touch #salon.saisie h1, html.touch #salon.saisie .s-sub, html.touch #salon.saisie .s-boards, html.touch #salon.saisie .s-avert, html.touch #salon.saisie .s-vote, html.touch #salon.saisie .s-cadre-t { display: none !important; }
+      html.touch body:has(#salon.saisie) #retour { display: none; }
       #load { position: fixed; inset: 0; display: grid; place-items: center; background: #10151a; font-size: 16px; }
     </style>
   </head>

@@ -52,7 +52,7 @@ function planTactique(cv, { dalles, cote, ox, oz, taille }, EMP) {
   x.beginPath(); x.moveTo(PX - 60, 100); x.lineTo(PX - 60, 46); x.lineTo(PX - 68, 62); x.moveTo(PX - 60, 46); x.lineTo(PX - 52, 62); x.stroke(); x.fillText('N', PX - 66, 40);
 }
 
-export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
+export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, sons = null }) {
   const params = new URLSearchParams(location.search);
   if (params.get('solo') !== null) return null;
   let pseudo = params.get('pseudo') || '';
@@ -136,6 +136,8 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
     serveur = true; resume = e; if (!role) { phase = e.phase; echeance = performance.now() + e.reste; }
   }).catch(() => { serveur = false; }).then(dessineSalon);
   lisEtat(); setInterval(() => { if (salonVisible()) lisEtat(); }, 3000); setInterval(() => { dessineSalon(); tableau(); }, 500);
+  // compte à rebours des trois dernières secondes du salon, pour ceux qui sont inscrits
+  let dernierTop = 0; setInterval(() => { if (!role || phase !== 'pause') { dernierTop = 0; return; } const s = Math.ceil((echeance - performance.now()) / 1000); if (s >= 1 && s <= 3 && s !== dernierTop) { dernierTop = s; sons?.top(false); } }, 100);
   const voter = (choix) => { Object.assign(monVote, choix); dessineSalon(); fetch('./api/manche/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, ...choix }) }).catch(() => {}); };
   S.vVent.onclick = (ev) => { const v = ev.target.dataset?.v; if (v) voter({ vent: v === 'oui' }); };
   S.vNiveau.onclick = (ev) => { const v = ev.target.dataset?.v; if (v) voter({ niveau: v }); };
@@ -154,9 +156,19 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
     if (!role) { box.style.display = 'none'; return; }
     box.style.display = 'block';
     const l = [...joueurs.values()].sort((a, b) => b.points - a.points);
+    if (state.tactile) { box.innerHTML = tableauTactile(l); return; }
     box.innerHTML = `<b>${phase === 'jeu' ? 'Manche' : 'Salon'}</b> · ${mmss(echeance - performance.now())}${role === 'spectateur' ? ' · spectateur' : ''}` +
       l.map((j) => `<div class="${j.id === moi ? 'moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('') + `<small>${esc(texteVent(reglages.vent))[0].toUpperCase() + esc(texteVent(reglages.vent)).slice(1)}.<br>${esc(annonce)}</small>`;
   }
+  // Au doigt, le tableau est replié : une ligne pour le temps restant et ses propres points, une pour le vent. Un toucher
+  // le déplie (classement complet, dernière annonce, retour au menu), un autre le replie (tactile.js).
+  const tableauTactile = (l) => {
+    const v = reglages.vent, vent = v ? `Vent ${String(v.vitesse).replace('.', ',')} m/s · ${ROSE[Math.round(v.de / 45) % 8]}` : 'Sans vent', m = joueurs.get(moi);
+    const tete = `<button class="m-resume" data-tb="manche" aria-expanded="${!!state.mancheOuverte}"><span><b>${phase === 'jeu' ? 'Manche' : 'Salon'}</b> · ${mmss(echeance - performance.now())}</span><u>${m ? fr(m.points) + ' pts' : role === 'spectateur' ? 'spectateur' : ''}</u><i>${state.mancheOuverte ? '▴' : '▾'}</i><em>${vent}</em></button>`;
+    if (!state.mancheOuverte) return tete;
+    return tete + `<div class="m-corps">` + l.map((j) => `<div class="${j.id === moi ? 'moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('')
+      + `<small>${esc(annonce)}</small><a class="m-menu" href="./index.html">← Menu du jeu</a></div>`;
+  };
   const nomDe = (id) => joueurs.get(id)?.pseudo ?? '?';
   const joueurA = (emp) => [...joueurs.values()].find((j) => j.emp === emp && j.id !== moi && j.vivant);
   state.pseudoA = (emp) => { const j = joueurA(emp); return j ? (j.robot ? '🤖 ' : '') + j.pseudo : ''; };
@@ -183,6 +195,8 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
     touche(m) {
       for (const s of m.scores) { const j = joueurs.get(s.id); if (j) Object.assign(j, s); }
       tir.effetTouche(m.emp, m.dist);
+      // la voix de celui qui encaisse : toute proche si c'est nous, au loin si c'est notre touche (rien pour les touches des autres)
+      if (m.cible === moi) sons?.touche(); else if (m.tireur === moi) sons?.toucheAuLoin(m.dist);
       if (m.cible === moi) { state.couche = true; state.scope = false; voile.style.display = 'grid'; voile.innerHTML = `<div>Touché par <b>${nom(joueurs.get(m.tireur))}</b><br>à ${fr(m.dist)} m<br><small>Retour dans 5 secondes, sur un autre emplacement.</small></div>`; }
       annonce = m.tireur === moi ? `Touché : ${nomDe(m.cible)} à ${fr(m.dist)} m, +${m.points} points.` : `${nomDe(m.tireur)} touche ${nomDe(m.cible)} à ${fr(m.dist)} m.`;
       if (m.tireur === moi) tir.etat.msg = `Touché · ${nomDe(m.cible)} · ${fr(m.dist)} m · +${m.points} points`;
@@ -197,8 +211,9 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
     votes(m) { votes = m.votes; },
     vise(m) { const j = joueurs.get(m.par); if (j) tir.reflet(j.emp, m.actif); },
     // fin de manche : retour au salon pour une minute, avec le classement qui vient de tomber
-    fin(m) { tir.eteindreReflets(); horloge(m); dernierClassement = m.classement; releve(); annonce = 'Manche terminée.'; montreSalon(true); lisEtat(); },
+    fin(m) { if (role) sons?.finManche(); tir.eteindreReflets(); horloge(m); dernierClassement = m.classement; releve(); annonce = 'Manche terminée.'; montreSalon(true); lisEtat(); },
     debut(m) {
+      if (role) { sons?.top(true); setTimeout(() => sons?.debutManche(), 600); }      // le top de départ, puis les trois notes
       charge(m.joueurs); horloge(m); releve(); votes = null; delete monVote.vent; delete monVote.niveau;
       annonce = `Nouvelle manche : ${NOMS[reglages.niveau]}, ${texteVent(reglages.vent)}.`;
       if (moi != null && joueurs.get(moi)) allerA(joueurs.get(moi).emp, true);      // chacun est replacé au hasard dans la zone
@@ -241,5 +256,5 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
   }, 300);
   montreSalon(true);
   if (params.get('auto') !== null && pseudo) rejoindre(params.get('auto') === 'spectateur' ? 'spectateur' : 'joueur');   // contrôles automatisés
-  return { joueurs, moi: () => moi, role: () => role, phase: () => phase, majOccupes, rejoindre, quitter };
+  return { joueurs, tableau, moi: () => moi, role: () => role, phase: () => phase, majOccupes, rejoindre, quitter };
 }

@@ -92,6 +92,23 @@ Huit extraits, tous sous **CC0 1.0** (domaine public ; attribution non requise, 
 
 Il n'existe pas d'enregistrement libre de .338 Lapua Magnum ni de .50 BMG dans cette banque : leur attaque est celle d'un .30-06, relue plus bas, et leur poids est synthétisé d'après la charge de poudre.
 
+### Voix de la touche (`public/ville/voix/`)
+
+Dix cris brefs joués au hasard dans le multijoueur « Ville nouvelle », quand un tireur est touché. Ils sont extraits du lot « Male Grunt/Yelling sounds » de **HaelDB** (quatre voix d'hommes), publié sur OpenGameArt sous **CC0 1.0** (domaine public ; attribution non requise, donnée ici par courtoisie) et sous OGA-BY 3.0 au choix : c'est la CC0 qui est retenue. Source : https://opengameart.org/content/male-gruntyelling-sounds. Les fichiers ont été convertis (une voie, 48 kHz, WAV PCM 16 bits), débarrassés de leurs silences et mis au même niveau ; 0,45 à 0,8 s, 600 Ko au total.
+
+| Fichier | Fichier d'origine |
+|---|---|
+| `voix-01.wav` | 1yell15.wav |
+| `voix-02.wav` | 3grunt3.wav |
+| `voix-03.wav` | 1yell14.wav |
+| `voix-04.wav` | yell12.wav |
+| `voix-05.wav` | 2yell1.wav |
+| `voix-06.wav` | 1yell11.wav |
+| `voix-07.wav` | yell13.wav |
+| `voix-08.wav` | 3grunt2.wav |
+| `voix-09.wav` | 2yell9.wav |
+| `voix-10.wav` | yell3.wav |
+
 ## Police du titre
 
 | Fichier | Police | Auteur | Source | Licence |

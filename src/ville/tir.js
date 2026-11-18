@@ -183,7 +183,9 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   /** Tourne une tourelle d'un cran (ou de 1 mrad) ; `code` est celui de la flèche, pour éclairer la touche à l'écran. */
   const cran = (code, gros) => {
     const [axe, sens] = CRANS[code], d = sens * (gros ? 1 : CLICK_MIL);
+    const avant = axe === 'elev' ? t.elev : t.deriv;
     if (axe === 'elev') t.elev = borne(t.elev + d, 0, W.turretMaxMil); else t.deriv = borne(t.deriv + d, -DERIVE_MAX, DERIVE_MAX);
+    if ((axe === 'elev' ? t.elev : t.deriv) !== avant) t.surCran?.();     // un clic par cran réellement tourné (rien en butée)
     t.appui = { code, fin: performance.now() + 130 };
   };
   const reglerSurCible = () => { const e = vise(0.06), s = e && solution(e); if (s) { t.elev = borne(s.dialMil, 0, W.turretMaxMil); t.deriv = borne(s.deriv, -DERIVE_MAX, DERIVE_MAX); t.appui = { code: 'KeyG', fin: performance.now() + 130 }; } };
@@ -194,12 +196,12 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   });
   // les touches dessinées dans l'encart se cliquent aussi (Maj + clic : 1 mrad)
   tourelles.addEventListener('mousedown', (ev) => {
-    const b = ev.target.closest && ev.target.closest('[data-t]'); if (!b || ev.button !== 0) return;
+    const b = ev.target.closest && ev.target.closest('[data-t]'); if (!b || ev.button !== 0 || state.tactile) return;      // au doigt : tactile.js
     ev.preventDefault(); if (b.dataset.t === 'KeyG') reglerSurCible(); else cran(b.dataset.t, ev.shiftKey);
   });
   let bas = null;
   view.addEventListener('mousedown', (ev) => { if (ev.button === 0) bas = [ev.clientX, ev.clientY]; });
-  view.addEventListener('mouseup', (ev) => { if (ev.button === 0 && bas && Math.hypot(ev.clientX - bas[0], ev.clientY - bas[1]) < 4) tirer(); bas = null; });
+  view.addEventListener('mouseup', (ev) => { if (ev.button === 0 && bas && !state.tactile && Math.hypot(ev.clientX - bas[0], ev.clientY - bas[1]) < 4) tirer(); bas = null; });      // au doigt, on ne tire qu'au bouton (tactile.js)
 
   // --- encart des tourelles ---
   // Ruban gradué d'une tourelle, vu comme le tambour déroulé : il défile sous un repère fixe, la valeur réglée. Un cran = PAS pixels ;
@@ -248,6 +250,26 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
       + `<div class="tr-aide"><p>${AIDE_CRAN}</p><p><kbd>Maj</kbd> + flèche : 1&nbsp;mrad d’un coup</p><p><kbd data-t="KeyG"${appuiG}>G</kbd> régler sur la cible visée</p></div>`;
   };
 
+  // --- encart des tourelles au doigt (tactile.js) ---
+  // Même contenu que sur ordinateur, condensé : le schéma de la lunette, « tourelle du dessus / de droite », ce qu'elle
+  // déplace, la valeur réglée, la valeur d'un cran. Les touches du clavier deviennent quatre boutons par tourelle,
+  // comme dans le jeu solo : un cran (0,1 mrad) ou 1 mrad d'un coup, dans chaque sens ; un appui maintenu enchaîne.
+  // Toujours rien d'autre : ni correction, ni écart restant, ni sens conseillé, ni bouton mis en avant.
+  // L'encart est construit une fois, seules les deux valeurs changent : un bouton ne disparaît jamais sous le doigt.
+  const blocTactile = (axe, titre, lieu, effet, b) => `<div class="tr-bloc tr-${axe}"><div class="tr-tete">${picto(axe)}<div><div class="tr-titre"><span>${titre}</span><div class="regle"><b data-v="${axe}"></b><span>mrad</span></div></div><em>${lieu}</em><em class="tr-effet">${effet}</em></div></div>`
+    + `<div class="tr-touches">${b.map((c) => `<button data-t="${c[0]}"${c[2] ? ' data-g="1"' : ''} aria-label="${c[3]}">${c[1]}</button>`).join('')}</div></div>`;
+  const htmlTactile = () => blocTactile('elev', 'Élévation', 'Tourelle du dessus', 'Monte ou descend l’impact', [['ArrowDown', '−1', 1, 'Élévation : 1 mrad de moins'], ['ArrowDown', '−', 0, 'Élévation : un cran de moins'], ['ArrowUp', '+', 0, 'Élévation : un cran de plus'], ['ArrowUp', '+1', 1, 'Élévation : 1 mrad de plus']])
+    + blocTactile('deriv', 'Dérive', 'Tourelle de droite', 'Décale l’impact sur le côté', [['ArrowLeft', '←1', 1, 'Dérive : 1 mrad à gauche'], ['ArrowLeft', '←', 0, 'Dérive : un cran à gauche'], ['ArrowRight', '→', 0, 'Dérive : un cran à droite'], ['ArrowRight', '→1', 1, 'Dérive : 1 mrad à droite']])
+    + `<div class="tr-aide"><p>${AIDE_CRAN}</p><button data-t="KeyG">Régler sur la cible visée</button></div>`;
+  let valTactile = null;
+  const majTactile = () => {
+    if (!valTactile) { tourelles.innerHTML = htmlTactile(); valTactile = { elev: tourelles.querySelector('[data-v="elev"]'), deriv: tourelles.querySelector('[data-v="deriv"]'), e: null, d: null, vu: null }; }
+    const v = valTactile, e = fr(t.elev), d = fleche(t.deriv, '→', '←') + fr(Math.abs(t.deriv));
+    if (v.e !== e) v.elev.textContent = v.e = e;
+    if (v.d !== d) v.deriv.textContent = v.d = d;
+    if (v.vu !== state.scope) { v.vu = state.scope; tourelles.style.display = state.scope ? '' : 'none'; }
+  };
+
   const update = (now) => {
     for (const [nom, fin] of couches) {
       const e = EMP.find((q) => q.nom === nom), f = e.figure;
@@ -267,12 +289,13 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     const e = vise(), s = e && solution(e);
     const attente = now < t.pret ? 'Culasse…' : '';
     viseur.innerHTML = s ? `<div class="v-cible"><div class="v-lieu">${e.nom}</div><div class="v-ligne"><b>${Math.round(s.range)}</b><span>m</span></div><div class="v-ligne v-corr"><span>Correction</span>${texteCorrection(e)}</div></div>` : '';
-    const h = state.scope ? htmlTourelles(now) : '';
-    if (h !== htmlAffiche) { tourelles.innerHTML = htmlAffiche = h; tourelles.style.display = h ? '' : 'none'; if (h) caleTourelles(); }
+    const h = state.tactile ? null : state.scope ? htmlTourelles(now) : '';
+    if (state.tactile) majTactile();
+    else if (h !== htmlAffiche) { tourelles.innerHTML = htmlAffiche = h; tourelles.style.display = h ? '' : 'none'; if (h) caleTourelles(); }
     // en bas à droite : un simple rappel de l'arme à l'œil nu ; lunette à l'œil, le dernier résultat et la culasse
     box.className = state.scope ? 'epaule' : '';
     box.innerHTML = state.scope
-      ? `<div class="t-msg">${t.msg}</div><div class="t-aide">${attente || '<kbd>Espace</kbd> tirer'}</div>`
+      ? `<div class="t-msg">${t.msg}</div><div class="t-aide">${attente || (state.tactile ? '' : '<kbd>Espace</kbd> tirer')}</div>`
       : `<div class="t-arme">${W.name}<span>${W.caliber}</span></div>`;
   };
 
@@ -282,5 +305,5 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); couches.set(nom, performance.now() + 5000);
   };
   const changerPoste = () => { t.elev = 0; t.deriv = 0; eteindreReflets(); for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
-  return { update, tirer, vise, solution, texteCorrection, changerPoste, effetTouche, reflet, eteindreReflets, reflets, dansBatiment, centre, etat: t, arme: W };
+  return { update, tirer, cran, reglerSurCible, vise, solution, texteCorrection, changerPoste, effetTouche, reflet, eteindreReflets, reflets, dansBatiment, centre, etat: t, arme: W };
 }

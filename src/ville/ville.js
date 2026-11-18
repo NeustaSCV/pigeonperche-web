@@ -5,6 +5,9 @@ import { buildPostes, FACADES } from './postes.js';
 import { installTir } from './tir.js';
 import { installReseau } from './reseau.js';
 import { installEffets } from './effets.js';
+import { installSons } from './sons.js';
+import { installTactile } from './tactile.js';
+import { isTouchDevice } from '../core/device';
 
 const D = './ville/';
 const view = document.getElementById('view');
@@ -877,6 +880,9 @@ for (const e of EMP) meta.postes[e.nom] = [e.x + (e.ox || 0), e.y, e.z + (e.oz |
 
 // ---------- caméra, lunette, commandes ----------
 const state = { yaw: 0, pitch: -0.05, scope: false, mag: 8, fly: false, post: 'theatre', tags: true };
+// appareil tactile (même détection que le jeu solo, ?touch=1 ou ?touch=0 pour forcer) : commandes au doigt de tactile.js
+const TACTILE = isTouchDevice(new URLSearchParams(location.search));
+state.tactile = TACTILE; document.documentElement.classList.toggle('touch', TACTILE);
 const keys = new Set();
 const SCOPE_FOV = 24; // champ vertical apparent rapporté au grossissement
 const aim = (x, y, z) => { const d = new THREE.Vector3(x, y + bendY(x, z), z).sub(camera.position); state.yaw = Math.atan2(-d.x, -d.z); state.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)); };
@@ -938,7 +944,9 @@ const drawTags = () => {
     tv.set(p[0], p[1] + bendY(p[0], p[2]) + (manche ? 0.75 : -0.5), p[2]);      // en manche : le nom flotte au-dessus de la tête, sans masquer le tireur
     const dist = tv.distanceTo(camera.position); tv.project(camera);
     if (tv.z > 1 || Math.abs(tv.x) > 1.02 || Math.abs(tv.y) > 1.02) { d.style.display = 'none'; return; }
-    const pres = state.spectateur || Math.hypot(tv.x * camera.aspect, tv.y) < (state.scope ? 0.5 : 0.16);
+    // tactile : la lunette peut être plus petite et décentrée (state.lunette) ; l'écart se mesure depuis son centre
+    const lu = state.scope && state.lunette, ax = lu ? (lu.cx / w) * 2 - 1 : 0, ay = lu ? 1 - (lu.cy / h) * 2 : 0;
+    const pres = state.spectateur || Math.hypot((tv.x - ax) * camera.aspect, tv.y - ay) < (state.scope ? 0.5 * (lu ? lu.R / (0.47 * h) : 1) : 0.16);
     if (manche && !pres) { d.style.display = 'none'; return; }
     d.style.display = 'block'; d.style.left = `${((tv.x + 1) / 2) * w}px`; d.style.top = `${((1 - tv.y) / 2) * h}px`;
     const qui = state.pseudoA ? state.pseudoA(e.nom) : '';
@@ -971,7 +979,9 @@ const drawScope = () => {
   const w = sc.width, h = sc.height;
   sx.clearRect(0, 0, w, h);
   if (!state.scope || state.fovOverride) return;
-  const cx = w / 2, cy = h / 2, R = h * 0.47;
+  // tactile : centre et rayon réservés par tactile.js (en pixels CSS) ; sinon la lunette de toujours, au centre
+  const lu = state.lunette, dpr = w / window.innerWidth;
+  const cx = lu ? lu.cx * dpr : w / 2, cy = lu ? lu.cy * dpr : h / 2, R = lu ? lu.R * dpr : h * 0.47;
   sx.fillStyle = '#000'; sx.beginPath(); sx.rect(0, 0, w, h); sx.arc(cx, cy, R, 0, Math.PI * 2, true); sx.fill('evenodd');
   const g = sx.createRadialGradient(cx, cy, R * 0.86, cx, cy, R); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.75)');
   sx.fillStyle = g; sx.beginPath(); sx.arc(cx, cy, R, 0, Math.PI * 2); sx.fill();
@@ -1007,6 +1017,12 @@ const draw = (now) => {
   { const k = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0), kv = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0), v = dt * (state.scope ? 0.9 / state.mag : 0.9); if (!state.scope && !keys.has('ShiftLeft') && !keys.has('ShiftRight')) { state.yaw += k * v; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch + kv * v)); } }
   camera.rotation.set(state.pitch, state.yaw, 0);
   camera.fov = state.fovOverride ?? (state.scope ? SCOPE_FOV / state.mag : 60);
+  { // tactile : la lunette garde son champ réel quel que soit son rayon à l'écran, et la visée passe par son centre
+    const lu = state.scope && !state.fovOverride && !state.quad ? state.lunette : null, w = window.innerWidth, h = window.innerHeight;
+    if (lu) camera.fov = (2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * ((0.47 * h) / lu.R)) * 180) / Math.PI;
+    if (lu && (Math.abs(lu.cx - w / 2) > 0.5 || Math.abs(lu.cy - h / 2) > 0.5)) camera.setViewOffset(w, h, w / 2 - lu.cx, h / 2 - lu.cy, w, h);
+    else if (camera.view && camera.view.enabled) camera.clearViewOffset();
+  }
   camera.updateProjectionMatrix();
   waterMat.uniforms.t.value = now / 1000; waterMat.uniforms.eye.value.copy(camera.position);
   if (state.quad) {                                   // planche de contrôle : les quatre directions d'un coup (touche P)
@@ -1015,7 +1031,7 @@ const draw = (now) => {
     for (let k = 0; k < 4; k++) { camera.rotation.set(state.pitch, state.yaw - (k * Math.PI) / 2, 0); camera.updateMatrixWorld(); const x = (k % 2) * (w / 2), y = k < 2 ? h / 2 : 0; renderer.setViewport(x, y, w / 2, h / 2); renderer.setScissor(x, y, w / 2, h / 2); renderer.render(scene, camera); }
     renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h);
   } else renderer.render(scene, camera);
-  tir.update(now); effets?.update(now);
+  tir.update(now); effets?.update(now); tactile?.update(now);
   drawScope(); if (!state.quad) drawTags(); else tags.forEach((d) => (d.style.display = 'none'));
   fps.n++; fps.t += dt; fps.worst = Math.max(fps.worst, dt);
   if (fps.t >= 0.5) {
@@ -1029,13 +1045,16 @@ const draw = (now) => {
 };
 const frame = (now) => { draw(now); requestAnimationFrame(frame); };
 allerA(new URLSearchParams(location.search).get('poste') || 'La Médiathèque');
-const effets = installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir });
-const reseau = installReseau({ EMP, state, allerA, tir, sel, effets, carte: { dalles: tiles.map((t) => ({ image: t.tex.image, x0: t.x0, z0: t.z0 })), cote: TS, ox: OX, oz: OZ, taille: N } });
+const sons = installSons();
+tir.etat.surCran = () => sons.cran();
+const effets = installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir, sons });
+const reseau = installReseau({ EMP, state, allerA, tir, sel, effets, sons, carte: { dalles: tiles.map((t) => ({ image: t.tex.image, x0: t.x0, z0: t.z0 })), cote: TS, ox: OX, oz: OZ, taille: N } });
 // la courbure est appliquée à l'affichage : on élargit les sphères englobantes d'autant, sinon les petits objets sont écartés à tort
 scene.traverse((o) => { const g = o.geometry; if (!g || !o.frustumCulled || g.userData.elargi) return; g.computeBoundingSphere(); g.boundingSphere.radius += BOMBE + 1; g.userData.elargi = true; });
+const tactile = TACTILE ? installTactile({ view, state, tir, camera, reseau, redessine: () => resize() }) : null;
 document.getElementById('load').remove();
 requestAnimationFrame(frame);
 
 const bench = (n = 60) => { const gl = renderer.getContext(), px = new Uint8Array(4); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now(); for (let i = 0; i < n; i++) { camera.rotation.y += 0.002; camera.updateMatrixWorld(); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); } return (performance.now() - t0) / n; };
 const plan = (x, z, demi = 200) => { state.fly = true; camera.position.set(x, 1700, z); state.yaw = 0; state.pitch = -Math.PI / 2 + 1e-4; state.fovOverride = (2 * Math.atan(demi / (1700 - 160)) * 180) / Math.PI; document.getElementById('bar').style.display = 'none'; };
-window.ville = { tir, reseau, effets, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };
+window.ville = { tir, reseau, effets, sons, tactile, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };

@@ -1,6 +1,6 @@
 // Ville nouvelle : ce qui trahit un tireur. Chaque coup de feu laisse une balle traçante le long de sa vraie
-// trajectoire, une flamme à la bouche du canon et une détonation qui arrive avec le retard du son (340 m/s), plus
-// forte et plus à gauche ou à droite selon l'endroit d'où elle vient. Valable pour ses propres tirs, ceux des autres
+// trajectoire, une flamme à la bouche du canon et une détonation (src/ville/sons.js) qui arrive avec le retard du
+// son, placée à gauche ou à droite selon l'endroit d'où elle vient ; une balle qui passe tout près s'entend aussi. Valable pour ses propres tirs, ceux des autres
 // joueurs et ceux des robots.
 import * as THREE from 'three';
 import { weaponById, SIGHT_HEIGHT } from '../config/weapons';
@@ -10,7 +10,7 @@ const ARME = '375ct';
 const SON = 340;                  // m/s
 const UP = new THREE.Vector3(0, 1, 0);
 
-export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir }) {
+export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir, sons = null }) {
   const W = weaponById(ARME), zero = zeroAngle(W, W.zero, SIGHT_HEIGHT, GAME_AIR);
   const actifs = [];              // traçantes et flammes en cours
 
@@ -59,38 +59,26 @@ export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY,
     scene.add(m); actifs.push({ genre: 'flamme', m, t0: performance.now() });
   };
 
-  // ---------- détonation : bruit filtré et coup sourd, retardée par la distance, placée à gauche ou à droite ----------
-  let ctx = null, bruit = null;
-  const audio = () => {
-    if (!ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return null;
-      ctx = new AC(); const n = ctx.sampleRate * 1.2; bruit = ctx.createBuffer(1, n, ctx.sampleRate);
-      const d = bruit.getChannelData(0); for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (ctx.sampleRate * 0.16));
-    }
-    if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-    return ctx;
+  // ---------- sons (src/ville/sons.js) : détonation à sa distance, balle qui passe tout près ----------
+  const droite = new THREE.Vector3();
+  /** Détonation d'un tir parti de `o` : la sienne, ou celle d'un autre, retardée par la distance et placée à gauche ou à droite. */
+  const detonation = (o, local) => {
+    if (!sons) return;
+    if (local) { sons.tirLocal(); return; }
+    const d = o.distanceTo(camera.position), versTir = new THREE.Vector3().subVectors(o, camera.position).normalize();
+    droite.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    sons.tirDistant(d, Math.max(-1, Math.min(1, versTir.dot(droite) * 1.2)));
   };
-  // le navigateur n'autorise le son qu'après un geste du joueur
-  for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, () => audio(), { once: true });
-  const detonation = (o) => {
-    const c = audio(); if (!c || c.state !== 'running') return;
-    const d = o.distanceTo(camera.position), quand = c.currentTime + d / SON;
-    // plus c'est loin, plus c'est faible et sourd
-    const force = d < 3 ? 0.55 : Math.min(0.5, 55 / Math.max(d, 40)), coupure = d < 3 ? 5200 : Math.max(500, 5200 - d * 2.2);
-    const dir = new THREE.Vector3().subVectors(o, camera.position).normalize(), droite = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-    const src = c.createBufferSource(); src.buffer = bruit; src.playbackRate.value = 0.8 + Math.random() * 0.15;
-    const filtre = c.createBiquadFilter(); filtre.type = 'lowpass'; filtre.frequency.value = coupure;
-    const gain = c.createGain(); gain.gain.value = force;
-    const pan = c.createStereoPanner ? c.createStereoPanner() : null; if (pan) pan.pan.value = d < 3 ? 0 : Math.max(-1, Math.min(1, dir.dot(droite) * 1.2));
-    src.connect(filtre); filtre.connect(gain); if (pan) { gain.connect(pan); pan.connect(c.destination); } else gain.connect(c.destination);
-    src.start(quand);
-    // coup sourd grave sous le claquement
-    const osc = c.createOscillator(), g2 = c.createGain(); osc.frequency.setValueAtTime(110, quand); osc.frequency.exponentialRampToValueAtTime(38, quand + 0.22);
-    g2.gain.setValueAtTime(force * 0.9, quand); g2.gain.exponentialRampToValueAtTime(0.0008, quand + 0.3);
-    osc.connect(g2); g2.connect(pan ?? c.destination); osc.start(quand); osc.stop(quand + 0.32);
+  /** Si la balle d'un autre passe à moins de 20 m sans nous toucher, on entend son souffle au moment où elle passe. */
+  const frole = (pts) => {
+    let best = 1e9, k = -1; const c = camera.position;
+    for (let i = 0; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - c.x, pts[i][1] - c.y, pts[i][2] - c.z); if (d < best) { best = d; k = i; } }
+    if (k < 1 || best > 20 || best < 1.2) return;                 // trop loin, ou en plein sur nous : c'est une touche, la voix suffit
+    droite.set(1, 0, 0).applyQuaternion(camera.quaternion);
+    const a = pts[k - 1], b = pts[Math.min(pts.length - 1, k + 1)];
+    sons.ballePasse((b[0] - a[0]) * droite.x + (b[2] - a[2]) * droite.z, pts[k][3]);
   };
-
-  const coup = (o, dir, tofMax, local = false) => { if (!local) flamme(o); detonation(o); tracante(vol(o, dir, tofMax), local); };   // pas de flamme pour son propre tir : elle emplirait la lunette
+  const coup = (o, dir, tofMax, local = false) => { if (!local) flamme(o); detonation(o, local); const pts = vol(o, dir, tofMax); if (!local && sons) frole(pts); tracante(pts, local); };   // pas de flamme pour son propre tir : elle emplirait la lunette
 
   /** Son propre tir : appelé à l'instant du coup, avec la visée et les réglages en cours. Renvoie la direction du canon. */
   const tirLocal = (res) => {
