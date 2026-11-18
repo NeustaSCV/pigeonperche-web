@@ -116,6 +116,42 @@ describe('manche multijoueur', () => {
     m.leave(b.id); expect(m.resume()).toMatchObject({ humains: 1, robots: MAX_JOUEURS - 1 });
     m.leave(a.id); expect(m.resume()).toMatchObject({ connectes: 0, humains: 0, robots: 0 });
   });
+  it('cale la cadence des robots sur celle des humains : délai moyen entre deux tirs, borné, oublié quand ils partent', () => {
+    // voit = faux : les robots ne tirent pas, on ne regarde que le rythme de leurs tours
+    const { m, avance, entre } = salle({ robots: ROBOTS, emplacements: LIEUX.slice(0, 2), voit: () => false });
+    const a = entre('Anna');
+    expect(m.rythmeRobots()).toBeNull();                               // personne n'a encore tiré : 5 à 14 s, comme avant
+    expect(m.shot(a.id)).toBe('ok'); expect(m.rythmeRobots()).toBeNull();     // un seul tir ne donne pas de cadence
+    avance(20_000); expect(m.shot(a.id)).toBe('ok');
+    expect(m.rythmeRobots()).toBe(20_000);                             // deux tirs espacés de 20 s
+    avance(10_000); m.shot(a.id);
+    expect(m.rythmeRobots()).toBeCloseTo(20_000 * 0.7 + 10_000 * 0.3, 6);     // moyenne glissante
+    // bornes : un tir très rapproché compte pour 4 s, un tir très espacé (mais sous 90 s) pour 30 s
+    avance(CADENCE_MS + 1); const avant = m.rythmeRobots(); m.shot(a.id);
+    expect(m.rythmeRobots()).toBeCloseTo(avant * 0.7 + 4_000 * 0.3, 6);
+    avance(80_000); const avant2 = m.rythmeRobots(); m.shot(a.id);
+    expect(m.rythmeRobots()).toBeCloseTo(avant2 * 0.7 + 30_000 * 0.3, 6);
+    // au-delà de 90 s sans tirer, le tir suivant ne dit rien de la cadence
+    avance(95_000); const avant3 = m.rythmeRobots(); m.shot(a.id);
+    expect(m.rythmeRobots()).toBe(avant3);
+    // plus aucun humain : la cadence apprise est oubliée
+    m.leave(a.id);
+    expect(m.rythmeRobots()).toBeNull();
+  });
+  it('un robot attend, entre deux tirs, le délai moyen des humains (à 30 % près), visée comprise', () => {
+    // rand proche de 1 : le robot manque toujours (Anna reste debout) et prend le haut de sa fourchette, 130 % du délai moyen
+    const { m, avance, entre } = salle({ robots: ROBOTS, emplacements: LIEUX.slice(0, 2), rand: () => 0.999 });
+    const a = entre('Anna'); const bot = m.etat().find((j: any) => j.robot);
+    expect(m.shot(a.id)).toBe('ok'); avance(20_000); expect(m.shot(a.id)).toBe('ok');     // cadence humaine : 20 s
+    expect(m.rythmeRobots()).toBe(20_000);
+    const tirs = () => a.recu.filter((x: any) => x.t === 'tir' && x.id === bot.id).length;
+    avance(30_000);                                                    // laisse passer le tour programmé avant que le rythme soit connu
+    const n0 = tirs();
+    avance(156_000);
+    // un tour = 26 s (130 % de 20 s), dont 2 s de visée : six tirs en 156 s, à un près selon l'instant de départ
+    expect(tirs() - n0).toBeGreaterThanOrEqual(5); expect(tirs() - n0).toBeLessThanOrEqual(7);
+    // sans cadence apprise, au même tirage, un tour durerait 14 s + 2 s : il y aurait neuf ou dix tirs
+  });
   it('fait tirer les robots sur ce qu’ils voient seulement, et applique leurs touches comme celles des joueurs', () => {
     // un seul robot (salle réduite à deux emplacements) ; rand = 0 : il tire au plus tôt et touche à tous les coups
     const deux = LIEUX.slice(0, 2);

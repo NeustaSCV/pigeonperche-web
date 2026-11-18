@@ -46,7 +46,11 @@ export const VIE_MAX = 2;
 export const BONUS_TETE = 1.5;
 export const NIVEAUX = { facile: 15, standard: 25, avance: Infinity };
 export const VENT_MAX = 5;              // m/s
-export const ROBOT_ATTENTE_MS = [5000, 14000];   // délai entre deux tirs d'un robot : entre 5 et 14 s
+export const ROBOT_ATTENTE_MS = [5000, 14000];   // délai entre deux tirs d'un robot tant qu'aucun humain n'a donné le rythme : entre 5 et 14 s
+// Dès que les humains tirent, les robots se calent sur eux : le délai moyen entre deux tirs d'un même humain (moyenne
+// glissante, bornée) devient celui d'un robot, à 30 % près. Des joueurs posés ont des robots posés, et inversement.
+export const ROBOT_RYTHME_MS = [4000, 30000];   // bornes du délai moyen repris des humains
+const RYTHME_OUBLI_MS = 90000;                  // deux tirs plus espacés que cela ne disent rien de la cadence (joueur parti regarder ailleurs)
 export const ROBOT_VISEE_MS = 2000;      // temps pendant lequel un robot tient sa cible avant de tirer
 const ROBOT_VITESSE = 700;              // m/s : vitesse moyenne prêtée à sa balle pour le temps de vol
 /** Chance qu'un robot touche à la distance `d` : 20 % à 400 m, 10 % à 800 m, 4 % au-delà de 2 km. */
@@ -141,6 +145,14 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, tetes: 0, abattus: 0, plusLong: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
     joueurs.set(id, j); return j;
   };
+  // cadence des humains : délai moyen entre deux tirs d'un même joueur, en ms ; null tant que personne n'a tiré deux fois
+  let rythme = null;
+  /** Délai avant le prochain tour d'un robot : calé sur les humains s'ils ont donné le rythme, sinon 5 à 14 s. */
+  const attenteRobot = () => {
+    if (rythme == null) return ROBOT_ATTENTE_MS[0] + rand() * (ROBOT_ATTENTE_MS[1] - ROBOT_ATTENTE_MS[0]);
+    // le tour d'un robot, c'est l'attente puis la visée : l'ensemble vaut le délai moyen des humains, à 30 % près
+    return Math.max(1500, rythme * (0.7 + rand() * 0.6) - ROBOT_VISEE_MS);
+  };
   const tourRobot = (id) => later(() => {
     const j = joueurs.get(id); if (!j) return;                       // le robot est parti : sa boucle s'arrête
     if (phase === 'jeu' && j.vivant) {
@@ -160,9 +172,10 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       }
     }
     tourRobot(id);
-  }, ROBOT_ATTENTE_MS[0] + rand() * (ROBOT_ATTENTE_MS[1] - ROBOT_ATTENTE_MS[0]));
+  }, attenteRobot());
   /** Ajuste le nombre de robots : les places libres quand un humain est là, aucun sinon. */
   const equilibre = () => {
+    if (!humains()) rythme = null;                                  // plus aucun humain : la cadence apprise est oubliée
     if (!robots.length) return;                                     // pas de liste : la salle ne gère aucun robot
     const bots = [...joueurs.values()].filter((j) => j.robot), voulu = robots.length && humains() ? Math.max(0, MAX_JOUEURS - humains()) : 0;
     for (const j of bots.slice(voulu)) { joueurs.delete(j.id); diffuse({ t: 'part', id: j.id }); }
@@ -236,6 +249,11 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (phase !== 'jeu') return 'pause';
       if (!j.vivant) return 'couché';
       const t = now(); if (t - j.dernierTir < CADENCE_MS) return 'cadence';
+      // la cadence de ce joueur nourrit celle des robots (les tirs refusés pour la cadence n'arrivent pas jusqu'ici)
+      if (j.tirs > 0 && t - j.dernierTir <= RYTHME_OUBLI_MS) {
+        const dt = Math.min(ROBOT_RYTHME_MS[1], Math.max(ROBOT_RYTHME_MS[0], t - j.dernierTir));
+        rythme = rythme == null ? dt : rythme * 0.7 + dt * 0.3;
+      }
       j.dernierTir = t; j.tirs++;
       // emplacement et direction du canon : les autres en tirent la traçante, la flamme et la détonation
       const dir = Array.isArray(annonce.dir) && annonce.dir.length === 3 && annonce.dir.every((v) => Number.isFinite(v) && Math.abs(v) <= 1.001) ? annonce.dir.map((v) => Math.round(v * 1e5) / 1e5) : null;
@@ -277,6 +295,8 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     /** Le joueur `id` tient le joueur `cible` dans sa lunette (nul : plus personne). */
     aim(id, cible) { const j = joueurs.get(id); if (!j) return 'inconnu'; pointe(j, cible == null ? null : joueurs.get(Number(cible)) ?? null); return 'ok'; },
     /** Ce que le menu et le salon d'attente affichent, sans entrer dans la salle. */
+    /** Délai moyen entre deux tirs repris des humains (ms), ou null tant qu'ils n'ont pas donné le rythme. */
+    rythmeRobots: () => rythme,
     resume: () => ({ ...temps(), reglages, votes: decompte(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, robots: joueurs.size - humains(), places: MAX_JOUEURS - humains(),
       joueurs: [...joueurs.values()].sort(parRang).map(ligne), precedente, meilleurs: meilleurs.slice(0, 5), pires: pires.slice(0, 5) }),
     etat: () => [...joueurs.values()].map(vue),
