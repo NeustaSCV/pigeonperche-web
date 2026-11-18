@@ -310,21 +310,25 @@ export class UI {
         <h1 class="title"><span class="struck"><s>FAU</s><span class="at"><span class="pin"><em class="fix">Pigeon</em></span></span><s>CON</s></span> <span>PERCHÉ</span></h1>
         <div class="sub"><span>Tir de précision</span><i> · </i><span>${cur.meta.tagline}</span></div>
         <div class="menu-list${init.fullscreen ? '' : ' no-fs'}">
-          <button class="mbtn primary m-start" data-act="start">Commencer</button>
+          <div class="m-cadre m-solo"><span class="m-cadre-t">Solo</span>
+          <button class="mbtn primary m-go m-start" data-act="start">Commencer</button>
           ${camps.length > 1 ? '<div class="opt o-camp"><span>Campagne</span><div class="seg" data-id="segCamp"></div></div>' : ''}
           <div class="opt o-diff"><span>Niveau</span><div class="seg" data-id="segLevel"></div></div>
           <div class="opt-note" data-id="diffNote"></div>
-          <div class="opt o-qual"><span>Qualité</span><div class="seg" data-id="segQual"></div></div>
-          <div class="opt o-vol"><span>Volume</span><input type="range" min="0" max="100" data-id="vol" /></div>
           <div class="opt-pair">
             <div class="opt o-tuto" data-id="tutoRow"><span>Tutoriel</span><div class="seg" data-id="segTuto"></div></div>
             <div class="opt o-coach"><span>Conseils</span><div class="seg" data-id="segCoach"></div></div>
           </div>
+          </div>
+          <div class="m-cadre m-multi"><span class="m-cadre-t">En ligne</span>
+          <a class="mbtn primary m-go m-ville" href="./ville.html">Multijoueur</a>
+          <span class="m-multi-n" data-id="mjN"></span>
+          </div>
+          <div class="opt o-qual"><span>Qualité</span><div class="seg" data-id="segQual"></div></div>
           <div class="m-links">
           <button class="mbtn m-guide" data-act="guide"><span class="lg">Régler la lunette</span><span class="sh">Lunette</span></button>
           <button class="mbtn m-help" data-act="help">Commandes</button>
           <button class="mbtn m-scores" data-act="scores">Scores</button>
-          <a class="mbtn m-ville" href="./ville.html" style="text-decoration:none;text-align:center">Ville nouvelle (visite)</a>
           ${init.fullscreen ? '<button class="mbtn m-fs" data-act="fullscreen">Plein écran</button>' : ''}
           </div>
         </div>
@@ -438,9 +442,19 @@ export class UI {
     seg(this.el.segTuto, [['on', 'Avec'], ['off', 'Sans']], init.tutorial ? 'on' : 'off', (k) => h.setTutorial(k === 'on'));
     seg(this.el.segCoach, [['on', 'Avec'], ['off', 'Sans']], init.coach === false ? 'off' : 'on', (k) => h.setCoach(k === 'on'));
     this.el.tutoRow.classList.toggle('hidden', init.difficulty === 'real' || !init.hasTutorial);
-    // sans réglage du tutoriel, le volume rejoint « Conseils » : en portrait ils partagent une rangée (l'accueil tient sans défiler)
-    if (this.el.tutoRow.classList.contains('hidden')) this.el.tutoRow.parentElement!.prepend(this.el.vol.closest('.opt')!);
-    for (const id of ['vol', 'vol2']) {
+    // cadre multijoueur : nombre de tireurs connectés à la manche, relu toutes les 10 s tant que l'accueil est affiché
+    {
+      const n = this.el.mjN;
+      const lire = (): void => {
+        if (this.current !== 'menu' && this.current !== 'loading') return;
+        fetch('./api/manche/etat').then((r) => (r.ok ? r.json() : null)).then((e) => {
+          n.textContent = !e ? '' : e.connectes > 0 ? `${e.connectes} connecté${e.connectes > 1 ? 's' : ''}` : 'Personne en ligne';
+        }).catch(() => { n.textContent = ''; });
+      };
+      lire(); setInterval(lire, 10_000);
+    }
+    // le volume se règle dans le menu de pause (il a laissé sa place au cadre multijoueur sur l'accueil)
+    for (const id of ['vol2']) {
       const v = this.el[id] as HTMLInputElement;
       v.value = String(Math.round(init.volume * 100));
       v.addEventListener('input', () => h.setVolume(Number(v.value) / 100));

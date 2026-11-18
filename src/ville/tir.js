@@ -98,7 +98,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   const texteCorrection = (e) => { const s = solution(e); if (!s) return 'hors de portée'; return s.holdMil > 0.05 ? `tourelle ${fr(s.dialMil)} + contre-visée ${fr(s.holdMil)} mrad` : `↑ ${fr(s.elev)} mrad`; };
 
   const tirer = (now = performance.now()) => {
-    if (!state.scope || state.fly || state.quad || state.couche || now < t.pret) return null;
+    if (!state.scope || state.fly || state.quad || state.couche || state.pause || state.spectateur || state.salon || now < t.pret) return null;
     t.pret = now + W.boltTime * 1000; t.tirs++;
     const eye = camera.position; camera.getWorldDirection(los);
     right.crossVectors(los, UP).normalize(); up.crossVectors(right, los).normalize();

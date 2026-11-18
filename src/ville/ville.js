@@ -1018,7 +1018,7 @@ const draw = (now) => {
 };
 const frame = (now) => { draw(now); requestAnimationFrame(frame); };
 allerA(new URLSearchParams(location.search).get('poste') || 'La Médiathèque');
-const reseau = installReseau({ EMP, state, allerA, tir, sel });
+const reseau = installReseau({ EMP, state, allerA, tir, sel, carte: { dalles: tiles.map((t) => ({ image: t.tex.image, x0: t.x0, z0: t.z0 })), cote: TS, ox: OX, oz: OZ, taille: N } });
 // la courbure est appliquée à l'affichage : on élargit les sphères englobantes d'autant, sinon les petits objets sont écartés à tort
 scene.traverse((o) => { const g = o.geometry; if (!g || !o.frustumCulled || g.userData.elargi) return; g.computeBoundingSphere(); g.boundingSphere.radius += BOMBE + 1; g.userData.elargi = true; });
 document.getElementById('load').remove();

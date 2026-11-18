@@ -7,8 +7,8 @@ const browser = await chromium.launch({ headless: true, args: ['--use-angle=meta
 const ouvre = async (pseudo) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 }, deviceScaleFactor: 1 });
   page.on('pageerror', (e) => console.log('ERREUR', pseudo, String(e).slice(0, 300)));
-  await page.goto(URL0 + pseudo);
-  await page.waitForFunction(() => window.ville?.state.enLigne, null, { timeout: 120000 });
+  await page.goto(URL0 + pseudo + '&auto');                  // « auto » : entre dans la salle sans passer par le salon
+  await page.waitForFunction(() => window.ville?.state.enLigne && !window.ville.state.pause, null, { timeout: 200000 });   // au pire : une minute de salon
   return page;
 };
 const etat = (p) => p.evaluate(() => ({ moi: window.ville.reseau.moi(), poste: window.ville.state.post, couche: !!window.ville.state.couche, joueurs: [...window.ville.reseau.joueurs.values()].map((j) => `${j.pseudo}@${j.emp}:${j.points}pts${j.vivant ? '' : ' couché'}`) }));

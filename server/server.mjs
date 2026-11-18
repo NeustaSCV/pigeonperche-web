@@ -10,7 +10,7 @@
 import { createServer } from 'node:http';
 import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { extname, join, normalize, resolve, sep } from 'node:path';
+import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { constants as Z, createBrotliCompress, createGzip } from 'node:zlib';
 import { createScoresApi } from './scores-api.mjs';
@@ -48,7 +48,7 @@ const SECURITY = {
 const api = API_ON ? createScoresApi({ file: SCORES_FILE, trustProxy: process.env.TRUST_PROXY === '1', postsPerMinute: Number(process.env.SCORES_PER_MINUTE) || 6 }) : null;
 
 // manche multijoueur de la Ville nouvelle : la salle lit les emplacements de la carte servie
-const manche = createMancheApi({ fichier: join(DIST, 'ville', 'emplacements.json') });
+const manche = createMancheApi({ fichier: join(DIST, 'ville', 'emplacements.json'), records: join(dirname(SCORES_FILE), 'manche.json') });
 
 function plain(res, status, text, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...extra });

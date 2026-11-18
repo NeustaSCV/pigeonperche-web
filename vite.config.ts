@@ -41,7 +41,7 @@ const scoresApi = (): Plugin => {
 const mancheApi = (): Plugin => {
   let api: ReturnType<typeof createMancheApi> | null = null;
   const use = (middlewares: { use: (fn: (req: any, res: any, next: () => void) => void) => void }): void => {
-    api ??= createMancheApi({ fichier: resolve('public/ville/emplacements.json') });
+    api ??= createMancheApi({ fichier: resolve('public/ville/emplacements.json'), records: resolve('data/manche.json') });
     middlewares.use((req, res, next) => { api!.handle(req, res).then((done) => { if (!done) next(); }, () => next()); });
   };
   return { name: 'hr-manche-api', configureServer: (server) => use(server.middlewares), configurePreviewServer: (server) => use(server.middlewares) };
