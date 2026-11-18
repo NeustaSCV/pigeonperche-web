@@ -1,4 +1,5 @@
-// Serveur du jeu : fichiers statiques de dist/ et API du classement. Modules standard de Node seulement.
+// Serveur du jeu : fichiers statiques de dist/, API du classement et manche multijoueur de la Ville nouvelle.
+// Modules standard de Node seulement.
 //   PORT          port d'écoute (8080)
 //   HOST          adresse d'écoute (0.0.0.0)
 //   DIST_DIR      dossier servi (dist/ à côté de ce dossier)
@@ -13,6 +14,7 @@ import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { constants as Z, createBrotliCompress, createGzip } from 'node:zlib';
 import { createScoresApi } from './scores-api.mjs';
+import { createMancheApi } from './manche-api.mjs';
 
 const HERE = fileURLToPath(new URL('.', import.meta.url));
 const PORT = Number(process.env.PORT) || 8080;
@@ -44,6 +46,9 @@ const SECURITY = {
 };
 
 const api = API_ON ? createScoresApi({ file: SCORES_FILE, trustProxy: process.env.TRUST_PROXY === '1', postsPerMinute: Number(process.env.SCORES_PER_MINUTE) || 6 }) : null;
+
+// manche multijoueur de la Ville nouvelle : la salle lit les emplacements de la carte servie
+const manche = createMancheApi({ fichier: join(DIST, 'ville', 'emplacements.json') });
 
 function plain(res, status, text, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store', ...extra });
@@ -113,6 +118,7 @@ const server = createServer(async (req, res) => {
     let path, versioned;
     try { const u = new URL(req.url ?? '/', 'http://x'); path = u.pathname; versioned = /^[0-9a-f]{8,40}$/.test(u.searchParams.get('v') ?? ''); } catch { return plain(res, 400, 'Requête invalide'); }
     if (path === '/healthz') return plain(res, 200, 'ok');
+    if (await manche.handle(req, res)) return;
     if (api && (await api.handle(req, res))) return;
     if (path.startsWith('/api/')) return plain(res, 404, 'Introuvable');
     await serveStatic(req, res, path, versioned);

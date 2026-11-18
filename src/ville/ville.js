@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { buildPostes, FACADES } from './postes.js';
 import { installTir } from './tir.js';
+import { installReseau } from './reseau.js';
 
 const D = './ville/';
 const view = document.getElementById('view');
@@ -877,7 +878,7 @@ const state = { yaw: 0, pitch: -0.05, scope: false, mag: 8, fly: false, post: 't
 const keys = new Set();
 const SCOPE_FOV = 24; // champ vertical apparent rapporté au grossissement
 const aim = (x, y, z) => { const d = new THREE.Vector3(x, y + bendY(x, z), z).sub(camera.position); state.yaw = Math.atan2(-d.x, -d.z); state.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)); };
-const goPost = (name) => { const p = meta.postes[name]; camera.position.set(p[0], p[1] + bendY(p[0], p[2]), p[2]); state.post = name; state.fly = false; for (const e of EMP) { if (e.figure) e.figure.visible = e.nom !== name; if (e.detail) e.detail.visible = Math.hypot(e.x - p[0], e.z - p[2]) < 450; } };
+const goPost = (name) => { const p = meta.postes[name]; camera.position.set(p[0], p[1] + bendY(p[0], p[2]), p[2]); state.post = name; state.fly = false; for (const e of EMP) { if (e.figure) e.figure.visible = e.nom !== name && (!state.occupes || state.occupes.has(e.nom)); if (e.detail) e.detail.visible = Math.hypot(e.x - p[0], e.z - p[2]) < 450; } };
 const aimAt = (name) => {
   if (name === 'Tour Eiffel') { const az = (meta.eiffel.azimut * Math.PI) / 180; state.yaw = -az; state.pitch = 0.004; return; }
   const p = meta.reperes[name]; aim(p[0], p.length > 2 ? p[2] : groundY(p[0], p[1]) + 8, p[1]);
@@ -905,7 +906,8 @@ const tir = installTir({ scene, camera, view, state, EMP, meta, bendY, groundY, 
 lab('Emplacement :');
 const sel = document.createElement('select');
 EMP.forEach((e) => { const o = document.createElement('option'); o.value = e.nom; o.textContent = `${e.n}. ${e.nom}`; sel.appendChild(o); });
-const allerA = (nom) => {                            // se poster, regarder vers le centre de la carte, un peu sous l'horizon
+const allerA = (nom, force = false) => {             // se poster, regarder vers le centre de la carte, un peu sous l'horizon
+  if (state.enLigne && !force) return;               // en manche, c'est le serveur qui place les tireurs
   goPost(nom); sel.value = nom; tir.changerPoste(); const p = meta.postes[nom];
   for (const e of EMP) if (e.figure) e.figure.position.y = meta.postes[e.nom][1] - 1.6;
   state.yaw = Math.atan2(-(BCX - p[0]), -(BCZ - p[2])); state.pitch = -0.06; state.scope = false;
@@ -930,7 +932,8 @@ const drawTags = () => {
     if (tv.z > 1 || Math.abs(tv.x) > 1.02 || Math.abs(tv.y) > 1.02) { d.style.display = 'none'; return; }
     const pres = Math.hypot(tv.x * camera.aspect, tv.y) < (state.scope ? 0.5 : 0.16);
     d.style.display = 'block'; d.style.left = `${((tv.x + 1) / 2) * w}px`; d.style.top = `${((1 - tv.y) / 2) * h}px`;
-    d.className = pres ? 'tag pres' : 'tag'; d.textContent = pres ? `${e.n}. ${e.nom} · ${Math.round(dist)} m · ${tir.texteCorrection(e)}` : e.n;
+    d.className = pres ? 'tag pres' : 'tag'; const qui = state.pseudoA ? state.pseudoA(e.nom) : '';
+    d.textContent = pres ? `${qui ? qui + ' · ' : ''}${e.n}. ${e.nom} · ${Math.round(dist)} m · ${tir.texteCorrection(e)}` : e.n;
   });
 };
 let drag = false;
@@ -1015,6 +1018,7 @@ const draw = (now) => {
 };
 const frame = (now) => { draw(now); requestAnimationFrame(frame); };
 allerA(new URLSearchParams(location.search).get('poste') || 'La Médiathèque');
+const reseau = installReseau({ EMP, state, allerA, tir, sel });
 // la courbure est appliquée à l'affichage : on élargit les sphères englobantes d'autant, sinon les petits objets sont écartés à tort
 scene.traverse((o) => { const g = o.geometry; if (!g || !o.frustumCulled || g.userData.elargi) return; g.computeBoundingSphere(); g.boundingSphere.radius += BOMBE + 1; g.userData.elargi = true; });
 document.getElementById('load').remove();
@@ -1022,4 +1026,4 @@ requestAnimationFrame(frame);
 
 const bench = (n = 60) => { const gl = renderer.getContext(), px = new Uint8Array(4); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now(); for (let i = 0; i < n; i++) { camera.rotation.y += 0.002; camera.updateMatrixWorld(); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); } return (performance.now() - t0) / n; };
 const plan = (x, z, demi = 200) => { state.fly = true; camera.position.set(x, 1700, z); state.yaw = 0; state.pitch = -Math.PI / 2 + 1e-4; state.fovOverride = (2 * Math.atan(demi / (1700 - 160)) * 180) / Math.PI; document.getElementById('bar').style.display = 'none'; };
-window.ville = { tir, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };
+window.ville = { tir, reseau, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };

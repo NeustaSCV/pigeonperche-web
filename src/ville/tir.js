@@ -76,7 +76,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   const vise = (seuil = state.scope ? 0.03 : 0.12) => {
     camera.getWorldDirection(los); let best = null, ba = seuil;
     for (const e of EMP) {
-      if (e.nom === state.post) continue;
+      if (e.nom === state.post || (state.occupes && !state.occupes.has(e.nom))) continue;   // en manche : seuls les emplacements tenus par un joueur
       centre(e, c).sub(camera.position); const d = c.length(); if (d < 30) continue;
       const a = Math.acos(Math.min(1, c.dot(los) / d)); if (a < ba) { ba = a; best = e; }
     }
@@ -98,14 +98,14 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   const texteCorrection = (e) => { const s = solution(e); if (!s) return 'hors de portée'; return s.holdMil > 0.05 ? `tourelle ${fr(s.dialMil)} + contre-visée ${fr(s.holdMil)} mrad` : `↑ ${fr(s.elev)} mrad`; };
 
   const tirer = (now = performance.now()) => {
-    if (!state.scope || state.fly || state.quad || now < t.pret) return null;
+    if (!state.scope || state.fly || state.quad || state.couche || now < t.pret) return null;
     t.pret = now + W.boltTime * 1000; t.tirs++;
     const eye = camera.position; camera.getWorldDirection(los);
     right.crossVectors(los, UP).normalize(); up.crossVectors(right, los).normalize();
     dir.copy(los).addScaledVector(up, Math.tan(zero + t.elev * 0.001)).normalize();
     const f = makeFlight(W, undefined, { air: GAME_AIR, frame: 'world', y0: eye.y - SIGHT_HEIGHT });
     const s = { x: eye.x, y: eye.y - SIGHT_HEIGHT, z: eye.z, vx: dir.x * f.v0, vy: dir.y * f.v0, vz: dir.z * f.v0, t: 0 };
-    const cibles = EMP.filter((e) => e.nom !== state.post && !couches.has(e.nom)).map((e) => ({ e, c: centre(e, new THREE.Vector3()) }));
+    const cibles = EMP.filter((e) => e.nom !== state.post && !couches.has(e.nom) && (!state.occupes || state.occupes.has(e.nom))).map((e) => ({ e, c: centre(e, new THREE.Vector3()) }));
     const visee = vise(0.06); let ecart = null, res = null;
     while (s.t < 10 && !res) {
       const px = s.x, py = s.y, pz = s.z;
@@ -128,9 +128,12 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     }
     if (!res) res = { perdu: true, tof: s.t };
     res.ecart = ecart; res.elev = t.elev; t.dernier = res;
+    if (t.surTir) t.surTir(res);                 // en manche : le serveur arbitre et annonce la touche à tous
     // le résultat n'apparaît qu'à l'arrivée de la balle
     setTimeout(() => {
-      if (res.touche) {
+      if (res.touche && state.enLigne) {
+        t.touches++; t.msg = 'Touche annoncée au serveur…';
+      } else if (res.touche) {
         t.touches++; couches.set(res.touche.nom, performance.now() + 5000); gerbe(res.x, res.y, res.z, res.dist);
         t.msg = `Touché · ${res.touche.nom} · ${Math.round(res.dist)} m · vol ${fr(res.tof)} s`;
       } else if (ecart) {
@@ -180,6 +183,11 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
       `<br><small>R / F : tourelle (Maj : 1 mrad) · G : régler sur la cible visée · espace ou clic : tirer</small>`;
   };
 
+  /** Effet d'une touche confirmée par le serveur sur l'emplacement `nom` : gerbe, silhouette couchée 5 s. */
+  const effetTouche = (nom, dist) => {
+    const e = EMP.find((q) => q.nom === nom); if (!e || nom === state.post) return;
+    centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); couches.set(nom, performance.now() + 5000);
+  };
   const changerPoste = () => { t.elev = 0; for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
-  return { update, tirer, vise, solution, texteCorrection, changerPoste, dansBatiment, centre, etat: t, arme: W };
+  return { update, tirer, vise, solution, texteCorrection, changerPoste, effetTouche, dansBatiment, centre, etat: t, arme: W };
 }

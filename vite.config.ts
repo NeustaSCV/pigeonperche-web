@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { appendFileSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { createScoresApi } from './server/scores-api.mjs';
+import { createMancheApi } from './server/manche-api.mjs';
 
 /** Reçoit les messages de src/core/diag.ts (téléphone en cours d'essai) et les écrit dans e2e/out/device.log. */
 const deviceLog = (): Plugin => ({
@@ -34,6 +35,16 @@ const scoresApi = (): Plugin => {
     middlewares.use((req, res, next) => { api!.handle(req, res).then((done) => { if (!done) next(); }, () => next()); });
   };
   return { name: 'hr-scores-api', configureServer: (server) => use(server.middlewares), configurePreviewServer: (server) => use(server.middlewares) };
+};
+
+/** Manche multijoueur de la Ville nouvelle en développement et en prévisualisation : le même code que le serveur de production. */
+const mancheApi = (): Plugin => {
+  let api: ReturnType<typeof createMancheApi> | null = null;
+  const use = (middlewares: { use: (fn: (req: any, res: any, next: () => void) => void) => void }): void => {
+    api ??= createMancheApi({ fichier: resolve('public/ville/emplacements.json') });
+    middlewares.use((req, res, next) => { api!.handle(req, res).then((done) => { if (!done) next(); }, () => next()); });
+  };
+  return { name: 'hr-manche-api', configureServer: (server) => use(server.middlewares), configurePreviewServer: (server) => use(server.middlewares) };
 };
 
 /**
@@ -74,7 +85,7 @@ function menuImages(): string[] {
 export default defineConfig({
   base: './',
   define: { __ASSETS_VERSION__: JSON.stringify(assetsVersion()), __COMMON_ASSETS__: JSON.stringify(commonAssets()), __MENU_IMAGES__: JSON.stringify(menuImages()) },
-  plugins: [deviceLog(), scoresApi()],
+  plugins: [deviceLog(), scoresApi(), mancheApi()],
   server: { port: 5173, host: '127.0.0.1' },
   // deux pages : le jeu (index.html) et la carte « Ville nouvelle » en mode visite (ville.html)
   build: { target: 'es2022', chunkSizeWarningLimit: 4000, rollupOptions: { input: { main: resolve('index.html'), ville: resolve('ville.html') } } },

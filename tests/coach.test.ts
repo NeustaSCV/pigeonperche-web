@@ -353,7 +353,7 @@ describe('texte du conseil', () => {
                   n++;
                 }
     expect(n).toBeGreaterThan(1500);
-  });
+  }, 30_000);   // balayage exhaustif : environ 3 s seul, davantage quand toute la suite tourne en parallèle
   it('tactile : boutons à la place des touches, aucune touche de clavier citée', () => {
     const a = buildAdvice(base({ touch: true, range: null }));
     expect(a.steps[0]).toContain('Bouton <b>Télémètre</b>');
