@@ -135,6 +135,50 @@ describe('manche multijoueur', () => {
     expect(m.etat().find((j: any) => j.id === a.id).vivant).toBe(false);
     expect(adresseRobot(400)).toBeCloseTo(0.2); expect(adresseRobot(800)).toBeCloseTo(0.1); expect(adresseRobot(3000)).toBe(0.04);
   });
+  it('compte pour chaque tireur les tirs à la tête, les adversaires abattus et le plus long tir réussi', () => {
+    const { m, avance, entre, dist, gardes } = salle();
+    const a = entre('Anna'), b = entre('Bob'), c = entre('Chloé');
+    const ab = dist(a.id!, b.id!), ac = dist(a.id!, c.id!);
+    expect(ac).toBeGreaterThan(ab);
+    const stats = (id: number) => { const p = m.etat().find((j: any) => j.id === id).pseudo, l = m.resume().joueurs.find((x: any) => x.pseudo === p); return [l.tetes, l.abattus, l.plusLong]; };
+    expect(stats(a.id!)).toEqual([0, 0, 0]);
+    // une balle au corps : ni tête ni abattu, mais la distance compte ; rien n'est compté avant l'arrivée de la balle
+    m.shot(a.id, { cible: c.id, dist: ac, tof: 1, zone: 'corps' }); avance(500);
+    expect(stats(a.id!)).toEqual([0, 0, 0]);
+    avance(600); expect(stats(a.id!)).toEqual([0, 0, ac]);
+    // une balle dans la tête de Bob, plus près : une tête, un abattu ; le plus long tir ne recule pas
+    avance(CADENCE_MS); m.shot(a.id, { cible: b.id, dist: ab, tof: 1, zone: 'tete' }); avance(1100);
+    expect(stats(a.id!)).toEqual([1, 1, ac]);
+    // la seconde balle au corps achève Chloé : abattue sans tir à la tête ; un tir manqué ne compte nulle part
+    avance(CADENCE_MS); m.shot(a.id, { cible: c.id, dist: ac, tof: 1 }); avance(1100);
+    avance(CADENCE_MS); m.shot(a.id, {});
+    expect(stats(a.id!)).toEqual([1, 2, ac]);
+    expect(stats(b.id!)).toEqual([0, 0, 0]);
+    // Bob, revenu sur un autre emplacement, touche Anna au corps
+    avance(RETOUR_MS); const ba = dist(b.id!, a.id!);
+    expect(m.shot(b.id, { cible: a.id, dist: ba, tof: 2 })).toBe('ok'); avance(2100);
+    expect(stats(b.id!)).toEqual([0, 0, ba]);
+    // fin de manche : le classement, le résumé et les records portent les trois statistiques ; la manche suivante repart de zéro
+    avance(MANCHE_MS - (CADENCE_MS * 3 + 1100 * 3 + 2100 + RETOUR_MS) + 50);
+    const fin = a.recu.filter((x: any) => x.t === 'fin').at(-1);
+    expect(fin.classement[0]).toMatchObject({ pseudo: 'Anna', touches: 3, tirs: 4, tetes: 1, abattus: 2, plusLong: ac });
+    expect(fin.classement.find((l: any) => l.pseudo === 'Chloé')).toMatchObject({ tetes: 0, abattus: 0, plusLong: 0 });
+    expect(m.resume().precedente.classement[0]).toMatchObject({ tetes: 1, abattus: 2, plusLong: ac });
+    expect(gardes.at(-1).meilleurs[0]).toMatchObject({ pseudo: 'Anna', tetes: 1, abattus: 2, plusLong: ac });
+    avance(PAUSE_MS);
+    expect(m.resume().joueurs.every((l: any) => l.tetes === 0 && l.abattus === 0 && l.plusLong === 0)).toBe(true);
+  });
+  it('compte aussi les statistiques des robots, et garde lisibles d’anciens records qui ne les ont pas', () => {
+    const deux = LIEUX.slice(0, 2), ancien = { pseudo: 'Vieux', robot: false, points: 9999, touches: 9, tirs: 9, subies: 0, date: 1 };
+    const { m, avance, entre } = salle({ robots: ROBOTS, emplacements: deux, records: { meilleurs: [ancien], pires: [ancien] } });
+    const a = entre('Anna'); const bot = m.etat().find((j: any) => j.robot);
+    avance(CADENCE_MS); expect(m.shot(a.id, {})).toBe('ok');
+    avance(MANCHE_MS);                                             // rand = 0 : le robot touche à tous les coups, dans la tête
+    const r = m.resume(), l = r.precedente.classement.find((x: any) => x.pseudo === bot.pseudo);
+    expect(l.tetes).toBeGreaterThan(0); expect(l.abattus).toBe(l.tetes); expect(l.plusLong).toBe(500);
+    expect(r.meilleurs[0]).toEqual(ancien);                        // l'ancienne ligne reste telle quelle, sans les nouveaux champs
+    expect(r.meilleurs[1]).toMatchObject({ pseudo: 'Anna', tetes: 0, abattus: 0, plusLong: 0 });
+  });
   it('n’inscrit jamais un robot aux records de toujours, mais le garde au classement de la partie', () => {
     const deux = LIEUX.slice(0, 2);
     const { m, avance, entre, gardes } = salle({ robots: ROBOTS, emplacements: deux });

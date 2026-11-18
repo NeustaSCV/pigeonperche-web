@@ -12,6 +12,10 @@
 // Vie : chaque tireur a deux points de vie. Une balle dans le corps en retire un, une balle dans la tête abat d'un
 // coup. Abattu, il reparaît 5 secondes plus tard sur un autre emplacement, avec toute sa vie.
 //
+// Statistiques de la manche, tenues pour chaque tireur (humain ou robot) et portées par chaque ligne de classement :
+// points, touches, tirs, touches subies, et, comptés à l'arrivée de la balle, les tirs à la tête réussis (`tetes`),
+// les adversaires abattus (`abattus`) et le plus long tir réussi en mètres (`plusLong`, 0 : aucune touche).
+//
 // Vote : pendant la minute de salon, les joueurs humains votent pour la manche suivante. Le niveau règle l'étalement
 // des tireurs (facile : les 15 emplacements les plus resserrés ; standard : les 25 ; avancé : toute la carte), et le
 // vent est coupé ou tiré au hasard jusqu'à 5 m/s. La majorité l'emporte ; à égalité, on garde le réglage en cours.
@@ -64,7 +68,7 @@ const propre = (s, n = 16) => String(s ?? '').replace(/[\u0000-\u001f<>&"']/g, '
  *   emplacements (par défaut tout le monde se voit)
  */
 export function createManche({ emplacements, now = Date.now, later = (fn, ms) => setTimeout(fn, ms), rand = Math.random, records = {}, onRecords = () => {}, robots = [], voit = () => true }) {
-  const joueurs = new Map();            // id → { id, pseudo, robot, emp, vivant, points, touches, tirs, subies, dernierTir, send }
+  const joueurs = new Map();            // id → { id, pseudo, robot, emp, vivant, points, touches, tirs, subies, tetes, abattus, plusLong, dernierTir, send }
   const spectateurs = new Map();        // id → send
   let suivant = 1, numero = 0, precedente = null;
   let meilleurs = (records.meilleurs ?? []).filter((l) => !l.robot), pires = (records.pires ?? []).filter((l) => !l.robot);
@@ -87,7 +91,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const tirage = (sauf) => { const l = libres(sauf); return l.length ? l[Math.floor(rand() * l.length)].nom : null; };
   const lieu = (nom) => emplacements.find((e) => e.nom === nom);
   const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, emp: j.emp, vivant: j.vivant, vie: j.vie, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
-  const ligne = (j) => ({ pseudo: j.pseudo, robot: !!j.robot, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
+  const ligne = (j) => ({ pseudo: j.pseudo, robot: !!j.robot, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies, tetes: j.tetes, abattus: j.abattus, plusLong: j.plusLong });
   const diffuse = (msg, sauf) => { for (const j of joueurs.values()) if (j.id !== sauf) j.send(msg); for (const s of spectateurs.values()) s(msg); };
   const humains = () => [...joueurs.values()].filter((j) => !j.robot).length;
   /** Où en est l'horloge : phase en cours et temps restant avant la suivante. */
@@ -105,6 +109,8 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (n !== numero || phase !== 'jeu' || !t || !c || !c.vivant || c.emp !== empCible) return;
       c.vie = tete ? 0 : c.vie - 1; c.subies++; t.touches++; const pts = tete ? Math.round(pointsPour(d) * BONUS_TETE) : pointsPour(d); t.points += pts;
       const abattu = c.vie <= 0;
+      // statistiques du tireur : tirs à la tête, adversaires abattus, plus long tir réussi
+      if (tete) t.tetes++; if (abattu) t.abattus++; t.plusLong = Math.max(t.plusLong, Math.round(d));
       if (abattu) { c.vivant = false; pointe(c, null); for (const q of joueurs.values()) if (q.vise === idc) pointe(q, null); }
       diffuse({ t: 'touche', tireur: id, cible: idc, emp: empCible, de: empTireur, dist: Math.round(d), points: pts, zone: tete ? 'tete' : 'corps', vie: Math.max(0, c.vie), abattu, scores: [...joueurs.values()].map(vue) });
       if (!abattu) return;
@@ -132,7 +138,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const entre = (pseudo, robot, send) => {
     const emp = tirage(); if (!emp) return null;
     const id = suivant++;
-    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
+    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, tetes: 0, abattus: 0, plusLong: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
     joueurs.set(id, j); return j;
   };
   const tourRobot = (id) => later(() => {
@@ -178,7 +184,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     reglages = { niveau, vent: venteux ? { vitesse: Math.round((2 + rand() * (VENT_MAX - 2)) * 10) / 10, de: Math.floor(rand() * 360) } : null };
     votes.clear();
     // nouvelle manche : tout le monde est replacé au hasard dans la zone du niveau
-    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; j.vie = VIE_MAX; j.vise = null; j.emp = null; }
+    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.tetes = 0; j.abattus = 0; j.plusLong = 0; j.vivant = true; j.vie = VIE_MAX; j.vise = null; j.emp = null; }
     for (const j of joueurs.values()) j.emp = tirage();
     diffuse({ t: 'debut', ...temps(), reglages, joueurs: [...joueurs.values()].map(vue) });
   };

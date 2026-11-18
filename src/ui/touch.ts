@@ -26,6 +26,17 @@ export interface TouchFrame {
   halo: string[];
   /** mise en page portrait : manette dans le bas gauche de l'écran */
   portrait?: boolean;
+  // --- mode en ligne seulement (src/online/mode.ts) : absents en solo, où rien de ce qui suit n'a d'effet ---
+  /** en ligne : briefing, carnet, postures, râtelier et télémètre masqués ; « Régler sur la cible » et « Diversion » offerts */
+  online?: boolean;
+  /** joueur fixe : la manette de déplacement est désarmée, toute la surface libre sert à regarder */
+  fixed?: boolean;
+  /** en ligne, spectateur : ni tir, ni tourelles, ni diversion */
+  unarmed?: boolean;
+  /** en ligne : secondes à attendre avant la prochaine diversion (0 : disponible) */
+  divertIn?: number;
+  /** en ligne : la ligne d'explication de chaque tourelle, pour les débutants (élévation, dérive) */
+  turretHelp?: { elev: string; wind: string };
 }
 
 type Kind = 'tap' | 'hold' | 'repeat';
@@ -58,33 +69,39 @@ const ICON: Record<string, string> = {
   book: S('<path d="M12 6.2c-2.4-1.7-5.4-1.9-9-1v13.6c3.6-.9 6.6-.7 9 1 2.4-1.7 5.4-1.9 9-1V5.2c-3.6-.9-6.6-.7-9 1zM12 6.2v13.6"/>'),
   brief: S('<path d="M6 2.5h8.5L19 7v14.5H6zM14.5 2.5V7H19M9 12h7M9 15.5h7M9 8.5h3"/>'),
   pause: S('<path d="M8.5 5v14M15.5 5v14"/>'),
+  // en ligne : cadre posé sur la cible (régler les tourelles sur elle), haut-parleur (diversion)
+  target: S('<path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5"/><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="0.9" class="f"/>'),
+  divert: S('<path d="M3.5 9.5v5H7l4.5 4v-13L7 9.5zM15.2 9a4.2 4.2 0 0 1 0 6M17.8 6.4a7.8 7.8 0 0 1 0 11.2"/>'),
 };
 
 const BTNS: Btn[] = [
   { id: 'pause', kind: 'tap', label: 'Pause', icon: 'pause', show: (f) => !f.bulletCam, down: () => {} },
-  { id: 'brief', kind: 'tap', label: 'Briefing', icon: 'brief', show: (f) => !f.bulletCam, down: (i) => i.vpress('KeyB') },
-  { id: 'book', kind: 'tap', label: 'Carnet', icon: 'book', show: (f) => !f.bulletCam, down: (i) => i.vpress('Tab') },
-  { id: 'fire', kind: 'tap', label: 'Tirer', icon: 'fire', show: (f) => f.scope, down: (i) => i.vclick(0), buzz: 22 },
-  { id: 'aim', kind: 'tap', label: 'Épauler', icon: 'aim', show: (f) => f.scope || f.stance !== 'stand', down: (i) => i.vpress('KeyF'), dyn: (f) => (f.scope ? 'Quitter' : 'Épauler') },
+  { id: 'brief', kind: 'tap', label: 'Briefing', icon: 'brief', show: (f) => !f.bulletCam && !f.online, down: (i) => i.vpress('KeyB') },
+  { id: 'book', kind: 'tap', label: 'Carnet', icon: 'book', show: (f) => !f.bulletCam && !f.online, down: (i) => i.vpress('Tab') },
+  { id: 'fire', kind: 'tap', label: 'Tirer', icon: 'fire', show: (f) => f.scope && !f.unarmed, down: (i) => i.vclick(0), buzz: 22 },
+  { id: 'aim', kind: 'tap', label: 'Épauler', icon: 'aim', show: (f) => f.scope || f.stance !== 'stand' || !!f.online, down: (i) => i.vpress('KeyF'), dyn: (f) => (f.scope ? 'Quitter' : 'Épauler') },
   { id: 'reload', kind: 'tap', label: 'Recharger', icon: 'reload', show: (f) => f.canReload, down: (i) => i.vpress('KeyR') },
-  { id: 'crouch', kind: 'tap', label: 'Accroupi', icon: 'crouch', show: (f) => !f.scope && f.stance !== 'prone', down: (i) => i.vpress('KeyC'), dyn: (f) => (f.stance === 'crouch' ? 'Debout' : 'Accroupi') },
-  { id: 'prone', kind: 'tap', label: 'Couché', icon: 'prone', show: (f) => !f.scope, down: () => {}, dyn: (f) => (f.stance === 'prone' ? 'Se relever' : 'Couché') },
-  { id: 'rack', kind: 'tap', label: 'Râtelier', icon: 'rack', show: (f) => !f.scope && f.nearRack, down: (i) => i.vpress('KeyE') },
-  { id: 'breath', kind: 'hold', label: 'Souffle', icon: 'breath', show: (f) => f.scope, down: (i) => i.vdown('Space'), up: (i) => i.vup('Space') },
-  { id: 'range', kind: 'tap', label: 'Télémètre', icon: 'range', show: (f) => f.scope && f.canRange, down: (i) => i.vpress('KeyT') },
+  { id: 'crouch', kind: 'tap', label: 'Accroupi', icon: 'crouch', show: (f) => !f.scope && f.stance !== 'prone' && !f.online, down: (i) => i.vpress('KeyC'), dyn: (f) => (f.stance === 'crouch' ? 'Debout' : 'Accroupi') },
+  { id: 'prone', kind: 'tap', label: 'Couché', icon: 'prone', show: (f) => !f.scope && !f.online, down: () => {}, dyn: (f) => (f.stance === 'prone' ? 'Se relever' : 'Couché') },
+  { id: 'rack', kind: 'tap', label: 'Râtelier', icon: 'rack', show: (f) => !f.scope && f.nearRack && !f.online, down: (i) => i.vpress('KeyE') },
+  { id: 'breath', kind: 'hold', label: 'Souffle', icon: 'breath', show: (f) => f.scope && !f.unarmed, down: (i) => i.vdown('Space'), up: (i) => i.vup('Space') },
+  { id: 'range', kind: 'tap', label: 'Télémètre', icon: 'range', show: (f) => f.scope && f.canRange && !f.online, down: (i) => i.vpress('KeyT') },
   { id: 'zin', kind: 'repeat', label: 'Grossir', glyph: '+', show: (f) => f.scope, down: (i) => (i.zoomMul *= 1.09) },
   { id: 'zout', kind: 'repeat', label: 'Élargir', glyph: '−', show: (f) => f.scope, down: (i) => (i.zoomMul /= 1.09) },
-  { id: 'e-10', kind: 'repeat', label: 'Élévation −1 mrad', glyph: '−1', show: (f) => f.scope, down: (i) => (i.elevDelta -= 10) },
-  { id: 'e-1', kind: 'repeat', label: 'Élévation −0,1 mrad', glyph: '−', show: (f) => f.scope, down: (i) => (i.elevDelta -= 1) },
-  { id: 'e+1', kind: 'repeat', label: 'Élévation +0,1 mrad', glyph: '+', show: (f) => f.scope, down: (i) => (i.elevDelta += 1) },
-  { id: 'e+10', kind: 'repeat', label: 'Élévation +1 mrad', glyph: '+1', show: (f) => f.scope, down: (i) => (i.elevDelta += 10) },
-  { id: 'w-10', kind: 'repeat', label: 'Dérive 1 mrad à gauche', glyph: 'G1', show: (f) => f.scope, down: (i) => (i.windDelta -= 10) },
-  { id: 'w-1', kind: 'repeat', label: 'Dérive 0,1 mrad à gauche', glyph: 'G', show: (f) => f.scope, down: (i) => (i.windDelta -= 1) },
-  { id: 'w+1', kind: 'repeat', label: 'Dérive 0,1 mrad à droite', glyph: 'D', show: (f) => f.scope, down: (i) => (i.windDelta += 1) },
-  { id: 'w+10', kind: 'repeat', label: 'Dérive 1 mrad à droite', glyph: 'D1', show: (f) => f.scope, down: (i) => (i.windDelta += 10) },
+  { id: 'e-10', kind: 'repeat', label: 'Élévation −1 mrad', glyph: '−1', show: (f) => f.scope && !f.unarmed, down: (i) => (i.elevDelta -= 10) },
+  { id: 'e-1', kind: 'repeat', label: 'Élévation −0,1 mrad', glyph: '−', show: (f) => f.scope && !f.unarmed, down: (i) => (i.elevDelta -= 1) },
+  { id: 'e+1', kind: 'repeat', label: 'Élévation +0,1 mrad', glyph: '+', show: (f) => f.scope && !f.unarmed, down: (i) => (i.elevDelta += 1) },
+  { id: 'e+10', kind: 'repeat', label: 'Élévation +1 mrad', glyph: '+1', show: (f) => f.scope && !f.unarmed, down: (i) => (i.elevDelta += 10) },
+  { id: 'w-10', kind: 'repeat', label: 'Dérive 1 mrad à gauche', glyph: 'G1', show: (f) => f.scope && !f.unarmed, down: (i) => (i.windDelta -= 10) },
+  { id: 'w-1', kind: 'repeat', label: 'Dérive 0,1 mrad à gauche', glyph: 'G', show: (f) => f.scope && !f.unarmed, down: (i) => (i.windDelta -= 1) },
+  { id: 'w+1', kind: 'repeat', label: 'Dérive 0,1 mrad à droite', glyph: 'D', show: (f) => f.scope && !f.unarmed, down: (i) => (i.windDelta += 1) },
+  { id: 'w+10', kind: 'repeat', label: 'Dérive 1 mrad à droite', glyph: 'D1', show: (f) => f.scope && !f.unarmed, down: (i) => (i.windDelta += 10) },
+  // en ligne seulement : les touches G et V du clavier
+  { id: 'target', kind: 'tap', label: 'Régler sur la cible', icon: 'target', show: (f) => !!f.online && f.scope && !f.unarmed, down: (i) => i.vpress('KeyG') },
+  { id: 'divert', kind: 'tap', label: 'Diversion', icon: 'divert', show: (f) => !!f.online && !f.unarmed, down: (i) => i.vpress('KeyV'), dyn: (f) => ((f.divertIn ?? 0) > 0 ? `${Math.ceil(f.divertIn as number)} s` : 'Diversion') },
 ];
 /** boutons à petit libellé sous le pictogramme */
-const CAPTION = new Set(['fire', 'aim', 'reload', 'crouch', 'prone', 'rack', 'breath', 'range']);
+const CAPTION = new Set(['fire', 'aim', 'reload', 'crouch', 'prone', 'rack', 'breath', 'range', 'target', 'divert']);
 
 const fr = (n: number, d = 0): string => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const REPEAT_DELAY = 380;
@@ -140,13 +157,13 @@ export class TouchControls {
         <div class="stick" data-o="stick"><i data-o="knob"></i></div>
         <div class="tg tg-top">${b('book')}${b('brief')}${b('pause')}</div>
         <div class="tg tg-turret">
-          <div class="tur"><div class="tl-row"><small data-o="elevL">Élévation</small><output data-o="elev">0,0</output></div>
+          <div class="tur"><p class="tur-x" data-o="elevX"></p><div class="tl-row"><small data-o="elevL">Élévation</small><output data-o="elev">0,0</output></div>
           <div class="tb-row">${b('e-10')}${b('e-1')}${b('e+1')}${b('e+10')}</div></div>
-          <div class="tur"><div class="tl-row"><small>Dérive</small><output data-o="wind">0,0</output></div>
+          <div class="tur"><p class="tur-x" data-o="windX"></p><div class="tl-row"><small>Dérive</small><output data-o="wind">0,0</output></div>
           <div class="tb-row">${b('w-10')}${b('w-1')}${b('w+1')}${b('w+10')}</div></div>
         </div>
         <div class="tg tg-zoom">${b('zin')}<output data-o="zoom">8×</output>${b('zout')}</div>
-        ${b('breath')}${b('range')}${b('fire')}${b('aim')}${b('reload')}${b('crouch')}${b('prone')}${b('rack')}
+        ${b('breath')}${b('range')}${b('fire')}${b('aim')}${b('reload')}${b('crouch')}${b('prone')}${b('rack')}${b('target')}${b('divert')}
       </div>`);
     this.root = parent.querySelector<HTMLElement>('#touch')!;
     this.root.querySelectorAll<HTMLElement>('[data-tb]').forEach((e) => this.els.set(e.dataset.tb!, e));
@@ -182,7 +199,8 @@ export class TouchControls {
     e.preventDefault();
     const el = (e.target as HTMLElement).closest<HTMLElement>('[data-tb]');
     if (el) {
-      if (el.classList.contains('off')) return;
+      // (`wait` : diversion en ligne, pendant le délai imposé par le serveur)
+      if (el.classList.contains('off') || el.classList.contains('wait')) return;
       const btn = BTNS.find((x) => x.id === el.dataset.tb)!;
       // un même bouton n'est tenu que par un doigt
       for (const h of this.held.values()) if (h.btn === btn) return;
@@ -205,7 +223,7 @@ export class TouchControls {
     // zone de la manette : moitié gauche en paysage ; en portrait, le bas gauche seulement (le pouce gauche), tout
     // le reste de la surface libre sert à regarder
     const left = e.clientX < window.innerWidth / 2 && (!this.f.portrait || e.clientY > window.innerHeight * STICK_TOP);
-    if (left && !this.f.scope && this.stickId === null) {
+    if (left && !this.f.scope && !this.f.fixed && this.stickId === null) {
       this.stickId = e.pointerId;
       this.stick.ox = e.clientX;
       this.stick.oy = e.clientY;
@@ -215,7 +233,7 @@ export class TouchControls {
       return;
     }
     // en lunette, tout l'écran sert à viser ; hors lunette, la zone de la manette lui est réservée
-    if (left && !this.f.scope) return;
+    if (left && !this.f.scope && !this.f.fixed) return;
     this.look.set(e.pointerId, { x: e.clientX, y: e.clientY, t: e.timeStamp });
     this.pinch = 0;
   }
@@ -330,7 +348,7 @@ export class TouchControls {
     if (was.play && !f.play) this.releaseAll();
     // l'entrée en lunette désarme la manette (on ne se déplace pas l'œil à l'oculaire)
     if (f.scope && !was.scope && this.stickId !== null) this.dropStick();
-    const cls = (f.play ? 'on' : '') + (f.scope ? ' scope' : '') + (f.bulletCam ? ' cam' : '');
+    const cls = (f.play ? 'on' : '') + (f.scope ? ' scope' : '') + (f.bulletCam ? ' cam' : '') + (f.online ? ' online' : '') + (f.unarmed ? ' unarmed' : '');
     if (this.last.cls !== cls) { this.last.cls = cls; this.root.className = cls; }
     if (!f.play) return;
     for (const b of BTNS) {
@@ -357,6 +375,12 @@ export class TouchControls {
       this.txt('elevL', this.out.elevL, hold || 'Élévation');
       this.out.elevL.classList.toggle('hold', !!hold);
       this.txt('wind', this.out.wind, (f.wind === 0 ? '' : f.wind > 0 ? 'D ' : 'G ') + fr(Math.abs(f.wind), 1));
+    }
+    if (f.online) {
+      // diversion : bouton éteint tant que le serveur la refuserait
+      const w = (f.divertIn ?? 0) > 0 ? '1' : '0';
+      if (this.last.dw !== w) { this.last.dw = w; this.els.get('divert')!.classList.toggle('wait', w === '1'); }
+      if (f.turretHelp) { this.txt('elevX', this.out.elevX, f.turretHelp.elev); this.txt('windX', this.out.windX, f.turretHelp.wind); }
     }
   }
 }

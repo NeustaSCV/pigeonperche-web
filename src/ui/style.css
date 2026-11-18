@@ -159,6 +159,8 @@ table.dope.adv tr.sub .hold { color: var(--gold); }
 .gauge.warn i { background: var(--red); }
 .prompt { font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink); background: rgba(10, 10, 10, 0.4); padding: 8px 16px; border: 1px solid var(--line); transition: opacity 0.3s; }
 .prompt b { color: var(--gold); font-weight: 500; }
+/* invite en grand (en ligne : chargeur vide) */
+.prompt.gros { font-size: 24px; letter-spacing: 0.16em; padding: 16px 30px; border-color: var(--gold); background: rgba(10, 10, 10, 0.78); }
 .toast { font-family: var(--serif); font-size: 26px; letter-spacing: 0.08em; opacity: 0; transition: opacity 0.5s; }
 .toast.on { opacity: 1; }
 .toast small { display: block; font-family: var(--sans); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-top: 6px; }
@@ -341,6 +343,7 @@ html.touch .windrose i { height: 10px; }
 html.touch .toast { font-size: 19px; }
 html.touch .toast small { font-size: 10.5px; margin-top: 3px; }
 html.touch .prompt { font-size: 10.5px; padding: 6px 12px; }
+html.touch .prompt.gros { font-size: 16px; letter-spacing: 0.12em; padding: 12px 18px; }
 html.touch .compass { top: calc(var(--sat) + 8px); }
 html.touch .compass .tape { transform: scale(0.72); transform-origin: 50% 0; }
 html.touch .compass .needle { margin-top: -8px; }
@@ -546,6 +549,8 @@ html.touch.portrait .tr { top: calc(var(--sat) + 110px); right: calc(var(--sar) 
 html.touch.portrait #hud:not(.in-scope) .tr .scope-ui { display: none; }
 html.touch.portrait .bl { left: calc(var(--sal) + 10px); bottom: calc(var(--bm) - 8px); }
 html.touch.portrait .bc { display: none; }
+/* l'invite en grand (chargeur vide, en ligne) reste visible en portrait, au-dessus du centre de l'écran */
+html.touch.portrait .bc:has(.prompt.gros) { display: block; bottom: auto; top: 30%; width: max-content; max-width: 92vw; }
 html.touch.portrait .tc { top: 33%; width: 88%; }
 html.touch.portrait .toast { font-size: 18px; }
 
@@ -843,3 +848,34 @@ html.touch.portrait #hud.in-scope .obj .x { top: auto; bottom: calc(var(--sab) +
 @media (max-height: 620px) { html.touch.portrait #hud.in-scope .obj .x { display: none; } }
 /* la note de la carte prend toute la largeur en portrait : deux lignes au plus, la rangée « Campagne » a pris la place */
 html.touch.portrait #menu .opt-note { margin-left: 2px; }
+
+/* ---------- commandes tactiles du mode en ligne (TouchFrame.online, src/ui/touch.ts) ----------
+   Tout est sous #touch.online ou porte sur des éléments que le solo n'affiche jamais (.tb-target, .tb-divert, .tur-x) :
+   sans effet en solo. Tablette à l'horizontale : les deux boutons prennent des places que le mode laisse libres. */
+.tur-x { display: none; margin: 0; }
+.tb-target { left: calc(var(--sal) + 14px + 72px * var(--ts)); bottom: calc(var(--sab) + 10px); }
+.tb-divert { right: calc(var(--sar) + 14px + 88px * var(--ts)); bottom: calc(var(--sab) + 14px + 70px * var(--ts)); width: calc(60px * var(--ts)); height: calc(60px * var(--ts)); }
+/* diversion pendant le délai imposé par le serveur : éteinte, le compte à rebours à la place du libellé */
+.tb-divert.wait { opacity: 0.45; border-style: dashed; }
+.tb-divert.wait span { font-size: calc(10px * var(--ts)); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+#touch.online .tur-x { display: block; font-size: calc(10.5px * var(--ts)); line-height: calc(15px * var(--ts)); height: calc(15px * var(--ts)); padding-left: 2px; white-space: nowrap; color: rgba(242, 237, 227, 0.78); text-shadow: 0 1px 5px rgba(0, 0, 0, 0.8); pointer-events: none; }
+#touch.unarmed .tg-turret { display: none; }
+/* portrait. En haut : Pause sous le tableau de la manche, à la même place à l'œil nu et en lunette */
+html.touch.portrait #touch.online .tg-top { right: calc(var(--sar) + 10px); top: calc(var(--sat) + 56px); }
+html.touch.portrait #touch.online.scope .tg-top .tb-pause { right: calc(var(--sar) + 10px); top: calc(var(--sat) + 56px); }
+/* sous le champ : chaque tourelle a sa ligne d'explication au-dessus de sa rangée ; le grossissement s'aligne sur la première rangée */
+html.touch.portrait #touch.online .tl-row { top: calc(15px * var(--ts)); }
+html.touch.portrait #touch.online .tg-zoom { top: calc(var(--scy) + var(--scr) + 26px + 15px * var(--ts)); }
+/* « Régler sur la cible » : à droite de la rangée de dérive, large, son libellé en clair */
+html.touch.portrait #touch.online.scope .tb-target { left: auto; right: calc(var(--sar) + 8px); bottom: auto; top: calc(var(--scy) + var(--scr) + 26px + 80px * var(--ts)); width: calc(120px * var(--ts)); height: calc(44px * var(--ts)); border-radius: 6px; flex-direction: row; gap: calc(7px * var(--ts)); }
+html.touch.portrait #touch.online.scope .tb-target svg { width: calc(21px * var(--ts)); height: calc(21px * var(--ts)); flex: none; }
+html.touch.portrait #touch.online.scope .tb-target span { max-width: calc(74px * var(--ts)); font-size: calc(9.5px * var(--ts)); line-height: 1.3; letter-spacing: 0.06em; text-align: left; color: var(--ink); }
+html.touch.portrait #touch.online.scope .tb-target.down span { color: #14120e; }
+/* Recharger et Diversion dans les angles bas du carré de la lunette, hors du champ ; à l'œil nu, Diversion sous le pouce gauche */
+html.touch.portrait #touch.online.scope .tb-reload { right: calc(var(--sar) + 6px); top: calc(var(--scy) + var(--scr) - 50px * var(--ts)); width: calc(50px * var(--ts)); height: calc(50px * var(--ts)); border-radius: 50%; }
+html.touch.portrait #touch.online.scope .tb-reload svg { width: 40%; height: 40%; }
+html.touch.portrait #touch.online .tb-divert { right: auto; left: calc(var(--sal) + 10px); bottom: calc(var(--bm) + 78px); width: calc(56px * var(--ts)); height: calc(56px * var(--ts)); }
+html.touch.portrait #touch.online.scope .tb-divert { left: calc(var(--sal) + 6px); bottom: auto; top: calc(var(--scy) + var(--scr) - 50px * var(--ts)); width: calc(50px * var(--ts)); height: calc(50px * var(--ts)); }
+html.touch.portrait #touch.online.scope .tb-divert svg { width: 40%; height: 40%; }
+html.touch.portrait #touch.online.scope .tb-reload span, html.touch.portrait #touch.online.scope .tb-divert span { font-size: calc(6.6px * var(--ts)); letter-spacing: 0; }
+html.touch.portrait #touch.online.scope .tb-divert.wait span { font-size: calc(10px * var(--ts)); }

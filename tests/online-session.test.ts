@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 // @ts-ignore module JavaScript du serveur, sans déclarations de types
 import { createManche, pointsPour, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, DIVERSION_MS, MANCHE_MS, PAUSE_MS } from '../server/manche.mjs';
-import { Session, texteVent, type MsgDiversion, type MsgTir, type MsgTouche, type MsgVise, type SessionEvents, type SessionTransport } from '../src/online/session';
+import { Session, plusLongTir, precision, texteVent, type Ligne, type MsgDiversion, type MsgTir, type MsgTouche, type MsgVise, type SessionEvents, type SessionTransport } from '../src/online/session';
 
 const LIEUX = Array.from({ length: 12 }, (_, i) => ({ nom: `E${i}`, x: i * 500, y: 180, z: 0 }));
 const copie = <T>(x: T): T => JSON.parse(JSON.stringify(x));      // ce qui passe par le réseau est sérialisé
@@ -162,9 +162,11 @@ describe('session du mode en ligne', () => {
     expect(a.s.phase).toBe('pause'); expect(a.s.inLobby).toBe(true); expect(a.s.announce).toBe('Manche terminée.');
     expect(a.s.remaining()).toBe(PAUSE_MS - 20);
     expect(a.s.lastRanking).toEqual([
-      { pseudo: 'Anna', robot: false, points: pointsPour(d), touches: 1, tirs: 1, subies: 0 },
-      { pseudo: 'Bob', robot: false, points: 0, touches: 0, tirs: 0, subies: 1 },
+      { pseudo: 'Anna', robot: false, points: pointsPour(d), touches: 1, tirs: 1, subies: 0, tetes: 0, abattus: 0, plusLong: d },
+      { pseudo: 'Bob', robot: false, points: 0, touches: 0, tirs: 0, subies: 1, tetes: 0, abattus: 0, plusLong: 0 },
     ]);
+    expect(plusLongTir(a.s.lastRanking!)!.pseudo).toBe('Anna');
+    expect(a.s.lastRanking!.map(precision)).toEqual([100, null]);
     await Promise.resolve(); await Promise.resolve(); await Promise.resolve();      // la relecture du résumé lancée par « fin »
     expect(a.s.summary!.precedente!.classement[0].pseudo).toBe('Anna');
     expect(a.s.summary!.meilleurs.map((l) => l.pseudo)).toEqual(['Anna']);       // Bob n'a pas tiré : pas de record
@@ -185,6 +187,18 @@ describe('session du mode en ligne', () => {
     expect(a.s.announce).toBe('Nouvelle manche : facile (15 emplacements serrés), vent de 2 m/s venant du nord.');
     expect(new Set(a.s.ranking().map((j) => j.emp)).size).toBe(2);
     expect(a.s.ranking().map((j) => j.emp).sort()).toEqual(b.s.ranking().map((j) => j.emp).sort());
+  });
+
+  it('statistiques d’une ligne : précision, plus long tir de la manche (un humain d’abord), anciennes lignes sans ces champs', () => {
+    const l = (pseudo: string, robot: boolean, touches: number, tirs: number, plusLong?: number): Ligne => ({ pseudo, robot, points: 0, touches, tirs, subies: 0, ...(plusLong === undefined ? {} : { tetes: 0, abattus: 0, plusLong }) });
+    expect(precision(l('a', false, 2, 14))).toBe(14); expect(precision(l('a', false, 1, 3))).toBe(33); expect(precision(l('a', false, 0, 0))).toBeNull();
+    // un robot a tiré plus loin : la synthèse cite quand même l'humain qui a touché
+    expect(plusLongTir([l('Robot', true, 1, 5, 1200), l('Anna', false, 1, 5, 640), l('Bob', false, 2, 5, 810)])!.pseudo).toBe('Bob');
+    // aucun humain n'a touché : le robot
+    expect(plusLongTir([l('Robot', true, 1, 5, 1200), l('Anna', false, 0, 5, 0)])!.pseudo).toBe('Robot');
+    // personne n'a touché, ou lignes d'avant ces statistiques : rien à dire
+    expect(plusLongTir([l('Robot', true, 0, 5, 0), l('Anna', false, 0, 5, 0)])).toBeNull();
+    expect(plusLongTir([l('Vieux', false, 3, 5)])).toBeNull(); expect(plusLongTir([])).toBeNull();
   });
 
   it('perte du flux : retour au salon ; reprise : une nouvelle place', async () => {

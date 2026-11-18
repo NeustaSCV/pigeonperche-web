@@ -48,13 +48,20 @@ export class Scoreboard {
 
   private rows(l: Joueur[]): string {
     const moi = this.session.me;
-    return l.map((j) => `<div class="${j.id === moi ? 'moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('');
+    // les humains en texte plein, les robots en retrait (ils restent au tableau : ce sont des adversaires sur la carte)
+    return l.map((j) => `<div class="${j.robot ? 'bot' : 'hum'}${j.id === moi ? ' moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('');
+  }
+
+  /** Les trois derniers tireurs abattus, sous la liste : le plus récent en haut, les siens en or. */
+  private kills(): string {
+    const k = this.session.kills;
+    return k.length ? `<ul class="ol-abattus">${k.map((x) => `<li class="${x.moi ? 'moi' : ''}">${esc(x.texte)}</li>`).join('')}</ul>` : '';
   }
 
   private desktopHtml(l: Joueur[]): string {
     const s = this.session, vent = esc(texteVent(s.settings.vent));
     return `<b>${s.phase === 'jeu' ? 'Manche' : 'Salon'}</b> · ${mmss(s.remaining())}${s.role === 'spectateur' ? ' · spectateur' : ''}`
-      + this.rows(l) + `<small>${vent[0].toUpperCase() + vent.slice(1)}.<br>${esc(s.announce)}</small>`;
+      + this.rows(l) + this.kills() + `<small>${vent[0].toUpperCase() + vent.slice(1)}.<br>${esc(s.announce)}</small>`;
   }
 
   // Au doigt, le tableau est replié : une ligne pour le temps restant et ses propres points, une pour le vent. Un toucher
@@ -65,7 +72,7 @@ export class Scoreboard {
     const tete = `<button class="ol-resume" aria-expanded="${this.open}"><span><b>${s.phase === 'jeu' ? 'Manche' : 'Salon'}</b> · ${mmss(s.remaining())}</span><u>${m ? fr(m.points) + ' pts' : s.role === 'spectateur' ? 'spectateur' : ''}</u><i>${this.open ? '▴' : '▾'}</i><em>${vent}</em></button>`;
     if (!this.open) return tete;
     return tete + `<div class="ol-corps">` + this.rows(l)
-      + `<small>${esc(s.announce)}</small><a class="ol-menu" href="${esc(this.opt.menuHref ?? './index.html')}">← Menu du jeu</a></div>`;
+      + this.kills() + `<small>${esc(s.announce)}</small><a class="ol-menu" href="${esc(this.opt.menuHref ?? './index.html')}">← Menu du jeu</a></div>`;
   }
 
   destroy(): void {

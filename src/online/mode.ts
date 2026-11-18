@@ -18,10 +18,12 @@ import { BASE_Y, DEFAULT_POSTE } from '../levels/ville/map';
 import { Silhouette } from '../levels/ville/targets';
 import type { VilleTerrain } from '../levels/ville/terrain';
 import type { HudState } from '../ui/hud';
+import type { TouchFrame } from '../ui/touch';
 import { rifleBlueprint } from '../weapons/rifle-model';
 import { OnlineEffects } from './effects';
-import { OnlineHud, correctionText, type HudView } from './hud';
+import { OnlineHud, TURRET_HELP, correctionText, type HudView } from './hud';
 import { Praise } from '../ui/praise';
+import { CityAmbience } from './ambience';
 import { Lobby, loadPlan, type PlanCarte } from './lobby';
 import { EYE_Y, RemoteShooter, ShooterCrowd, zoneOnLine } from './remote-shooter';
 import { Scoreboard } from './scoreboard';
@@ -34,6 +36,15 @@ export interface Place { n: number; nom: string; eye: Vector3; yaw: number }
 
 /** course de la tourelle de dérive, de part et d'autre du zéro, mrad (celle de l'arme du solo) */
 const WIND_MAX = 10;
+/** délai entre deux diversions d'un même joueur, en secondes : celui du serveur (DIVERSION_MS, server/manche.mjs) */
+const DIVERSION_WAIT = 10;
+/**
+ * Téléphone en portrait : hauteur réservée au-dessus du champ de la lunette (bloc de l'observateur à gauche ; tableau
+ * replié puis bouton Pause à droite), et hauteur en plus sous lui (une ligne d'explication par tourelle), px CSS.
+ */
+const TOUCH_TOP = 100, TOUCH_BELOW = 30;
+/** tactile : la ligne d'explication de chaque tourelle (les deux lignes de l'encart, mises bout à bout) */
+const TOUCH_HELP = { elev: `${TURRET_HELP.elev[0]} · ${TURRET_HELP.elev[1].toLowerCase()}`, wind: `${TURRET_HELP.wind[0]} · ${TURRET_HELP.wind[1].toLowerCase()}` };
 /** écart angulaire sous lequel un tireur est « dans la lunette » (rad), et pour « régler sur la cible » */
 const HELD = 0.03, HELD_WIDE = 0.06;
 
@@ -78,6 +89,8 @@ class Mode implements OnlineMode {
   lobby: Lobby | null = null;
   board: Scoreboard | null = null;
   sounds: OnlineSounds;
+  /** rumeur de ville, et au plus un klaxon et une sirène au loin par manche */
+  ambience: CityAmbience;
   fx: OnlineEffects | null = null;
   /** nombre de diversions entendues (contrôles automatisés) */
   diversions = 0;
@@ -90,6 +103,8 @@ class Mode implements OnlineMode {
   private mapReady = false;
   private wantRound = false;
   private lastTop = 0;
+  /** instant de notre dernière diversion acceptée par le serveur (performance.now()) */
+  private divertAt = -1e9;
   private aimT = 0;
   private pressed: { code: string; until: number } | null = null;
   private held: RemoteShooter | null = null;
@@ -105,6 +120,7 @@ class Mode implements OnlineMode {
     this.visit = this.params.has('poste') ? (Number.isInteger(asked) && asked > 0 ? asked : DEFAULT_POSTE) : null;
     this.session = new Session(browserTransport());
     this.sounds = new OnlineSounds(host.audio);
+    this.ambience = new CityAmbience(host.audio);
   }
 
   // ------------------------------------------------------------------ démarrage
@@ -113,7 +129,10 @@ class Mode implements OnlineMode {
     h.ui.setOnline();
     // Maj + flèche : 1 mrad sur les deux tourelles
     h.scope.coarseBoth = !!h.data.online?.coarseBothTurrets;
+    // tactile : le champ de la lunette se cale sous la place réservée (`scopeInset`, `scopeBelow`)
+    if (h.touch) h.engine.updateView();
     void this.sounds.load();
+    void this.ambience.load();
     const loaded = h.loadMap().then(() => this.onMap());
     if (this.visit !== null) {
       // visite : pas de salon, la carte d'abord
@@ -129,14 +148,15 @@ class Mode implements OnlineMode {
     // le plan du salon sans attendre la carte ; elle le redessinera avec ses emplacements à leur place définitive
     void loadPlan(import.meta.env.BASE_URL + 'ville/').then((p) => { if (!this.mapReady) this.lobby?.setPlan(p.carte, p.emplacements); }).catch(() => {});
 
-    s.on('bienvenue', (m) => { this.syncShooters(); if (m.spectateur) this.panel?.setPlaces([...this.places.values()], this.place); if (s.phase === 'jeu') this.enterRound(); });
+    s.on('bienvenue', (m) => { this.syncShooters(); if (m.spectateur) this.panel?.setPlaces([...this.places.values()], this.place); if (s.phase === 'jeu') { this.ambience.newRound(s.remaining()); this.enterRound(); } });
     s.on('debut', () => {
+      this.ambience.newRound(s.remaining());
       // le top de départ, puis les trois notes
       if (s.role) { this.sounds.countdown(true); setTimeout(() => this.sounds.roundStart(), 600); }
       this.syncShooters(); this.enterRound();
     });
-    s.on('fin', () => { if (s.role) this.sounds.roundEnd(); this.toLobby(); });
-    for (const k of ['perdu', 'complet', 'vide'] as const) s.on(k, () => { this.toLobby(); this.syncShooters(); });
+    s.on('fin', () => { if (s.role) this.sounds.roundEnd(); this.ambience.endRound(); this.toLobby(); });
+    for (const k of ['perdu', 'complet', 'vide'] as const) s.on(k, () => { this.ambience.endRound(); this.toLobby(); this.syncShooters(); });
     s.on('arrive', () => this.syncShooters());
     s.on('part', (m) => { this.fx?.setGlint(String(m.id), null); this.syncShooters(); });
     s.on('retour', (m) => {
@@ -201,10 +221,11 @@ class Mode implements OnlineMode {
     if (!this.down) this.panel?.clearVeil();
     this.fx?.clear();
     if (me) this.goTo(me.emp);
-    else if (!this.place || s.occupied().has(this.place)) {
-      // spectateur : sur un emplacement que personne n'occupe (il en changera par la liste)
-      const pris = s.occupied();
-      this.goTo([...this.places.values()].find((p) => p.n === DEFAULT_POSTE && !pris.has(p.nom))?.nom ?? [...this.places.keys()].find((n) => !pris.has(n)) ?? '');
+    else {
+      // spectateur : sur un emplacement que personne n'occupe (il en changera aux flèches ou par la liste). On s'y poste
+      // même si l'on y était déjà : c'est ce qui place la caméra et lève le fondu d'entrée (sinon l'image restait noire).
+      const pris = s.occupied(), garde = !!this.place && !pris.has(this.place);
+      this.goTo(garde ? this.place : [...this.places.values()].find((p) => p.n === DEFAULT_POSTE && !pris.has(p.nom))?.nom ?? [...this.places.keys()].find((n) => !pris.has(n)) ?? '');
     }
     if (s.role === 'spectateur') this.panel?.setPlaces([...this.places.values()], this.place);
     else this.panel?.setPlaces([]);
@@ -237,6 +258,16 @@ class Mode implements OnlineMode {
   }
 
   /** Se poster sur l'emplacement `nom` (à défaut, celui de départ), debout, face au centre de la carte. */
+  /** Spectateur : passe à l'emplacement libre suivant (`d` = 1) ou précédent (−1), dans l'ordre des numéros, en boucle. */
+  stepPlace(d: 1 | -1): void {
+    const pris = this.session.occupied(), libres = [...this.places.values()].filter((p) => !pris.has(p.nom) || p.nom === this.place).sort((a, b) => a.n - b.n);
+    if (libres.length < 2) return;
+    const i = libres.findIndex((p) => p.nom === this.place), suivant = libres[(Math.max(0, i) + d + libres.length) % libres.length];
+    this.host.scope.exit();
+    this.goTo(suivant.nom);
+    this.panel?.setPlaces([...this.places.values()], this.place);
+  }
+
   goTo(nom: string): void {
     const h = this.host;
     const p = this.places.get(nom) ?? [...this.places.values()].find((q) => q.n === DEFAULT_POSTE) ?? [...this.places.values()][0];
@@ -347,7 +378,7 @@ class Mode implements OnlineMode {
   private onDiversion(m: MsgDiversion): void {
     if (!this.inRound) return;
     this.diversions++;
-    if (m.id === this.session.me) { this.sounds.diversionSelf(m.son); return; }
+    if (m.id === this.session.me) { this.divertAt = performance.now(); this.sounds.diversionSelf(m.son); return; }
     const p = this.places.get(m.emp);
     if (!p) return;
     this.sounds.diversionFar(m.son, p.eye.distanceTo(this.host.engine.camera.position), this.pan(p.eye));
@@ -361,6 +392,26 @@ class Mode implements OnlineMode {
   /** Cran de tourelle : celui de la maquette, à la place de celui du solo. */
   turretClick(): void {
     this.sounds.turretClick();
+  }
+
+  /**
+   * Commandes tactiles : celles du solo (src/ui/touch.ts), sans ce qui n'a pas cours ici (postures, râtelier, télémètre,
+   * carnet, briefing, manette : le tireur est fixe), avec « Régler sur la cible » et « Diversion ».
+   */
+  touchFrame(f: TouchFrame): void {
+    const spect = this.session.role === 'spectateur';
+    f.online = true;
+    f.fixed = true;
+    f.unarmed = spect;
+    if (spect) f.canReload = false;
+    f.divertIn = Math.max(0, DIVERSION_WAIT - (performance.now() - this.divertAt) / 1000);
+    f.turretHelp = TOUCH_HELP;
+  }
+  scopeInset(): number {
+    return TOUCH_TOP;
+  }
+  scopeBelow(): number {
+    return TOUCH_BELOW;
   }
 
   localShot(bullet: Bullet, _boreDir: Vector3): void {
@@ -403,6 +454,10 @@ class Mode implements OnlineMode {
       if (inp.hit('KeyG') && sc.active) { this.setOnTarget(); this.pressed = { code: 'KeyG', until: now + 130 }; }
       if (inp.hit('KeyV')) { s.divert(); this.pressed = { code: 'KeyV', until: now + 130 }; }
     }
+    // --- spectateur : flèche droite ou gauche, emplacement libre suivant ou précédent ---
+    if (h.state === 'play' && s.role === 'spectateur') { const d = inp.hit('ArrowRight') ? 1 : inp.hit('ArrowLeft') ? -1 : 0; if (d) this.stepPlace(d); }
+    // --- ambiance de ville : dès qu'on est entré (salon ou manche) ---
+    this.ambience.frame(!!s.role);
     // --- tops des trois dernières secondes du salon ---
     if (!s.role || s.phase !== 'pause') this.lastTop = 0;
     else { const k = Math.ceil(s.remaining() / 1000); if (k >= 1 && k <= 3 && k !== this.lastTop) { this.lastTop = k; this.sounds.countdown(false); } }
@@ -465,7 +520,7 @@ class Mode implements OnlineMode {
     hs.stance = '';
     hs.post = null;
     // à l'œil nu, pas de rappel des postures ni du carnet : le tireur est fixe
-    if (!hs.scope) hs.prompt = '';
+    if (!hs.scope && !hs.promptBig) hs.prompt = '';      // à l'œil nu, pas d'invite du solo, sauf le chargeur vide, signalé en grand
 
     const v = this.view;
     v.shown = h.state === 'play';

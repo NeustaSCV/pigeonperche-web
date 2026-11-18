@@ -26,8 +26,12 @@ export interface Joueur {
   vie: number;
   points: number; touches: number; tirs: number; subies: number;
 }
-/** Une ligne de classement (partie précédente, salle vue du dehors, records). */
-export interface Ligne { pseudo: string; robot: boolean; points: number; touches: number; tirs: number; subies: number; date?: number }
+/**
+ * Une ligne de classement (partie précédente, salle vue du dehors, records). `tetes` : tirs à la tête réussis ;
+ * `abattus` : adversaires abattus ; `plusLong` : plus long tir réussi, en mètres (0 : aucune touche). Ces trois-là
+ * manquent aux lignes enregistrées avant leur ajout (fichier des records) : absentes, elles s'affichent d'un tiret.
+ */
+export interface Ligne { pseudo: string; robot: boolean; points: number; touches: number; tirs: number; subies: number; tetes?: number; abattus?: number; plusLong?: number; date?: number }
 
 /** Réponse de GET /api/manche/etat : ce que le salon affiche sans entrer dans la salle. */
 export interface Resume {
@@ -98,6 +102,16 @@ export const fr = (v: number): string => String(Math.round(v)).replace(/\B(?=(\d
 export const esc = (s: unknown): string => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 /** Pseudo affiché (HTML) : les tireurs automatiques portent un robot devant leur nom. */
 export const nom = (j: { pseudo: string; robot?: boolean } | null | undefined): string => (j?.robot ? '🤖 ' : '') + esc(j?.pseudo ?? '?');
+/** Précision d'un tireur : touches / tirs, en pour cent arrondi (null : il n'a pas tiré). */
+export const precision = (l: { touches: number; tirs: number }): number | null => (l.tirs > 0 ? Math.round((100 * l.touches) / l.tirs) : null);
+/**
+ * Le plus long tir réussi d'un classement, pour la ligne de synthèse : celui d'un joueur humain ; celui d'un robot
+ * seulement si aucun humain n'a touché (null : personne n'a touché, ou lignes d'avant cette statistique).
+ */
+export const plusLongTir = (c: readonly Ligne[]): Ligne | null => {
+  const meilleur = (l: Ligne[]) => l.reduce<Ligne | null>((m, x) => ((x.plusLong ?? 0) > (m?.plusLong ?? 0) ? x : m), null);
+  return meilleur(c.filter((l) => !l.robot)) ?? meilleur(c.filter((l) => l.robot));
+};
 export const mmss = (ms: number): string => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; };
 export const ROSE = ['nord', 'nord-est', 'est', 'sud-est', 'sud', 'sud-ouest', 'ouest', 'nord-ouest'];
 export const NOMS: Record<Niveau, string> = { facile: 'facile (15 emplacements serrés)', standard: 'standard (25 emplacements)', avance: 'avancé (toute la carte)' };
@@ -129,6 +143,8 @@ export class Session {
   server = true;
   /** dernière annonce, en clair (à échapper avant de l'afficher) */
   announce = '';
+  /** les trois derniers tireurs abattus de la manche, du plus récent au plus ancien ; `moi` : j'y suis tireur ou cible */
+  kills: { texte: string; moi: boolean }[] = [];
   /** classement de la manche qui vient de finir (null tant qu'aucune ne s'est finie sous nos yeux) */
   lastRanking: Ligne[] | null = null;
 
@@ -264,15 +280,20 @@ export class Session {
         const ou = m.zone === 'tete' ? 'à la tête' : 'au corps', abattu = m.abattu !== false;
         this.announce = m.tireur === this.me ? `${abattu ? 'Abattu' : 'Touché'} ${ou} : ${this.nameOf(m.cible)} à ${fr(m.dist)} m, +${m.points} points.`
           : `${this.nameOf(m.tireur)} ${abattu ? 'abat' : 'touche'} ${this.nameOf(m.cible)} à ${fr(m.dist)} m.`;
+        if (abattu) {
+          const qui = (id: number): string => { const j = this.players.get(id); return (j?.robot ? '🤖 ' : '') + (j?.pseudo ?? '?'); };
+          this.kills.unshift({ texte: `${qui(m.tireur)} abat ${qui(m.cible)}${m.zone === 'tete' ? ', en pleine tête' : ''} · ${fr(m.dist)} m`, moi: m.tireur === this.me || m.cible === this.me });
+          this.kills.length = Math.min(this.kills.length, 3);
+        }
         break;
       }
       case 'retour': { const j = this.players.get(m.id); if (!j) return; j.emp = m.emp; j.vivant = true; j.vie = 2; break; }
       case 'votes': this.votes = m.votes; break;
       case 'vise': case 'diversion': break;
       // fin de manche : retour au salon pour une minute, avec le classement qui vient de tomber
-      case 'fin': this.clock(m); this.lastRanking = m.classement; this.held = null; this.announce = 'Manche terminée.'; break;
+      case 'fin': this.clock(m); this.lastRanking = m.classement; this.held = null; this.kills = []; this.announce = 'Manche terminée.'; break;
       case 'debut':
-        this.load(m.joueurs); this.clock(m); this.votes = null; this.held = null; delete this.myVote.vent; delete this.myVote.niveau;
+        this.load(m.joueurs); this.clock(m); this.votes = null; this.held = null; this.kills = []; delete this.myVote.vent; delete this.myVote.niveau;
         this.announce = `Nouvelle manche : ${NOMS[this.settings.niveau]}, ${texteVent(this.settings.vent)}.`;
         break;
       case 'complet': this.quit(); this.announce = 'La salle est complète (10 tireurs).'; break;

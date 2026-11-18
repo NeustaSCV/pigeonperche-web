@@ -79,6 +79,8 @@ export interface HudState {
   /** téléphone, en lunette : direction de la cible hors du champ, en degrés (0 = haut, sens horaire) ; null si elle est dans le champ */
   scopeArrow: number | null;
   prompt: string;
+  /** invite à afficher en grand (en ligne : chargeur vide) ; absent ou faux : taille ordinaire */
+  promptBig?: boolean;
   heart: number;
   air: number;
   breath: string;
@@ -322,7 +324,7 @@ export class UI {
           </div>
           </div>
           <div class="m-cadre m-multi"><span class="m-cadre-t">En ligne</span>
-          <a class="mbtn primary m-go m-ville" href="./ville.html">Multijoueur</a>
+          <a class="mbtn primary m-go m-ville" href="./?level=ville">Multijoueur</a>
           <span class="m-multi-n" data-id="mjN"></span>
           </div>
           <div class="opt o-qual"><span>Qualité</span><div class="seg" data-id="segQual"></div></div>
@@ -699,6 +701,7 @@ export class UI {
       this.last.promptHtml = s.prompt;
       this.el.prompt.innerHTML = s.prompt;
       this.el.prompt.style.opacity = s.prompt ? '1' : '0';
+      this.el.prompt.classList.toggle('gros', !!s.promptBig && !!s.prompt);
     }
     this.cls('fps', 'hidden', !s.showFps);
     if (s.showFps) this.set('fps', `${Math.round(s.fps)} i/s`);

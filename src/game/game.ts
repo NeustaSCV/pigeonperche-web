@@ -338,7 +338,7 @@ export class Game implements OnlineHost {
         if (this.state === 'play' && !this.testMode && !this.online) this.setState('pause');
       } else if (this.audio.started) wake();
     });
-    canvas.addEventListener('click', () => { if (this.state === 'play' && !this.testMode) this.input.lock(); });
+    canvas.addEventListener('click', () => { if ((this.state === 'play' || this.state === 'down') && !this.testMode) this.input.lock(); });
     // mode en ligne : seulement pour une carte qui le déclare, et si l'appelant en fournit le contrôleur
     if (this.data.online && createOnline) this.online = createOnline(this);
   }
@@ -581,7 +581,8 @@ export class Game implements OnlineHost {
     if (this.online?.scopeInset) tutoH = Math.max(tutoH, this.online.scopeInset());
     const top = ins.top + 6 + (tutoH > 0 ? tutoH + 6 : 0);
     // sous le champ : ligne d'informations, deux rangées de tourelles, puis les boutons du bas et la marge basse
-    const below = 26 + (88 * ts + 6) + 8 + 82 * ts + Math.max(ins.bottom, 10) + 12;
+    // (en ligne : une ligne d'explication au-dessus de chaque rangée de tourelles ; rien en solo)
+    const below = 26 + (88 * ts + 6) + 8 + 82 * ts + Math.max(ins.bottom, 10) + 12 + (this.online?.scopeBelow?.() ?? 0) * ts;
     v.R = Math.max(70, Math.min(0.465 * v.w, (v.h - top - below) / 2));
     v.cx = v.w / 2;
     v.cy = top + v.R;
@@ -769,7 +770,8 @@ export class Game implements OnlineHost {
       if (!this.testMode) this.input.lock();
       if (prev === 'brief' || prev === 'fail') { this.mission.begin(); this.mission.checkAlreadyDone(); }
     } else {
-      if (s !== 'menu') this.input.unlock();
+      // abattu en ligne (`down`) : la souris reste capturée, on continue de tourner la tête en attendant de revenir
+      if (s !== 'menu' && s !== 'down') this.input.unlock();
       if (s === 'pause') ui.show('pause');
       else if (s === 'brief') ui.show('brief');
     }
@@ -1285,7 +1287,7 @@ export class Game implements OnlineHost {
     const playing = this.state === 'play';
     /** la caméra de cette image est celle de la lunette (son centre de projection se place sur le centre optique) */
     let scopeCam = false;
-    inp.enabled = playing;
+    inp.enabled = playing || this.state === 'down';      // abattu en ligne : le regard reste libre, les commandes de tir non
     this.gameTime += dt;
     this.ctx.time = this.gameTime;
     // vent de l'objectif en cours (data.wind.steps), sinon celui de la carte
@@ -1576,6 +1578,12 @@ export class Game implements OnlineHost {
       else if (pl.stance !== 'stand' && !pl.moving) prompt = '<b>Clic droit</b> Épauler';
       else if (this.mission.index === 0 && this.gameTime < 60 && !(tuto && tuto.active)) prompt = '<b>C</b> accroupi · <b>X</b> couché · <b>Tab</b> carnet';
     }
+    // en ligne : le chargeur vide se signale en grand, lunette à l'œil ou non (on ne peut plus tirer tant qu'on n'a pas rechargé)
+    h.promptBig = false;
+    if (this.online && this.state === 'play' && !this.online.holdFire?.() && !this.rifle.chambered && this.rifle.mag === 0 && this.rifle.reloadT <= 0 && this.rifle.boltT <= 0) {
+      prompt = this.touch ? 'Chargeur vide · <b>Recharger</b>' : 'Chargeur vide · <b>R</b> Recharger';
+      h.promptBig = true;
+    }
     h.prompt = prompt;
     // --- guidage au sol : flèche vers le pas de tir quand on marche debout, cercle des cibles une fois arrivé ---
     {
@@ -1622,7 +1630,7 @@ export class Game implements OnlineHost {
       f.halo = tuto && tuto.active && tuto.view ? tuto.view.halo : [];
       f.portrait = e.view.portrait;
       // chargeur vide en lunette : le bouton Recharger s'éclaire (en portrait, pas d'invite sur le champ)
-      if (sc.active && !r.chambered && r.mag === 0 && r.reloadT <= 0 && r.boltT <= 0) f.halo = [...f.halo, 'reload'];
+      if ((sc.active || this.online) && !r.chambered && r.mag === 0 && r.reloadT <= 0 && r.boltT <= 0) f.halo = [...f.halo, 'reload'];
       this.online?.touchFrame?.(f);
       this.touchCtl.update(f);
     }

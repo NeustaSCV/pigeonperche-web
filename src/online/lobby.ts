@@ -1,9 +1,10 @@
-// Salon d'attente du mode en ligne, porté de src/ville/reseau.js. Le joueur y choisit son pseudo, voit les classements
-// (dernière partie, salle, classement global), puis rejoint la partie ou la regarde en spectateur. Le salon revient
+// Salon d'attente du mode en ligne, porté de src/ville/reseau.js. Le joueur y choisit son pseudo, voit les résultats de
+// la dernière partie en grand (tous les tireurs, robots compris, avec leurs statistiques), qui est en ligne (les joueurs
+// humains seulement) et le classement global, puis rejoint la partie ou la regarde en spectateur. Le salon revient
 // pendant la minute qui sépare deux manches, avec le vote de la manche suivante. Module autonome : son élément, sa
 // feuille de style ; il lit l'état dans la session (src/online/session.ts) et ne connaît rien du jeu.
 import './online.css';
-import { fr, mmss, nom, NOMS, texteVent, type Ligne, type Niveau, type Session } from './session';
+import { fr, mmss, nom, NOMS, plusLongTir, precision, texteVent, type Ligne, type Niveau, type Session } from './session';
 
 /** Le sol dessiné de la carte, en dalles carrées de `cote` mètres, sur un carré de `taille` mètres d'origine (ox, oz). */
 export interface PlanCarte { dalles: { image: CanvasImageSource; x0: number; z0: number }[]; cote: number; ox: number; oz: number; taille: number }
@@ -95,8 +96,9 @@ export class Lobby {
   constructor(root: HTMLElement, private readonly session: Session, private readonly opt: LobbyOptions = {}) {
     const salon = (this.el = document.createElement('div')); salon.id = 'ol-salon'; salon.style.display = 'none';
     if (opt.touch) salon.classList.add('scroll');                  // le solo ne laisse défiler au doigt que les éléments .scroll (src/core/device.ts)
-    // même charte que l'accueil du jeu : titre en capitales, cadre d'entrée, classements dessous ; le cadre du vote est un
-    // enfant direct du salon, que la feuille de style place à droite sur ordinateur et entre les deux en colonne unique
+    // même charte que l'accueil du jeu : titre en capitales, cadre d'entrée, puis les résultats de la dernière partie en
+    // grand sur toute la largeur, puis le cadre des présents et celui du classement global ; le cadre du vote est un enfant direct du salon, que
+    // la feuille de style place à droite sur ordinateur et dans la colonne sur téléphone
     salon.innerHTML = `<canvas class="ol-plan"></canvas><div class="ol-gauche">
     <h1>Ville nouvelle</h1>
     <div class="ol-sub"><span>Multijoueur</span></div>
@@ -116,13 +118,16 @@ export class Lobby {
     <div class="ol-opt"><span>Étalement</span><div class="ol-seg" data-s="vNiveau"><button data-v="facile">Facile</button><button data-v="standard">Standard</button><button data-v="avance">Avancé</button></div></div>
     <div class="ol-note" data-s="vNote"></div>
   </div>
-  <div class="ol-boards">
-    <div class="ol-boards-h"><span>Classements</span></div>
-    <div class="ol-boards-g">
-      <section class="ol-derniere"><h3>Dernière partie</h3><div class="ol-entete"><span>Tireur</span><b>Points</b><i>Touches / tirs</i><u>Touché</u></div><ol data-s="pm"></ol></section>
-      <section class="ol-salle"><h3 data-s="salleT">Dans la salle</h3><ol data-s="salle"></ol></section>
-      <section class="ol-toujours"><h3>Classement global</h3><div><h4>Meilleurs scores</h4><ol data-s="tm"></ol></div><div><h4>Pires scores</h4><ol data-s="tp"></ol></div></section>
-    </div>
+  <section class="ol-fin" data-s="fin">
+    <div class="ol-fin-h"><h2>Dernière partie</h2><p data-s="synth"></p></div>
+    <table><thead><tr><th class="c-r"></th><th class="c-n">Tireur</th><th class="c-p">Points</th><th class="c-pr">Précision</th><th class="c-tt">Touches / tirs</th><th class="c-te">À la tête</th><th class="c-ab">Abattus</th><th class="c-pl">Plus long tir</th><th class="c-su">Touché</th></tr></thead><tbody data-s="pm"></tbody></table>
+    <p class="ol-fin-vide">Aucune partie jouée pour l’instant.</p>
+  </section>
+  <div class="ol-bas">
+    <section class="ol-boards ol-presents"><div class="ol-boards-h"><span data-s="salleT">Dans la salle</span></div><ol data-s="salle"></ol></section>
+    <section class="ol-boards ol-global"><div class="ol-boards-h"><span>Classement global</span></div>
+      <div class="ol-toujours"><div><h4>Meilleurs scores</h4><ol data-s="tm"></ol></div><div><h4>Pires scores</h4><ol data-s="tp"></ol></div></div>
+    </section>
   </div>
   <p class="ol-avert">Avertissement : ce jeu vous est proposé à but ludique uniquement. Dans la vraie vie, ne tirez pas sur vos amis.</p>`;
     for (const e of salon.querySelectorAll<HTMLElement>('[data-s]')) this.S[e.dataset.s!] = e;
@@ -178,14 +183,16 @@ export class Lobby {
   draw(): void {
     if (!this.shown) return;
     const s = this.session, S = this.S, resume = s.summary, role = s.role, phase = s.phase, serveur = s.server;
-    const reste = s.remaining(), n = resume?.connectes ?? 0;
+    // les compteurs et la liste des présents ne parlent que des joueurs humains : les robots n'apparaissent qu'aux
+    // résultats de la dernière partie
+    const reste = s.remaining(), n = resume?.humains ?? 0;
     this.pseudo.disabled = role !== null;
     // l'horloge : le temps en grand, et ce qu'il compte, pour qu'on voie tout de suite si une partie est en cours
     const tireurs = `${n} tireur${n > 1 ? 's' : ''}`;
     S.horloge.className = 'ol-horloge ' + (!serveur ? 'hors' : phase);
     S.temps.textContent = serveur ? mmss(reste) : '–:––';
     S.phase.textContent = !serveur ? 'Serveur de manche indisponible' : phase === 'jeu' ? 'Partie en cours' : 'Entre deux parties';
-    S.etat.textContent = !serveur ? '' : phase === 'jeu' ? `avant la fin de la partie · ${tireurs} en jeu` : `avant la prochaine partie · ${tireurs} dans la salle`;
+    S.etat.textContent = !serveur ? '' : (phase === 'jeu' ? 'avant la fin de la partie' : 'avant la prochaine partie') + (n ? ` · ${tireurs} ${phase === 'jeu' ? 'en jeu' : 'dans la salle'}` : '');
     S.salleT.textContent = phase === 'jeu' ? 'Partie en cours' : 'Dans la salle';
     const p = this.pseudo.value.trim(), humains = (resume?.humains ?? 0) >= 1;
     (S.jouer as HTMLButtonElement).disabled = !serveur || role !== null || p.length < 2 || (!!resume && resume.places < 1);
@@ -207,10 +214,17 @@ export class Lobby {
       S.vNote.textContent = `En cours : ${NOMS[s.settings.niveau]}, ${texteVent(s.settings.vent)}. La majorité l’emporte ; à égalité, rien ne change. Sans vote : facile, sans vent.`;
     }
     const c = s.lastRanking ?? resume?.precedente?.classement ?? [];
-    // la dernière partie : le tableau complet, du meilleur au pire, avec le nombre de fois où chacun a été touché
-    html(S.pm, c.length ? c.map((j) => `<li><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i><u>${j.subies ?? 0} fois</u></li>`).join('') : '<li class="vide">Aucune partie jouée pour l’instant.</li>');
+    // la dernière partie, en grand : tous les tireurs dans l'ordre des points, robots compris (en retrait), la ligne du
+    // joueur mise en évidence ; une statistique absente (ligne d'avant son ajout) ou sans objet s'écrit d'un tiret
+    const moi = s.self?.pseudo, tiret = '<s>–</s>', long = plusLongTir(c);
+    const stat = (v: number | null | undefined, suffixe = ''): string => (v == null ? tiret : fr(v) + suffixe);
+    S.fin.classList.toggle('vide', !c.length);
+    html(S.synth, long ? `Plus long tir <b>${fr(long.plusLong!)} m</b> ${nom(long)}` : '');
+    html(S.pm, c.map((j, i) => `<tr class="${j.robot ? 'bot' : ''}${!j.robot && j.pseudo === moi ? ' moi' : ''}"><td class="c-r">${i + 1}</td><td class="c-n">${nom(j)}</td><td class="c-p">${fr(j.points)}</td>`
+      + `<td class="c-pr">${stat(precision(j), ' %')}</td><td class="c-tt">${j.touches} / ${j.tirs}</td><td class="c-te">${stat(j.tetes)}</td><td class="c-ab">${stat(j.abattus)}</td>`
+      + `<td class="c-pl">${j.plusLong ? fr(j.plusLong) + ' m' : tiret}</td><td class="c-su">${j.subies ?? 0} fois</td></tr>`).join(''));
     liste(S.tm, resume?.meilleurs, 'Aucun score enregistré.'); liste(S.tp, resume?.pires, '—');
-    liste(S.salle, role ? s.ranking() : resume?.joueurs, 'Personne pour l’instant.');
+    liste(S.salle, (role ? s.ranking() : resume?.joueurs)?.filter((j) => !j.robot), 'Personne en ligne pour l’instant.');
   }
 
   destroy(): void {

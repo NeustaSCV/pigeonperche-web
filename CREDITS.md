@@ -51,7 +51,7 @@ Modifications: models were decimated and repacked as GLB with glTF-Transform; tr
 - **Cartes « Lieux oubliés »** (La Fête foraine, Le Phare, Le Château d'eau) : aucun asset ajouté. Attractions de foire, terrasses et plates-formes, mer et houle, bouées, caboteur, canot, grue, convoi, signal, vannes, drone, lunette et horloge sont de la géométrie et des shaders procéduraux (`src/levels/fete|phare|plaine/`, `src/game/extra/`, `src/world/sea.ts`) ; les bâtiments viennent de la banque ci-dessous.
 - **Arbres** : les modèles Poly Haven comptent plus de deux millions de triangles ; leur feuillage a été recuit en cartes alpha (`tools/assets/bake_cards.py`) et les troncs décimés avec glTF-Transform (`tools/assets/build-models.mjs`).
 
-## Carte « Ville nouvelle » (`public/ville/`, `src/ville/`)
+## Carte « Ville nouvelle » (`public/ville/`, `src/levels/ville/`)
 
 Relief, emprises et hauteurs des bâtiments, arbres, voirie, plans d'eau et photos aériennes proviennent de données publiques de l'[IGN](https://geoservices.ign.fr/) (LiDAR HD : modèles numériques de surface et de terrain à 1 m ; BD ORTHO à 20 cm ; BD TOPO), diffusées sous [Licence Ouverte 2.0](https://www.etalab.gouv.fr/licence-ouverte-open-licence/) (Etalab). Source : IGN. Les données ont été rééchantillonnées, simplifiées et recadrées pour le jeu, et la carte a été légèrement bombée.
 
@@ -112,6 +112,10 @@ Dix cris brefs joués au hasard dans le multijoueur « Ville nouvelle », quand 
 ### Bruits de la diversion (`public/ville/diversion/`)
 
 Cinq bruits de pet joués au hasard dans le multijoueur « Ville nouvelle », quand un tireur fait diversion. Ils sont extraits de l'enregistrement « Farts / Pieruja » des archives sonores de **Yle Arkisto** (radio-télévision publique finlandaise), publié sur Freesound (son n° 425594) et repris sur Wikimedia Commons (versé par Zache), sous **CC BY 3.0** (https://creativecommons.org/licenses/by/3.0). Source : https://commons.wikimedia.org/wiki/File:425594_ylearkisto_farts-pieruja.wav. Modifications : découpe de cinq extraits, conversion (une voie, 48 kHz, WAV PCM 16 bits), mise au même niveau ; 0,45 à 1,6 s, 410 Ko au total.
+
+### Ambiance de ville (`public/ville/ambiance/`)
+
+Trois sons joués très bas dans le multijoueur « Ville nouvelle » : une rumeur de ville en boucle (`fond.wav`), et par manche au plus un klaxon (`klaxon.wav`) et une sirène (`sirene.wav`), toujours au loin. Ils viennent de **BigSoundBank** (Joseph Sardin), publiés en **CC0 1.0** (domaine public ; attribution non requise, donnée ici par courtoisie) : « Paris by Night » (n° 0680), « Horn » (n° 3506) et « Gendarmerie, Outdoor Siren » (n° 0886). Source : https://bigsoundbank.com. Modifications : extraits, conversion en une voie (24 ou 48 kHz, WAV PCM 16 bits), aigu adouci, mise à niveau, boucle sans couture pour le fond ; l'effet Doppler du klaxon et de la sirène est calculé par le jeu. 2,4 Mo au total.
 
 ## Police du titre
 

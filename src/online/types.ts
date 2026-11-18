@@ -80,6 +80,11 @@ export interface OnlineMode {
    * Quand elle change, le contrôleur appelle `host.engine.updateView()`.
    */
   scopeInset?(): number;
+  /**
+   * Portrait : hauteur à réserver en plus sous le champ de la lunette, entre lui et les boutons du bas, en pixels CSS
+   * à l'échelle 1 (le jeu la multiplie par l'échelle des commandes tactiles, `--ts`).
+   */
+  scopeBelow?(): number;
   /** Pause, « Quitter la manche » (à la place de « Recommencer la mission ») : retour au salon. */
   leave?(): void;
   /** Un cran de tourelle vient de tourner : le contrôleur joue le sien, celui du solo se tait. */

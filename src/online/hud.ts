@@ -60,6 +60,11 @@ function ruban(val: number, min: number, max: number, vert: boolean): string {
 // place. La tourelle dont parle le bloc est pleine ; dans l'oculaire, une double flèche donne l'axe qu'elle déplace.
 const picto = (axe: 'elev' | 'deriv'): string => `<svg class="tr-picto" width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><circle cx="27" cy="39" r="18.5"/><circle class="p-fin" cx="27" cy="39" r="14"/><rect${axe === 'elev' ? ' class="p-or"' : ''} x="19.5" y="6.5" width="15" height="14"/><rect${axe === 'deriv' ? ' class="p-or"' : ''} x="45.5" y="31.5" width="14" height="15"/><path class="p-fl" d="${axe === 'elev' ? 'M27 30v18M23 34l4 -4l4 4M23 44l4 4l4 -4' : 'M18 39h18M22 35l-4 4l4 4M32 35l4 4l-4 4'}"/></svg>`;
 const fleche = (v: number, pos: string, neg: string): string => (Math.abs(v) < 0.05 ? '' : (v > 0 ? pos : neg) + ' ');
+/** Les deux lignes d'explication de chaque tourelle, pour les débutants : où elle est sur la lunette, ce qu'elle déplace. */
+export const TURRET_HELP = {
+  elev: ['Tourelle du dessus', 'Monte ou descend l’impact'],
+  wind: ['Tourelle de droite', 'Décale l’impact à gauche ou à droite'],
+} as const;
 const AIDE_CRAN = `Un cran = ${fr(CLICK_MIL)}&nbsp;mrad, soit ${fr(CLICK_MIL * 10, 0)}&nbsp;cm à 100&nbsp;m`;
 
 /**
@@ -71,13 +76,16 @@ export function turretsHtml(v: Pick<HudView, 'elev' | 'wind' | 'elevMax' | 'wind
   const bloc = (axe: 'elev' | 'deriv', titre: string, lieu: string, effet: string, valeur: string, touches: [string, string][], bande: string): string =>
     `<div class="tr-bloc tr-${axe}"><div class="tr-tete">${picto(axe)}<div><span>${titre}</span><em>${lieu}</em><em>${effet}</em></div></div>`
     + `<div class="tr-regl"><div class="regle"><b>${valeur}</b><span>mrad</span></div><i>${touches.map((c) => kbd(c[0], c[1])).join('')}</i></div>${bande}</div>`;
-  return bloc('elev', 'Élévation', 'Tourelle du dessus', 'Monte ou descend l’impact', fr(v.elev), [['ArrowUp', '↑'], ['ArrowDown', '↓']], ruban(v.elev, 0, v.elevMax, true))
-    + bloc('deriv', 'Dérive', 'Tourelle de droite', 'Décale l’impact à gauche ou à droite', fleche(v.wind, '→', '←') + fr(Math.abs(v.wind)), [['ArrowLeft', '←'], ['ArrowRight', '→']], ruban(v.wind, -v.windMax, v.windMax, false))
+  return bloc('elev', 'Élévation', TURRET_HELP.elev[0], TURRET_HELP.elev[1], fr(v.elev), [['ArrowUp', '↑'], ['ArrowDown', '↓']], ruban(v.elev, 0, v.elevMax, true))
+    + bloc('deriv', 'Dérive', TURRET_HELP.wind[0], TURRET_HELP.wind[1], fleche(v.wind, '→', '←') + fr(Math.abs(v.wind)), [['ArrowLeft', '←'], ['ArrowRight', '→']], ruban(v.wind, -v.windMax, v.windMax, false))
     + `<div class="tr-aide"><p>${AIDE_CRAN}</p><p><kbd>Maj</kbd> + flèche : 1&nbsp;mrad d’un coup</p><p>${kbd('KeyG', 'G')} régler sur la cible visée</p><p>${kbd('KeyV', 'V')} diversion</p></div>`;
 }
 
 export interface OnlineHudOptions {
-  /** appareil tactile : pas d'encart des tourelles (les boutons du jeu en tiennent lieu) */
+  /**
+   * appareil tactile : pas d'encart des tourelles (les boutons de tourelles du jeu, src/ui/touch.ts, portent le réglage
+   * et ses lignes d'explication) ; la liste du spectateur n'est offerte qu'en jeu (pas de souris à libérer par la pause)
+   */
   touch?: boolean;
   /** le spectateur a choisi un emplacement dans la liste */
   onPlace?: (nom: string) => void;
@@ -90,6 +98,8 @@ export class OnlineHud {
   private readonly veil: HTMLElement;
   private readonly names: HTMLElement;
   private readonly places: HTMLSelectElement;
+  /** spectateur, sur PC : rappel des flèches qui changent d'emplacement, sous la liste */
+  private readonly spect: HTMLElement;
   private readonly last: Record<string, string> = {};
   private flashT = 0;
   private veilKind: 'down' | 'flash' | null = null;
@@ -102,6 +112,7 @@ export class OnlineHud {
     this.turrets = el('ol-tourelles');
     this.life = el('ol-vie');
     this.veil = el('ol-voile');
+    this.spect = el('ol-spect');
     this.places = el('ol-postes', 'select') as HTMLSelectElement;
     this.places.setAttribute('aria-label', 'Emplacement du spectateur');
     this.places.onchange = () => { this.opt.onPlace?.(this.places.value); this.places.blur(); };
@@ -173,7 +184,11 @@ export class OnlineHud {
     this.show('vie', this.life, life, 'flex');
     if (life) this.html('vie', this.life, '<span>Vie</span>' + [1, 2].map((k) => `<i class="${(v.life as number) >= k ? 'on' : ''}"></i>`).join(''));
     // --- spectateur : liste des emplacements, à l'œil nu ---
-    this.show('postes', this.places, this.spectator && v.list && !scope);
+    this.show('postes', this.places, this.spectator && (this.opt.touch ? v.shown : v.list) && !scope);
+    // --- spectateur au clavier : sous la liste, le rappel des flèches qui changent d'emplacement ---
+    const hint = this.spectator && !this.opt.touch && v.shown && v.list && !scope;
+    this.show('spect', this.spect, hint);
+    if (hint) this.html('spect', this.spect, '<kbd>←</kbd><kbd>→</kbd> changer d’emplacement');
   }
 
   /**
@@ -192,12 +207,12 @@ export class OnlineHud {
 
   /** Tout masquer (salon, pause). */
   hide(): void {
-    for (const [k, e] of [['vue', this.observer], ['tur', this.turrets], ['noms', this.names], ['vie', this.life], ['postes', this.places]] as [string, HTMLElement][]) this.show(k, e, false);
+    for (const [k, e] of [['vue', this.observer], ['tur', this.turrets], ['noms', this.names], ['vie', this.life], ['postes', this.places], ['spect', this.spect]] as [string, HTMLElement][]) this.show(k, e, false);
   }
 
   destroy(): void {
     clearTimeout(this.flashT);
-    for (const e of [this.observer, this.turrets, this.life, this.veil, this.names, this.places]) e.remove();
+    for (const e of [this.observer, this.turrets, this.life, this.veil, this.names, this.places, this.spect]) e.remove();
   }
 }
 

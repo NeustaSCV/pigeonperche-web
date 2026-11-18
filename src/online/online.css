@@ -150,6 +150,122 @@ html.touch #ol-salon.saisie { padding-top: calc(var(--sat) + 8px); align-content
 html.touch #ol-salon.saisie h1, html.touch #ol-salon.saisie .ol-sub, html.touch #ol-salon.saisie .ol-boards, html.touch #ol-salon.saisie .ol-avert, html.touch #ol-salon.saisie .ol-vote, html.touch #ol-salon.saisie .ol-cadre-t { display: none !important; }
 
 /* ==================================================================================================
+   SALON : RÉSULTATS DE LA DERNIÈRE PARTIE (.ol-fin, src/online/lobby.ts), et ce qui en découle pour les autres
+   classements. Bloc à part : tout ce qui touche au grand classement est ici, après les règles du salon qu'il complète.
+   Composition : sur ordinateur, le cadre « Salon » à gauche et le vote à droite gardent leur ligne ; les résultats
+   prennent toute la largeur dessous, du bord gauche du cadre « Salon » au bord droit du vote ; viennent ensuite, chacun
+   dans son cadre, les présents (« Dans la salle » / « Partie en cours », humains seulement) puis le classement global,
+   côte à côte sur la même largeur. Sur téléphone, tout est dans la colonne, dans cet ordre.
+   ================================================================================================== */
+#ol-salon .ol-fin { position: relative; z-index: 2; max-width: 1280px; margin-left: -16px; padding: 14px 20px 12px; border: 1px solid var(--line); background: rgba(9, 11, 10, 0.94); animation: ol-fin-in 0.4s ease-out both; }
+@keyframes ol-fin-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { #ol-salon .ol-fin { animation: none; } }
+/* en tête : le titre, et à droite la synthèse de la manche (le plus long tir et son auteur) */
+#ol-salon .ol-fin-h { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: 4px 24px; padding-bottom: 8px; border-bottom: 1px solid var(--gold); }
+#ol-salon .ol-fin h2 { margin: 0; font: 400 24px/1.15 var(--serif); letter-spacing: 0.08em; color: var(--ink); }
+#ol-salon .ol-fin-h p { margin: 0; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ol-sec); white-space: nowrap; }
+#ol-salon .ol-fin-h p b { margin: 0 8px 0 6px; font-weight: 400; font-size: 16px; letter-spacing: 0.04em; text-transform: none; color: var(--gold); font-variant-numeric: tabular-nums; }
+#ol-salon .ol-fin-vide { display: none; margin: 8px 0 0; font-size: 13px; color: var(--ol-ter); }
+#ol-salon .ol-fin.vide table { display: none; }
+#ol-salon .ol-fin.vide .ol-fin-vide { display: block; }
+/* le tableau : colonnes de largeur fixe, le pseudo prend le reste ; chiffres alignés à droite */
+#ol-salon .ol-fin table { width: 100%; border-collapse: collapse; table-layout: fixed; font-variant-numeric: tabular-nums; }
+#ol-salon .ol-fin th { padding: 9px 10px 5px; font-weight: 400; font-size: 10.5px; line-height: 1.25; letter-spacing: 0.13em; text-transform: uppercase; text-align: right; vertical-align: bottom; color: var(--ol-sec); }
+#ol-salon .ol-fin td { height: 30px; padding: 0 10px; font-size: 16px; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+#ol-salon .ol-fin .c-r { width: 46px; padding-left: 14px; text-align: left; }
+#ol-salon .ol-fin .c-n { text-align: left; }
+#ol-salon .ol-fin .c-p { width: 96px; }
+#ol-salon .ol-fin .c-pr { width: 112px; }
+#ol-salon .ol-fin .c-tt { width: 142px; }
+#ol-salon .ol-fin .c-te { width: 112px; }
+#ol-salon .ol-fin .c-ab { width: 104px; }
+#ol-salon .ol-fin .c-pl { width: 138px; }
+#ol-salon .ol-fin .c-su { width: 100px; }
+#ol-salon .ol-fin td.c-r { color: var(--ol-ter); }
+#ol-salon .ol-fin td.c-p { font-size: 18px; }
+#ol-salon .ol-fin td s { text-decoration: none; color: var(--ol-ter); }
+/* le podium : trois lignes plus hautes, le rang en chiffre d'or, un filet dessous */
+#ol-salon .ol-fin tbody tr:nth-child(-n+3) td { height: 38px; font-size: 19px; }
+#ol-salon .ol-fin tbody tr:nth-child(-n+3) td.c-r { font: 400 22px/1 var(--serif); color: var(--gold); }
+#ol-salon .ol-fin tbody tr:nth-child(-n+3) td.c-p { font-size: 22px; }
+#ol-salon .ol-fin tbody tr:nth-child(3) td { border-bottom: 1px solid var(--line); }
+/* les humains en texte plein ; les robots en retrait : pseudo et points au niveau secondaire, le reste au tertiaire */
+#ol-salon .ol-fin tr.bot td { color: var(--ol-ter); }
+#ol-salon .ol-fin tr.bot td.c-n, #ol-salon .ol-fin tr.bot td.c-p { color: var(--ol-sec); }
+/* la ligne du joueur : fond doré léger, trait d'or à gauche, pseudo en or */
+#ol-salon .ol-fin tr.moi td { background: rgba(231, 181, 101, 0.15); }
+#ol-salon .ol-fin tr.moi td.c-r { box-shadow: inset 3px 0 0 var(--gold); color: var(--gold); }
+#ol-salon .ol-fin tr.moi td.c-n { color: var(--gold); }
+/* dessous, deux cadres distincts (.ol-bas les range) : qui est en ligne, puis le classement global */
+#ol-salon .ol-bas { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; max-width: 1280px; margin-left: -16px; }
+#ol-salon .ol-bas .ol-boards { width: auto; max-width: none; margin-left: 0; }
+#ol-salon .ol-bas .ol-boards-h { padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+#ol-salon .ol-presents ol { font-size: 14px; }
+@media (max-width: 1100px) { #ol-salon .ol-fin, #ol-salon .ol-bas { margin-left: 0; } }
+@media (min-width: 1200px) {
+  html:not(.touch) #ol-salon .ol-fin, html:not(.touch) #ol-salon .ol-bas { grid-column: 1 / -1; }
+  html:not(.touch) #ol-salon .ol-bas { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+  html:not(.touch) #ol-salon .ol-bas .ol-boards { grid-column: auto; }
+}
+/* écran bas : lignes resserrées, pour garder le plus de tireurs possible au-dessus du pli */
+@media (max-height: 800px) {
+  html:not(.touch) #ol-salon .ol-fin { padding: 10px 20px 8px; }
+  html:not(.touch) #ol-salon .ol-fin-h { padding-bottom: 6px; }
+  html:not(.touch) #ol-salon .ol-fin th { padding-top: 6px; }
+  html:not(.touch) #ol-salon .ol-fin td { height: 27px; }
+  html:not(.touch) #ol-salon .ol-fin tbody tr:nth-child(-n+3) td { height: 34px; }
+}
+/* fenêtre étroite : moins de colonnes (il reste au moins rang, tireur, points, touches / tirs) */
+@media (max-width: 1100px) { #ol-salon .ol-fin .c-ab, #ol-salon .ol-fin .c-su { display: none; } }
+@media (max-width: 860px) { #ol-salon .ol-fin .c-te { display: none; } }
+@media (max-width: 620px) { #ol-salon .ol-fin .c-pl { display: none; } }
+
+/* --- appareil tactile --- */
+html.touch #ol-salon { grid-template-rows: auto auto 1fr auto; }
+html.touch #ol-salon.vote { grid-template-rows: auto auto auto 1fr auto; }
+html.touch #ol-salon .ol-fin { align-self: start; max-width: none; margin-left: 0; padding: 10px 10px 8px; }
+html.touch #ol-salon .ol-bas { align-self: start; gap: 12px; max-width: none; margin-left: 0; }
+html.touch #ol-salon.saisie .ol-fin, html.touch #ol-salon.saisie .ol-bas { display: none !important; }
+/* téléphone en portrait : rang, tireur, points, précision, touches / tirs ; le reste ne tient pas dans la colonne */
+html.touch.portrait #ol-salon .ol-fin .c-te, html.touch.portrait #ol-salon .ol-fin .c-ab, html.touch.portrait #ol-salon .ol-fin .c-pl, html.touch.portrait #ol-salon .ol-fin .c-su { display: none; }
+html.touch.portrait #ol-salon .ol-fin h2 { font-size: 19px; }
+html.touch.portrait #ol-salon .ol-fin-h { padding-bottom: 6px; }
+html.touch.portrait #ol-salon .ol-fin-h p { font-size: 10.5px; letter-spacing: 0.1em; }
+html.touch.portrait #ol-salon .ol-fin-h p b { margin: 0 5px 0 4px; font-size: 13px; }
+html.touch.portrait #ol-salon .ol-fin th { padding: 6px 4px 4px; font-size: 9px; letter-spacing: 0.05em; }
+html.touch.portrait #ol-salon .ol-fin td { height: 26px; padding: 0 4px; font-size: 14px; }
+html.touch.portrait #ol-salon .ol-fin td.c-p { font-size: 15px; }
+html.touch.portrait #ol-salon .ol-fin tbody tr:nth-child(-n+3) td { height: 29px; font-size: 15px; }
+html.touch.portrait #ol-salon .ol-fin tbody tr:nth-child(-n+3) td.c-r { font-size: 17px; }
+html.touch.portrait #ol-salon .ol-fin tbody tr:nth-child(-n+3) td.c-p { font-size: 16px; }
+html.touch.portrait #ol-salon .ol-fin .c-r { width: 28px; padding-left: 6px; padding-right: 0; text-overflow: clip; }
+html.touch.portrait #ol-salon .ol-fin .c-p { width: 48px; }
+html.touch.portrait #ol-salon .ol-fin .c-pr { width: 60px; }
+html.touch.portrait #ol-salon .ol-fin .c-tt { width: 58px; }
+/* … et, inscrit pendant la minute de salon (vote ouvert) : l'horloge, les résultats puis le vote se suivent, pour tenir
+   ensemble à l'écran ; le cadre « Salon », qui ne sert plus alors qu'à revenir au menu, passe sous le vote */
+html.touch.portrait #ol-salon.vote { grid-template-rows: none; align-content: start; }
+html.touch.portrait #ol-salon.vote .ol-gauche { display: contents; }
+html.touch.portrait #ol-salon.vote .ol-gauche > * { position: relative; z-index: 2; }
+html.touch.portrait #ol-salon.vote .ol-sub { margin-top: -2px; }
+html.touch.portrait #ol-salon.vote .ol-horloge { margin-top: -12px; margin-bottom: 2px; }
+html.touch.portrait #ol-salon.vote .ol-fin { order: 1; }
+html.touch.portrait #ol-salon.vote .ol-vote { order: 2; }
+html.touch.portrait #ol-salon.vote .ol-gauche > .ol-cadre { order: 3; }
+html.touch.portrait #ol-salon.vote .ol-bas { order: 4; }
+html.touch.portrait #ol-salon.vote .ol-avert { order: 5; }
+/* tablette à l'horizontale : les présents et le classement global à droite de l'entrée, les résultats dessous sur toute la largeur */
+html.touch:not(.portrait) #ol-salon .ol-bas { grid-column: 2; grid-row: 1; margin-top: 44px; }
+html.touch:not(.portrait) #ol-salon.vote .ol-bas { grid-row: 1 / span 2; }
+html.touch:not(.portrait) #ol-salon .ol-bas .ol-boards { margin-top: 0; }
+html.touch:not(.portrait) #ol-salon.vote .ol-bas .ol-boards { grid-column: auto; grid-row: auto; }
+html.touch:not(.portrait) #ol-salon .ol-fin { grid-column: 1 / -1; }
+
+/* --- tableau de la manche, en jeu : les humains en texte plein, les robots en retrait --- */
+#ol-manche div.hum:not(.moi) span { color: #f2ede3; }
+#ol-manche div.bot b { color: rgba(242, 237, 227, 0.62); }
+
+/* ==================================================================================================
    TABLEAU DE LA MANCHE
    ================================================================================================== */
 #ol-manche { --ol-bas: max(var(--sab, 0px), 10px); position: fixed; right: 16px; top: 44px; box-sizing: content-box; min-width: 250px; padding: 12px 16px; color: #f2ede3; font: 13px/1.5 var(--sans); letter-spacing: 0.02em; background: rgba(14, 15, 14, 0.66); border: 1px solid rgba(242, 237, 227, 0.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; }
@@ -162,6 +278,12 @@ html.touch #ol-salon.saisie h1, html.touch #ol-salon.saisie .ol-sub, html.touch 
 #ol-manche div i { font-style: normal; color: rgba(242, 237, 227, 0.35); min-width: 34px; text-align: right; }
 #ol-manche .moi, #ol-manche .moi b { color: #e7b565; }
 #ol-manche .hs { opacity: 0.4; }
+/* tireurs abattus : les trois derniers, sous la liste des joueurs */
+#ol-manche .ol-abattus { list-style: none; margin: 8px 0 0; padding: 7px 0 0; border-top: 1px solid rgba(242, 237, 227, 0.16); max-width: 260px; }
+#ol-manche .ol-abattus li { font-size: 12.5px; line-height: 1.45; color: #f2ede3; }
+#ol-manche .ol-abattus li + li { color: rgba(242, 237, 227, 0.72); }
+#ol-manche .ol-abattus li.moi { color: #e7b565; }
+html.touch #ol-manche .ol-abattus { max-width: none; }
 #ol-manche small { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(242, 237, 227, 0.16); font-size: 11px; color: rgba(242, 237, 227, 0.62); max-width: 260px; }
 /* tactile : tableau replié (temps restant et ses points, puis le vent) ; un toucher le déplie */
 html.touch #ol-manche { top: calc(var(--sat) + 8px); right: calc(var(--sar) + 10px); min-width: 0; padding: 0; pointer-events: auto; max-height: calc(100% - var(--sat) - var(--ol-bas) - 16px); overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; font-size: 12.5px; z-index: 3; }
@@ -190,6 +312,13 @@ html.ol-lunette:not(.touch) #ol-manche { top: 76px; }
 #ol-vue .v-ligne b { font-weight: 400; font-size: 26px; color: #e7b565; font-variant-numeric: tabular-nums; }
 #ol-vue .v-corr { font-size: 16px; color: #e7b565; font-variant-numeric: tabular-nums; }
 html.touch #ol-vue { left: calc(var(--sal) + 14px); top: calc(var(--sat) + 8px); max-width: 46vw; }
+/* téléphone en portrait : le bloc tient dans la bande réservée au-dessus du champ (TOUCH_TOP, src/online/mode.ts), à
+   gauche du tableau replié ; mêmes corps que dans l'ancienne page tactile */
+html.touch.portrait #ol-vue { left: calc(var(--sal) + 10px); top: calc(var(--sat) + 6px); max-width: calc(100vw - var(--sal) - var(--sar) - 206px); max-height: 100px; overflow: hidden; }
+html.touch.portrait #ol-vue span { font-size: 9px; letter-spacing: 0.18em; }
+html.touch.portrait #ol-vue .v-lieu { font-size: 16px; line-height: 1.12; }
+html.touch.portrait #ol-vue .v-ligne b { font-size: 20px; line-height: 1.1; }
+html.touch.portrait #ol-vue .v-corr { font-size: 13px; flex-wrap: wrap; column-gap: 6px; line-height: 1.25; }
 
 /* --- vue du tireur : les deux tourelles (où elles sont, ce qu'elles déplacent, leur réglage), contre le bord gauche de la lunette --- */
 #ol-tourelles { position: fixed; top: 50%; right: 50%; width: 336px; box-sizing: border-box; padding: 12px 14px; color: #f2ede3; font: 13px/1.4 var(--sans); letter-spacing: 0; background: rgba(14, 15, 14, 0.66); border: 1px solid rgba(242, 237, 227, 0.16); pointer-events: none; user-select: none; -webkit-user-select: none; }
@@ -239,6 +368,11 @@ html.touch #ol-vue { left: calc(var(--sal) + 14px); top: calc(var(--sat) + 8px);
 #ol-vie span { margin-right: 6px; }
 #ol-vie i { width: 46px; height: 7px; border: 1px solid rgba(242, 237, 227, 0.5); background: rgba(14, 15, 14, 0.5); }
 #ol-vie i.on { background: #e7b565; border-color: #e7b565; }
+/* téléphone en portrait : toujours juste au-dessus du bloc de l'arme du solo, qui change de place en lunette (.bl, src/ui/style.css) */
+html.touch.portrait #ol-vie { left: calc(var(--sal) + 10px); bottom: calc(var(--bm) + 50px); }
+html.touch.portrait #ol-vie i { width: 34px; }
+html.touch.portrait.ol-lunette #ol-vie { left: calc(var(--sal) + 10px + 76px * var(--ts)); bottom: calc(var(--bm) + 72px); gap: 5px; letter-spacing: 0.2em; }
+html.touch.portrait.ol-lunette #ol-vie span { margin-right: 3px; }
 
 /* --- voile rouge : abattu (cinq secondes), ou touché et encore debout (un éclair) --- */
 #ol-voile { position: fixed; inset: 0; z-index: 4; place-items: center; text-align: center; font: 28px/1.5 var(--serif); letter-spacing: 0.06em; color: #f2ede3; background: rgba(90, 0, 0, 0.45); pointer-events: none; }
@@ -247,6 +381,16 @@ html.touch #ol-vue { left: calc(var(--sal) + 14px); top: calc(var(--sat) + 8px);
 #ol-voile.eclair { background: rgba(120, 0, 0, 0.3); font-size: 20px; align-items: start; padding-top: 16vh; }
 html.touch #ol-voile { padding: 0 24px; font-size: 22px; }
 html.touch #ol-voile small { display: block; margin-top: 10px; line-height: 1.7; letter-spacing: 0.16em; }
+/* téléphone en portrait : l'éclair « touché » s'écrit dans le haut du champ de la lunette, sous l'observateur et le tableau */
+html.touch.portrait #ol-voile.eclair { padding-top: calc(var(--scy) - var(--scr) * 0.62); }
+/* … et, lunette à l'œil, le bandeau doré d'une touche réussie (src/ui/praise.ts) dans le bas du champ : plus bas, il
+   s'écrirait sur le vent et sur les lignes des tourelles */
+html.touch.portrait.ol-lunette .praise { bottom: auto; top: calc(var(--scy) + var(--scr) * 0.52); }
 
 /* --- spectateur : liste des emplacements, à l'œil nu (elle reste accessible par-dessus l'écran de pause) --- */
+/* spectateur au clavier : rappel des flèches, sous la liste des emplacements */
+#ol-spect { position: fixed; left: 18px; top: 58px; font: 11px/1.4 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242, 237, 227, 0.86); pointer-events: none; text-shadow: 0 0 4px #000, 0 0 8px #000; }
+#ol-spect kbd { display: inline-block; min-width: 20px; margin-right: 5px; padding: 1px 4px; font: 12px var(--sans); text-align: center; color: #e7b565; border: 1px solid rgba(242, 237, 227, 0.36); background: rgba(14, 15, 14, 0.8); text-shadow: none; }
 #ol-postes { position: fixed; left: 18px; top: 16px; z-index: 40; max-width: 260px; padding: 6px 8px; font: 13px var(--sans); color: #f2ede3; background: rgba(14, 15, 14, 0.8); border: 1px solid rgba(242, 237, 227, 0.3); pointer-events: auto; }
+/* au doigt : sous le pouce gauche, au-dessus du bloc de l'arme ; 16 px pour que Safari ne zoome pas la page à l'ouverture */
+html.touch #ol-postes { left: calc(var(--sal) + 10px); top: auto; bottom: calc(max(var(--sab), 10px) + 70px); z-index: 3; width: min(250px, calc(100vw - var(--sal) - var(--sar) - 170px)); max-width: none; min-height: 44px; padding: 8px 10px; font-size: 16px; border-radius: 0; touch-action: manipulation; }
