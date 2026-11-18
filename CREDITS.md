@@ -109,6 +109,10 @@ Dix cris brefs joués au hasard dans le multijoueur « Ville nouvelle », quand 
 | `voix-09.wav` | 2yell9.wav |
 | `voix-10.wav` | yell3.wav |
 
+### Bruits de la diversion (`public/ville/diversion/`)
+
+Cinq bruits de pet joués au hasard dans le multijoueur « Ville nouvelle », quand un tireur fait diversion. Ils sont extraits de l'enregistrement « Farts / Pieruja » des archives sonores de **Yle Arkisto** (radio-télévision publique finlandaise), publié sur Freesound (son n° 425594) et repris sur Wikimedia Commons (versé par Zache), sous **CC BY 3.0** (https://creativecommons.org/licenses/by/3.0). Source : https://commons.wikimedia.org/wiki/File:425594_ylearkisto_farts-pieruja.wav. Modifications : découpe de cinq extraits, conversion (une voie, 48 kHz, WAV PCM 16 bits), mise au même niveau ; 0,45 à 1,6 s, 410 Ko au total.
+
 ## Police du titre
 
 | Fichier | Police | Auteur | Source | Licence |

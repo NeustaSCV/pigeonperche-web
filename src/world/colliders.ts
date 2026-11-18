@@ -57,6 +57,53 @@ export class Colliders {
     const t = TAGS.indexOf(tag);
     for (let i = 0; i < xyz.length; i += 3) { this.pos.push(xyz[i], xyz[i + 1], xyz[i + 2]); this.tag.push(t); }
   }
+  /**
+   * Comme `addTriangles`, pour un tableau typé : il est gardé tel quel (pas de copie nombre à nombre dans une liste)
+   * jusqu'à `build()` ou `buildExtra()`. Pour une carte à plusieurs centaines de milliers de triangles. L'appelant ne
+   * doit plus modifier le tableau ensuite.
+   */
+  addBuffer(xyz: Float32Array, tag: SurfaceTag): void {
+    if (xyz.length % 9 !== 0) throw new Error(`addBuffer : ${xyz.length} nombres, il en faut neuf par triangle`);
+    if (xyz.length) this.bufs.push({ at: this.pos.length, xyz, tag: TAGS.indexOf(tag) });
+  }
+  private bufs: { at: number; xyz: Float32Array; tag: number }[] = [];
+  /** nombres en attente du prochain BVH (listes et tableaux typés) */
+  private get pending(): number {
+    let n = this.pos.length;
+    for (const b of this.bufs) n += b.xyz.length;
+    return n;
+  }
+  /**
+   * Positions et matières en attente, dans l'ordre des appels (un tableau ajouté par `addBuffer` s'insère là où la
+   * liste en était), puis remise à zéro. Sans `addBuffer`, exactement les tableaux d'origine.
+   */
+  private flush(): { pos: Float32Array; tag: Float32Array } {
+    let pos: Float32Array, tag: Float32Array;
+    if (!this.bufs.length) { pos = new Float32Array(this.pos); tag = new Float32Array(this.tag); }
+    else {
+      const n = this.pending;
+      pos = new Float32Array(n);
+      tag = new Float32Array(n / 3);
+      let o = 0, from = 0;
+      const list = (to: number): void => {
+        for (let i = from; i < to; i++) pos[o + i - from] = this.pos[i];
+        for (let i = from / 3; i < to / 3; i++) tag[o / 3 + i - from / 3] = this.tag[i];
+        o += to - from;
+        from = to;
+      };
+      for (const b of this.bufs) {
+        list(b.at);
+        pos.set(b.xyz, o);
+        tag.fill(b.tag, o / 3, (o + b.xyz.length) / 3);
+        o += b.xyz.length;
+      }
+      list(this.pos.length);
+    }
+    this.pos = [];
+    this.tag = [];
+    this.bufs = [];
+    return { pos, tag };
+  }
   addMesh(mesh: Mesh, tag: SurfaceTag): void {
     mesh.updateWorldMatrix(true, false);
     this.addGeometry(mesh.geometry, mesh.matrixWorld, tag);
@@ -64,11 +111,10 @@ export class Colliders {
 
   build(): void {
     const g = new BufferGeometry();
-    g.setAttribute('position', new BufferAttribute(new Float32Array(this.pos), 3));
-    this.tagAttr = new Float32Array(this.tag);
+    const { pos, tag } = this.flush();
+    g.setAttribute('position', new BufferAttribute(pos, 3));
+    this.tagAttr = tag;
     this.bvh = new MeshBVH(g);
-    this.pos = [];
-    this.tag = [];
     this.glass.build();
   }
 
@@ -77,14 +123,13 @@ export class Colliders {
    * proches des cibles, connus seulement une fois celles-ci posées. Balles et lignes de visée voient les deux.
    */
   buildExtra(): number {
-    const n = this.pos.length / 9;
+    const n = this.pending / 9;
     if (!n) return 0;
     const g = new BufferGeometry();
-    g.setAttribute('position', new BufferAttribute(new Float32Array(this.pos), 3));
-    this.tagAttr2 = new Float32Array(this.tag);
+    const { pos, tag } = this.flush();
+    g.setAttribute('position', new BufferAttribute(pos, 3));
+    this.tagAttr2 = tag;
     this.bvh2 = new MeshBVH(g);
-    this.pos = [];
-    this.tag = [];
     return n;
   }
   private bvh2: MeshBVH | null = null;

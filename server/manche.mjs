@@ -15,6 +15,10 @@
 // Vote : pendant la minute de salon, les joueurs humains votent pour la manche suivante. Le niveau règle l'étalement
 // des tireurs (facile : les 15 emplacements les plus resserrés ; standard : les 25 ; avancé : toute la carte), et le
 // vent est coupé ou tiré au hasard jusqu'à 5 m/s. La majorité l'emporte ; à égalité, on garde le réglage en cours.
+// Le vent est coupé par défaut : si personne ne vote sur le vent, la manche suivante se joue sans.
+//
+// Diversion : un joueur humain debout peut faire un bruit que tous les autres entendent depuis son emplacement, au plus
+// une fois toutes les dix secondes. Le serveur tire le son au hasard, pour que tous entendent le même.
 //
 // Tireurs automatiques : dès qu'un joueur humain est dans la salle, des robots occupent les places libres jusqu'à
 // dix tireurs ; ils cèdent leur place aux humains qui arrivent et s'en vont quand le dernier humain part. Ils tirent
@@ -23,6 +27,8 @@
 export const MAX_JOUEURS = 10;
 export const RETOUR_MS = 5000;          // délai avant de reparaître sur un autre emplacement
 export const CADENCE_MS = 1200;         // temps minimal entre deux tirs (la culasse)
+export const DIVERSION_MS = 10_000;     // temps minimal entre deux diversions d'un même joueur
+export const DIVERSION_SONS = 5;        // nombre de sons de diversion (public/ville/diversion/pet-01.wav … pet-05.wav)
 export const MANCHE_MS = 240_000;       // durée d'une manche : 4 minutes
 export const PAUSE_MS = 60_000;         // salon entre deux manches : 1 minute
 export const CYCLE_MS = MANCHE_MS + PAUSE_MS;   // 5 minutes : les manches commencent à xx:00, xx:05, xx:10…
@@ -74,7 +80,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     return new Set(best.map((x) => x[1]));
   };
   const ZONES = Object.fromEntries(Object.entries(NIVEAUX).map(([k, n]) => [k, zoneDe(n)]));
-  let reglages = { niveau: 'standard', vent: null };      // vent : null, ou { vitesse (m/s), de (azimut d'où il vient, degrés) }
+  let reglages = { niveau: 'facile', vent: null };        // vent : null, ou { vitesse (m/s), de (azimut d'où il vient, degrés) }
   const votes = new Map();                                // id du joueur → { vent: booléen, niveau }
   const decompte = () => { const d = { vent: { oui: 0, non: 0 }, niveau: { facile: 0, standard: 0, avance: 0 } }; for (const v of votes.values()) { if (v.vent != null) d.vent[v.vent ? 'oui' : 'non']++; if (v.niveau) d.niveau[v.niveau]++; } return d; };
   const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)), z = ZONES[reglages.niveau]; return emplacements.filter((e) => z.has(e.nom) && !pris.has(e.nom) && e.nom !== sauf); };
@@ -126,7 +132,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const entre = (pseudo, robot, send) => {
     const emp = tirage(); if (!emp) return null;
     const id = suivant++;
-    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, send };
+    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
     joueurs.set(id, j); return j;
   };
   const tourRobot = (id) => later(() => {
@@ -165,8 +171,10 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     numero++; phase = 'jeu';
     // dépouillement : la majorité l'emporte, l'égalité garde le réglage en cours
     const d = decompte(), n = Object.entries(d.niveau).sort((a, b) => b[1] - a[1]);
-    const niveau = n[0][1] > n[1][1] ? n[0][0] : reglages.niveau;
-    const venteux = d.vent.oui !== d.vent.non ? d.vent.oui > d.vent.non : !!reglages.vent;
+    // l'étalement est « facile » par défaut : sans aucune voix sur l'étalement, la manche se joue en facile
+    const niveau = n[0][1] > n[1][1] ? n[0][0] : n[0][1] > 0 ? reglages.niveau : 'facile';
+    // le vent est coupé par défaut : sans aucune voix sur le vent, la manche se joue sans, quel que soit le réglage en cours
+    const venteux = d.vent.oui !== d.vent.non ? d.vent.oui > d.vent.non : d.vent.oui > 0 && !!reglages.vent;
     reglages = { niveau, vent: venteux ? { vitesse: Math.round((2 + rand() * (VENT_MAX - 2)) * 10) / 10, de: Math.floor(rand() * 360) } : null };
     votes.clear();
     // nouvelle manche : tout le monde est replacé au hasard dans la zone du niveau
@@ -234,6 +242,20 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (!(Math.abs(dist - d) <= TOL_DIST)) return 'distance';
       if (!(tof >= d / V_MAX && tof <= 12)) return 'temps de vol';
       engage(j, c, d, tof, annonce.zone === 'tete');
+      return 'ok';
+    },
+    /**
+     * Diversion : le joueur `id` fait un bruit, annoncé à toute la salle (lui compris) avec son emplacement et le
+     * numéro du son, tiré ici. Refusée à un robot, à un tireur abattu, hors manche, et à moins de dix secondes de la
+     * précédente. Renvoie 'ok', ou la raison du refus.
+     */
+    diversion(id) {
+      const j = joueurs.get(id); if (!j || j.robot) return 'inconnu';
+      if (phase !== 'jeu') return 'pause';
+      if (!j.vivant) return 'couché';
+      const t = now(); if (t - j.derniereDiversion < DIVERSION_MS) return 'cadence';
+      j.derniereDiversion = t;
+      diffuse({ t: 'diversion', id, emp: j.emp, son: 1 + Math.min(DIVERSION_SONS - 1, Math.floor(rand() * DIVERSION_SONS)) });
       return 'ok';
     },
     /** Vote d'un joueur humain pendant la minute de salon : { vent?: booléen, niveau?: 'facile' | 'standard' | 'avance' }. */

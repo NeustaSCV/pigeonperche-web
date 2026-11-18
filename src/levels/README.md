@@ -560,3 +560,49 @@ envoie le joueur dans la lanterne. Une cible flottante « immobile » doit reste
   l'arrêterait) avec des sphères `col.soft`, `nav.waypoint` pour contourner un obstacle central.
 - **Cible fine sur un bâtiment** : le décor fixe qui l'entoure (mât, panneau) va dans `scenery.ts` pour entrer dans
   les collisions ; `h.buildings` n'y existe pas encore, l'altitude se recalcule (sol + marge de `buildings.ts`).
+
+## Socle du mode en ligne (2026-11-18)
+
+Points d'accroche posés dans le moteur pour une carte jouée en ligne. Tous sont inertes sur les cartes du solo :
+aucune ne les déclare, leurs valeurs par défaut rendent le comportement d'origine.
+
+- **`data.online`** (`OnlineSpec`, `types.ts`) : la carte se joue en ligne. Le jeu ne crée le contrôleur
+  (`game.online`, contrat dans `src/online/types.ts` : `OnlineHost`, `OnlineMode`) que si la carte déclare ce champ
+  **et** qu'une fabrique est donnée au constructeur de `Game`. Avec un contrôleur : pas de caméra de balle, de
+  télémètre (T), de briefing (B), de râtelier (E), de conseil ni de compliment ; la pause ne fige plus le monde (Échap
+  l'ouvre comme en solo, la manche continue derrière ; « Recommencer la mission » y devient « Quitter la manche »,
+  `OnlineMode.leave`) ; `init()` passe la main au contrôleur (salon, chargement) ; le tir et
+  l'impact lui sont rapportés au lieu de la mission. Champs : `standingScope` (épauler debout), `magazine` (capacité
+  du chargeur imposée), `pulse` (faux : pas de pouls), `logbook` (faux : pas de carnet), `eyeView` (`'first'` :
+  première personne, arme visible : c'est le contrôleur qui pose la caméra sur l'œil et tient l'arme devant elle) et
+  `coarseBothTurrets` (Maj + flèche = 1 mrad sur les deux tourelles : le contrôleur met `scope.coarseBoth` à vrai).
+  Le contrôleur peut encore fournir `turretClick` (son cran de tourelle, celui du solo se tait) et `holdFire` (la
+  détente ne fait rien : spectateur, tireur abattu). `AmbienceState.heart: false` coupe le son du cœur, et
+  `UI.setOnline()` masque les lignes du HUD que le mode remplace (élévation, dérive, contre-visée, pouls, objectif).
+- **`data.site.rack: null`** : carte sans râtelier (pas d'armes exposées, pas de touche E, pas d'étape « râtelier »).
+- **`buildSite` → `vegetation: null`** : pas de végétation commune (herbe, arbres et rochers semés autour de l'origine).
+- **`Level.createTerrain?(spec, look)`** : relief propre à la carte, une sous-classe de `Terrain`, à la place du
+  maillage polaire centré sur l'origine.
+- **`data.preload`** : fichiers préchargés pendant le menu à la place de `terrain/<dir>/meta.json`, `height.bin`,
+  `splat.bin`.
+- **`render.nearEye`** : plan proche à l'œil nu (défaut 0,2 m), à relever sur une carte très profonde.
+- **`player.locked`** (ni déplacement ni changement de posture, le regard reste libre) et **`player.braced`** (appui
+  forcé, quelle que soit la posture).
+- **`wind.wander`** (aussi `wind.configure({ wander })`) : errance lente du cap et de la force ; 1 = d'origine,
+  0 = constants. Avec `gusts: 0` en plus, le vent est le même partout et à tout instant.
+- **`col.addBuffer(Float32Array, tag)`** : comme `addTriangles`, sans recopie dans une liste de nombres.
+- **`humanColliders(target, mesh)`** (`src/game/targets.ts`) : zones touchables d'un personnage (tête, torse, jambes).
+
+- **`player.standingEye`** : œil derrière la lunette à 1,6 m au-dessus des pieds quand le tireur est debout, à son
+  aplomb. Le jeu le met à vrai sur une carte qui déclare `data.online.standingScope`.
+- **Le contrôleur** est `src/online/mode.ts` (`createOnlineMode`). `src/main.ts` ne le charge (import dynamique) que
+  pour une carte qui déclare `data.online` : rien de lui n'entre dans le solo. Il réunit la session
+  (`session.ts`), le salon (`lobby.ts`), le tableau (`scoreboard.ts`), les autres tireurs comme cibles du jeu
+  (`remote-shooter.ts`), les effets (`effects.ts`), les sons (`sounds.ts`) et l'affichage du mode (`hud.ts`).
+
+La carte en ligne est `ville` (`src/levels/ville/`, « Ville nouvelle ») : dans `LevelId` et `LEVEL_IDS`, mais dans
+aucune campagne et hors `SCORE_LEVELS` — ni bouton au menu, ni tableau de scores (`ScoreService.submit` la refuse).
+On l'ouvre par `?level=ville` : le salon, puis la manche (`&pseudo=X&auto` rejoint sans clic, pour les contrôles
+automatisés, `e2e/manche.mjs`). `&poste=N` (1 à 39) ouvre à la place une visite sans réseau ni salon, seul sur
+l'emplacement n° N face aux silhouettes. Elle n'a pas de
+`terrain.gen.mjs` : son relief et ses données viennent de `public/ville/` (`terrain.ts`, `data.ts`).

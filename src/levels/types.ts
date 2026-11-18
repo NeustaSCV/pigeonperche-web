@@ -17,7 +17,8 @@ import type { Wind } from '../world/wind';
 import type { LevelRuntime } from './runtime';
 import type { WeaponDef } from '../config/weapons';
 
-export type LevelId = 'facile' | 'standard' | 'avance' | 'fete' | 'phare' | 'plaine';
+/** `ville` : carte du mode en ligne, hors campagne (ni menu des campagnes, ni tableaux de scores). */
+export type LevelId = 'facile' | 'standard' | 'avance' | 'fete' | 'phare' | 'plaine' | 'ville';
 /** Campagne : un groupe de trois cartes, une par difficulté (menu). */
 export type CampaignId = 'vallee' | 'lieux';
 /** Aides au tir : assist = télémètre continu + impact prédit ; standard = télémètre + vent ; real = aucune aide. */
@@ -126,6 +127,11 @@ export interface RenderSpec {
   haze: number;
   /** rayon planté d'arbres autour du site (m) */
   treeRange: number;
+  /**
+   * plan proche de la caméra à l'œil nu (m ; défaut 0,2). À relever sur une carte très profonde : la précision de
+   * profondeur au loin en dépend. La vue lunette a son propre plan proche, adaptatif.
+   */
+  nearEye?: number;
 }
 
 /**
@@ -356,6 +362,35 @@ export interface SkySpec {
   cloudShadow?: number;
   /** chaleur du soleil : 1 = doré d'origine, 0 = blanc du fichier */
   warmth?: number;
+  /**
+   * Vrai : le dégradé du ciel dégagé suit l'horizon du monde. Par défaut il suit celui de la photographie, que le jeu
+   * incline pour placer le soleil : sans gêne quand le soleil est bas, mais avec un soleil haut l'horizon clair remonte
+   * d'un côté et blanchit la moitié du ciel.
+   */
+  clearUpright?: boolean;
+  /** large lueur du ciel dégagé autour du soleil (défaut 1) ; plus bas, le ciel reste bleu jusque près du soleil */
+  sunGlow?: number;
+}
+
+/**
+ * Carte jouée en ligne (`LevelData.online`). Sa seule présence change les règles communes du mode en ligne : pas de
+ * caméra de balle, de télémètre, de briefing, de conseils ni de touche E ; la pause ne fige plus le monde ; tir et
+ * impacts sont rapportés au contrôleur en ligne (src/online/types.ts) au lieu de la mission. Les champs ci-dessous
+ * règlent ce qui reste au choix de la carte. Aucune carte du solo ne déclare ce champ.
+ */
+export interface OnlineSpec {
+  /** la lunette s'épaule aussi debout (en solo : accroupi ou couché seulement) */
+  standingScope: boolean;
+  /** capacité du chargeur imposée à toutes les armes de la carte (cartouches) ; absent : celle de chaque arme */
+  magazine?: number;
+  /** faux : pas de pouls (ni secousse des battements, ni effet de l'effort sur le tremblement) ; le souffle reste */
+  pulse: boolean;
+  /** faux : pas de carnet de tir (touche Tab) */
+  logbook: boolean;
+  /** vue à l'œil nu : 'third' = par-dessus l'épaule, comme en solo ; 'first' = première personne, arme visible */
+  eyeView: 'third' | 'first';
+  /** vrai : Maj + flèche règle 1 mrad sur les deux tourelles (en solo : Maj droite, élévation seule) */
+  coarseBothTurrets: boolean;
 }
 
 /** Données d'un niveau : tout ce que le moteur lit sans rien construire. */
@@ -391,8 +426,8 @@ export interface LevelData {
    * dans la carte de matières par le générateur (`lib.carveWays`), qui les écrit dans meta.json (`ways`).
    */
   ways?: WaySpec[];
-  /** site de tir : altitude du sol, point de départ (yaw en radians, 0 = nord), râtelier */
-  site: { baseY: number; start: { x: number; z: number; yaw: number }; rack: { x: number; z: number } };
+  /** site de tir : altitude du sol, point de départ (yaw en radians, 0 = nord), râtelier (null : carte sans râtelier) */
+  site: { baseY: number; start: { x: number; z: number; yaw: number }; rack: { x: number; z: number } | null };
   posts: Record<string, PostDef>;
   sightlines: Sightline[];
   /** objectifs, dans l'ordre, et poste conseillé par objectif (clé de posts) */
@@ -435,6 +470,13 @@ export interface LevelData {
    * et `lunette` (dernier objectif de `testPlan`).
    */
   testViews?: Record<string, TestView>;
+  /**
+   * Fichiers à précharger pendant le menu à la place du relief d'origine (`terrain/<dir>/meta.json`, `height.bin`,
+   * `splat.bin`) : chemins relatifs à `public/`. Pour une carte dont le relief vient d'ailleurs (`Level.createTerrain`).
+   */
+  preload?: string[];
+  /** carte jouée en ligne : voir `OnlineSpec`. Absent : carte du solo. */
+  online?: OnlineSpec;
 }
 
 /** Ce que le site de tir dit au joueur générique : où l'on peut marcher, sur quoi, par où passer. */
@@ -470,8 +512,11 @@ export interface LevelHost {
 /** Scène d'un niveau en cours de partie. Construite dans l'ordre : buildSite, buildScenery, buildTargets. */
 export interface LevelScene {
   nav: SiteNav;
-  /** Site de tir praticable (murs, abri du râtelier…) : ajoute ses collisions, renvoie son groupe et ce que la végétation doit éviter. */
-  buildSite(h: LevelHost): Promise<{ group: Object3D; vegetation: VegetationSpec }>;
+  /**
+   * Site de tir praticable (murs, abri du râtelier…) : ajoute ses collisions, renvoie son groupe et ce que la végétation
+   * doit éviter. `vegetation: null` : la carte n'a pas la végétation commune (herbe, arbres, rochers semés autour de l'origine).
+   */
+  buildSite(h: LevelHost): Promise<{ group: Object3D; vegetation: VegetationSpec | null }>;
   /** Décor lointain (villages, eau, fanions…). */
   buildScenery(h: LevelHost): Promise<Object3D>;
   /** Cibles, déjà placées ; le jeu les ajoute à la scène. Les effets (fx) existent à ce stade. */
@@ -517,4 +562,9 @@ export interface LevelScene {
 export interface Level {
   data: LevelData;
   createScene(): LevelScene;
+  /**
+   * Relief propre à la carte, à la place du relief commun (`new Terrain(spec, look)`) : une sous-classe de `Terrain`.
+   * Reçoit ce que le jeu aurait donné au relief commun (la spécification, aires des bâtiments comprises, et les teintes).
+   */
+  createTerrain?(spec: TerrainSpec, look: { palette?: PaletteSpec; valleyY?: number }): Terrain;
 }

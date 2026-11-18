@@ -47,8 +47,11 @@ import { AIM_WINDOW_MIL, CoachTracker, assessWeapon, buildAdvice, diagnose } fro
 import { MUZZLE_CLEAR, Shots, type Bullet, type ImpactReport, type Prediction } from './shots';
 import { Tutorial, type TutoSnap } from './tutorial';
 import type { Target, TargetCtx } from './targets';
+import type { OnlineFactory, OnlineHost, OnlineMode } from '../online/types';
 
-type State = 'menu' | 'brief' | 'play' | 'rack' | 'book' | 'pause' | 'fail' | 'end';
+/** États du jeu. `lobby` (salon), `down` (touché) et `spectate` (spectateur) n'existent qu'en ligne. */
+export type GameState = 'menu' | 'brief' | 'play' | 'rack' | 'book' | 'pause' | 'fail' | 'end' | 'lobby' | 'down' | 'spectate';
+type State = GameState;
 const fr = (n: number, d = 0): string => n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
 const STANCE_LABEL = { stand: 'Debout', crouch: 'Accroupi', prone: 'Couché' };
 /** le râtelier loge douze armes ; au-delà, c'est au niveau de choisir */
@@ -89,7 +92,7 @@ interface BulletCam {
   look: Vector3;
 }
 
-export class Game {
+export class Game implements OnlineHost {
   engine: Engine;
   wind = new Wind();
   terrain: Terrain;
@@ -100,6 +103,11 @@ export class Game {
   level: Level;
   data: LevelData;
   scene: LevelScene;
+  /**
+   * contrôleur du mode en ligne (src/online/types.ts), ou null : toujours null en solo. Il faut à la fois une carte
+   * qui déclare `data.online` et une fabrique donnée au constructeur.
+   */
+  online: OnlineMode | null = null;
   /** armes du râtelier de ce niveau */
   weapons: WeaponDef[];
   /** physique du tir en vigueur : celle du niveau, ou celle de `?phys=` (essais) */
@@ -199,7 +207,7 @@ export class Game {
   private bookCache = new Map<string, BookData>();
   private tutoSnap = {} as TutoSnap;
 
-  constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement, private params: URLSearchParams, level: Level) {
+  constructor(canvas: HTMLCanvasElement, uiRoot: HTMLElement, private params: URLSearchParams, level: Level, createOnline?: OnlineFactory) {
     this.level = level;
     this.data = level.data;
     this.scene = level.createScene();
@@ -209,7 +217,10 @@ export class Game {
       const r = lot ? Math.hypot(lot.l, lot.p) / 2 : 40;
       return { x: b.x, z: b.z, r0: (r + 6) / 0.6, r1: (r + 6) / 0.6 + 24 };
     });
-    this.terrain = new Terrain(pads.length ? { ...level.data.terrain, pads: [...level.data.terrain.pads, ...pads] } : level.data.terrain, { palette: level.data.palette, valleyY: level.data.atmosphere?.valleyY });
+    const terrainSpec = pads.length ? { ...level.data.terrain, pads: [...level.data.terrain.pads, ...pads] } : level.data.terrain;
+    const terrainLook = { palette: level.data.palette, valleyY: level.data.atmosphere?.valleyY };
+    // relief propre à la carte (`Level.createTerrain`), sinon le relief commun
+    this.terrain = level.createTerrain?.(terrainSpec, terrainLook) ?? new Terrain(terrainSpec, terrainLook);
     this.sky.sun = level.data.sun;
     this.sky.spec = level.data.sky ?? {};
     // vent et abri de la vallée du niveau, en place dès la première image
@@ -263,7 +274,8 @@ export class Game {
         setTutorial: (on) => this.setTutoPref(on ? 'on' : 'off'),
         skipTutorial: () => this.skipTutorial(),
         fullscreen: () => void goFullscreen(phone()),
-        restart: () => location.reload(),
+        // en ligne, le bouton de la pause devient « Quitter la manche » : retour au salon
+        restart: () => { if (this.online?.leave) this.online.leave(); else location.reload(); },
         retry: () => this.retryStep(),
         setLevel: (id) => { if (id !== this.data.id) switchLevel(id); },
         setQuality: (q) => { if (q !== this.engine.q.name) { localStorage.setItem('hr.quality', q); location.reload(); } },
@@ -296,6 +308,7 @@ export class Game {
       this.touchCtl.onPause = () => { if (this.state === 'play') this.setState('pause'); };
     }
     this.input.onLockChange = (locked) => {
+      // (en ligne aussi : la pause est alors un écran par-dessus, la manche continue)
       if (!locked && this.state === 'play' && !this.testMode) this.setState('pause');
     };
     const layout = (): void => this.layout();
@@ -322,10 +335,12 @@ export class Game {
       if (document.hidden) {
         // onglet masqué, appel entrant, mise en veille : pause (le verrouillage du pointeur ne la déclenche pas au doigt)
         this.touchCtl?.releaseAll();
-        if (this.state === 'play' && !this.testMode) this.setState('pause');
+        if (this.state === 'play' && !this.testMode && !this.online) this.setState('pause');
       } else if (this.audio.started) wake();
     });
     canvas.addEventListener('click', () => { if (this.state === 'play' && !this.testMode) this.input.lock(); });
+    // mode en ligne : seulement pour une carte qui le déclare, et si l'appelant en fournit le contrôleur
+    if (this.data.online && createOnline) this.online = createOnline(this);
   }
 
   /**
@@ -335,6 +350,8 @@ export class Game {
    * Les essais automatisés (`?test`) et `?play` chargent la carte d'emblée, comme avant ; `?lazy=1` force le menu léger.
    */
   async init(): Promise<void> {
+    // en ligne : le contrôleur affiche son salon et charge la carte lui-même
+    if (this.online) return this.online.init();
     const eager = this.params.has('play') || (this.testMode && this.params.get('lazy') !== '1');
     if (eager) {
       await this.load();
@@ -350,7 +367,7 @@ export class Game {
     if (this.ui.guideLinked) this.ui.openGuide();
     if (this.params.get('preload') !== '0' && !meteredConnection()) {
       this.preloader = new Preloader();
-      const start = (): void => this.preloader?.start(preloadList({ terrainDir: this.data.terrain.dir, sky: this.engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_2k.hdr' }));
+      const start = (): void => this.preloader?.start(preloadList({ terrainDir: this.data.terrain.dir, sky: this.engine.q.name === 'low' ? 'sky_1k.hdr' : 'sky_2k.hdr', files: this.data.preload }));
       // après l'affichage du menu et de son fond, pour ne pas leur disputer la connexion
       setTimeout(start, 600);
     }
@@ -429,9 +446,10 @@ export class Game {
     await step(0.3, 'Terrain', async () => { await this.terrain.build(e, this.wind); e.scene.add(this.terrain.group); });
     const host: LevelHost = { engine: e, terrain: this.terrain, col: this.col, wind: this.wind, params: this.params };
     this.host = host;
-    let vegSpec!: VegetationSpec;
+    let vegSpec!: VegetationSpec | null;
     await step(0.45, 'Site de tir', async () => { const site = await this.scene.buildSite(host); vegSpec = site.vegetation; this.siteGroup.add(site.group); e.scene.add(this.siteGroup); });
-    await step(0.58, 'Végétation', async () => { await this.veg.build(e, this.terrain, this.wind, vegSpec); e.scene.add(this.veg.group); this.col.segs.push(...this.veg.rockSegs); });
+    // `vegetation: null` : carte sans végétation commune ; `this.veg` reste vide (groupe sans enfant, aucun obstacle)
+    if (vegSpec) { const spec = vegSpec; await step(0.58, 'Végétation', async () => { await this.veg.build(e, this.terrain, this.wind, spec); e.scene.add(this.veg.group); this.col.segs.push(...this.veg.rockSegs); }); }
     await step(0.75, 'Décor', async () => { this.sceneryGroup.add(await this.scene.buildScenery(host)); e.scene.add(this.sceneryGroup); });
     // bâtiments déclarés par le niveau (data.buildings) : point d'accroche unique, voir src/levels/buildings.ts
     // (avant `col.build()` : leurs collisions entrent dans le BVH ; avant les cibles : `host.buildings` leur sert d'appui)
@@ -484,6 +502,8 @@ export class Game {
           this.ui.toast(why === 'pente' ? 'Trop raide' : 'Clôture du site', why === 'pente' ? 'Le bord : on ne descend pas plus bas' : 'On ne s’éloigne pas davantage', 1.8);
         },
       }, this.clothTex, { baseY: this.data.site.baseY, start: this.data.site.start, posts: this.data.posts }, this.scene.nav);
+      // carte où l'on épaule debout (`data.online.standingScope`) : hauteur d'œil debout ; aucune carte du solo ne le déclare
+      if (this.data.online?.standingScope) this.player.standingEye = true;
       e.scene.add(this.player.group);
       this.buildRack();
       this.equip(this.params.get('w') || this.data.startWeapon);
@@ -557,7 +577,8 @@ export class Game {
   private scopeLayout(v: View): void {
     const ins = safeInsets();
     const ts = this.ts;
-    const tutoH = this.ui ? this.ui.tutoHeight() : 0;
+    let tutoH = this.ui ? this.ui.tutoHeight() : 0;
+    if (this.online?.scopeInset) tutoH = Math.max(tutoH, this.online.scopeInset());
     const top = ins.top + 6 + (tutoH > 0 ? tutoH + 6 : 0);
     // sous le champ : ligne d'informations, deux rangées de tourelles, puis les boutons du bas et la marge basse
     const below = 26 + (88 * ts + 6) + 8 + 82 * ts + Math.max(ins.bottom, 10) + 12;
@@ -681,10 +702,10 @@ export class Game {
     const title = lm ? (lm.name ? `${lm.name} (${lm.title.toLowerCase()})` : lm.title) : level;
     this.endResult = { score: sc.total, grade: sc.grade, accuracy: sc.accuracy, shots: m.totalShots, time: Math.floor(m.elapsed) };
     const ranked = this.rankedGame();
-    this.ui.end(m, { title, ranked, board: this.scores.boards[level], online: this.scores.online, lastName: this.scores.lastName(), result: this.endResult });
+    this.ui.end(m, { title, ranked, board: this.scores.boards[level] ?? [], online: this.scores.online, lastName: this.scores.lastName(), result: this.endResult });
     this.setState('end');
     // d'autres joueurs ont pu s'inscrire pendant la partie : le classement est relu
-    void this.scores.load().then(() => { this.ui.endBoard(this.scores.boards[level], this.scores.online); this.showBoards(); });
+    void this.scores.load().then(() => { this.ui.endBoard(this.scores.boards[level] ?? [], this.scores.online); this.showBoards(); });
   }
 
   private buildRack(): void {
@@ -692,6 +713,8 @@ export class Game {
     // (dessus à 0,28 m), fût appuyé contre la lisse haute ; l'abri est celui de Masonry.rackShelter
     const lean = 0.13;
     const rack = this.data.site.rack, n = this.weapons.length;
+    // carte sans râtelier
+    if (!rack) return;
     // la tablette fait 2,9 m entre ses montants : 0,4 m par arme jusqu'à huit ; au-delà (douze au plus) les armes se
     // serrent et pivotent d'un tiers de tour sur leur crosse, lunette vers la cour, comme des livres penchés :
     // elles se recouvrent de profil sans se toucher, et chacune reste reconnaissable
@@ -712,14 +735,18 @@ export class Game {
 
   equip(id: string): void {
     // une arme hors du râtelier de ce niveau (paramètre ?w=) est remplacée par l'arme de départ
-    const def = this.weapons.find((w) => w.id === id) ?? this.weapons.find((w) => w.id === this.data.startWeapon) ?? this.weapons[0];
+    const base = this.weapons.find((w) => w.id === id) ?? this.weapons.find((w) => w.id === this.data.startWeapon) ?? this.weapons[0];
+    // en ligne, la carte peut imposer la capacité du chargeur (`data.online.magazine`)
+    const cap = this.online ? this.data.online?.magazine : undefined;
+    const def = cap !== undefined ? { ...base, magazine: cap } : base;
     this.rifle = new Rifle(def, {
       boltOpen: () => this.audio.boltOpen(),
       boltClose: () => this.audio.boltClose(),
       dryFire: () => this.audio.dryFire(),
       magOut: () => this.audio.magOut(),
       magIn: () => this.audio.magIn(),
-      turret: () => this.audio.turretClick(),
+      // en ligne, le contrôleur joue son propre cran : un seul des deux sonne
+      turret: () => { if (this.online?.turretClick) this.online.turretClick(); else this.audio.turretClick(); },
     });
     if (this.rifleParts) this.rifleNode.remove(this.rifleParts.group);
     this.rifleParts = buildRifleModel(this.engine, def);
@@ -853,13 +880,14 @@ export class Game {
     const los = this.scope.lineOfSight(this.v2);
     const elev = this.rifle.elevMil, windage = this.rifle.windMil;
     // prévision avec le vent tel qu'il évoluera : décide de la caméra de balle
-    const pred = this.cinematic ? this.shots.predict(eye, los, def, elev, windage, false, this.maxFlight() + 1.5) : null;
+    const pred = this.cinematic && !this.online ? this.shots.predict(eye, los, def, elev, windage, false, this.maxFlight() + 1.5) : null;
     const bullet = this.shots.fire(eye, los, def, elev, windage);
     (bullet as any).elev = elev;
     (bullet as any).windage = windage;
     this.audio.shot(def);
     this.scope.recoil(def, shotFxParams(def).scopeJump);
-    this.mission.onShot(def);
+    if (this.online) this.online.localShot(bullet, los);
+    else this.mission.onShot(def);
     this.scene.onShot?.(def, this.mission.step.id);
     this.player.heartRate = Math.min(150, this.player.heartRate + 2 + def.chargeGr * 0.05);
     this.fx.clearTrail();
@@ -881,6 +909,13 @@ export class Game {
   }
 
   private onImpact(r: ImpactReport): void {
+    if (this.online) {
+      // en ligne : son et gerbe du solo, puis le contrôleur ; ni mission, ni conseil, ni compliment
+      this.audio.impact(r.kind, r.point.x, r.point.y, r.point.z, r.distance / 343, r.energy);
+      this.impactFx(r.kind, r.point, r.energy);
+      this.online.impact(r);
+      return;
+    }
     const b = r.bullet as any;
     // cibles de l'objectif encore debout avant ce tir : c'est sur elles que le conseil compte les tirs manqués
     const pending = this.mission.running ? this.mission.currentTargets().filter((t) => !t.done || t === r.target) : [];
@@ -1152,7 +1187,7 @@ export class Game {
     for (const b of this.col.soft) sphere(b.x, b.y, b.z, b.r);
     for (const b of this.scene.viewObstacles?.() ?? []) sphere(b.x, b.y, b.z, b.r);
     const rack = this.data.site.rack;
-    sphere(rack.x, this.data.site.baseY + 1.2, rack.z + 0.6, 2.6);
+    if (rack) sphere(rack.x, this.data.site.baseY + 1.2, rack.z + 0.6, 2.6);
     // pas de 1,25 : le plan proche (et les cascades d'ombre avec lui) ne change que par crans
     const n = Math.min(want, Math.max(SCOPE_NEAR, first * 0.6));
     this.nearNow = n >= want ? want : Math.max(SCOPE_NEAR, SCOPE_NEAR * Math.pow(1.25, Math.floor(Math.log(n / SCOPE_NEAR) / Math.log(1.25))));
@@ -1225,7 +1260,8 @@ export class Game {
     this.last = now;
     const dtReal = Math.min(0.1, raw / 1000);
     this.fpsAvg += (1000 / Math.max(1, raw) - this.fpsAvg) * 0.05;
-    const paused = this.state === 'pause' || this.blocked;
+    // en ligne, la pause est un écran par-dessus : le monde continue
+    const paused = !this.online && (this.state === 'pause' || this.blocked);
     const dt = paused ? 0 : dtReal * this.timeScale;
     const t0 = performance.now();
     this.step(dt, dtReal);
@@ -1293,28 +1329,29 @@ export class Game {
         const wantToggle = inp.click(2) || inp.hit('KeyF');
         if (wantToggle) {
           if (sc.active) sc.exit();
-          else if (pl.stance === 'stand') this.ui.toast('Mettez-vous en position', this.touch ? 'Accroupi ou couché pour épauler' : 'Accroupi (C) ou couché (X) pour épauler', 2.2);
+          else if (pl.stance === 'stand' && !(this.online && this.data.online?.standingScope)) this.ui.toast('Mettez-vous en position', this.touch ? 'Accroupi ou couché pour épauler' : 'Accroupi (C) ou couché (X) pour épauler', 2.2);
           else { sc.enter(pl.yaw, pl.pitch); this.audio.cloth(0.5); }
         }
-        if (sc.active && (inp.wantsMove || inp.hit('KeyC') || inp.hit('KeyX'))) sc.exit();
+        if (sc.active && !pl.locked && (inp.wantsMove || inp.hit('KeyC') || inp.hit('KeyX'))) sc.exit();
         if (sc.active) {
-          if (inp.click(0)) this.fire();
-          if (inp.hit('KeyT')) {
+          if (inp.click(0) && !this.online?.holdFire?.()) this.fire();
+          if (inp.hit('KeyT') && !this.online) {
             if (this.difficulty === 'real') this.ui.toast('Pas de télémètre', 'Estimez la distance au réticule : taille (m) × 1000 ÷ mils', 3);
             else { this.range = this.losDistance(pl.eye(this.v1), sc.lineOfSight(this.v2), MUZZLE_CLEAR); this.rangeT = 8; this.audio.rangefinder(); this.tutoRanged = true; this.coachRange = { v: this.range, step: this.mission.step.id }; }
           }
-        } else if (inp.click(0)) this.ui.toast('Épaulez d’abord', 'Clic droit, accroupi ou couché', 1.8);
+        } else if (inp.click(0) && !this.online) this.ui.toast('Épaulez d’abord', 'Clic droit, accroupi ou couché', 1.8);
         if (inp.hit('KeyR')) this.rifle.reload();
-        if (inp.hit('KeyE') && this.rackDist() < 3.6) { sc.exit(); this.ui.openRack(this.rifle.def.id); this.audio.ui('page'); this.setState('rack'); }
-        if (inp.hit('Tab')) { this.ui.openBook(this.bookData(this.rifle.def), this.mission.log, this.rifle.elevMil, this.rifle.windMil); this.audio.ui('page'); this.setState('book'); }
-        if (inp.hit('KeyB')) { sc.exit(); this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, null); this.setState('brief'); }
+        if (inp.hit('KeyE') && !this.online && this.rackDist() < 3.6) { sc.exit(); this.ui.openRack(this.rifle.def.id); this.audio.ui('page'); this.setState('rack'); }
+        if (inp.hit('Tab') && !(this.online && !this.data.online?.logbook)) { this.ui.openBook(this.bookData(this.rifle.def), this.mission.log, this.rifle.elevMil, this.rifle.windMil); this.audio.ui('page'); this.setState('book'); }
+        if (inp.hit('KeyB') && !this.online) { sc.exit(); this.ui.setBrief(this.mission.step, this.mission.index, this.difficulty, null); this.setState('brief'); }
         if (inp.hit('KeyH')) this.showFps = !this.showFps;
         if (inp.hit('KeyP')) this.skipTutorial();
         if (inp.hit('Enter') || inp.hit('NumpadEnter')) { if (this.coach.visible) this.closeCoach(); else if (this.coachBtnEl?.visible) this.reopenCoach(); }
       }
       pl.update(dt, inp, sc.active);
       const stab = pl.stance === 'prone' ? 1 : pl.supported ? 1.9 : 4.2;
-      sc.update(dt, inp, this.rifle, pl.heartRate, stab);
+      // en ligne sans pouls (`data.online.pulse` faux) : un rythme nul éteint les battements et l'effet de l'effort
+      sc.update(dt, inp, this.rifle, this.online && !this.data.online?.pulse ? 0 : pl.heartRate, stab);
       if (sc.active) { pl.yaw = sc.yaw; pl.pitch = sc.pitch; }
       this.rifle.update(dt);
       // caméra
@@ -1325,7 +1362,7 @@ export class Game {
       } else {
         pl.applyCamera(cam, dtReal, false, e.view.portrait);
         cam.fov = e.view.baseFov;
-        e.setNear(0.2);
+        e.setNear(this.data.render.nearEye ?? 0.2);
         this.nearT = 0;
       }
       cam.updateProjectionMatrix();
@@ -1364,6 +1401,7 @@ export class Game {
     this.mission.update(dt);
     // mécaniques propres à la carte (série chronométrée, bonus, fenêtre de tir, changement d'étage) : src/levels/runtime.ts
     if (this.scene.frame) this.scene.frame(this.runtime(dt));
+    if (this.online) this.online.frame(dt, dtReal);
     this.sky.follow(cam.position);
     const off = e.atmosphere.u('uWindOff').value;
     off.x -= this.wind.dir.x * this.wind.speedNow * dt * 3;
@@ -1441,7 +1479,7 @@ export class Game {
     // sons propres à la carte (véhicule, drone…) et activité de la foule
     const marketActivity = this.scene.audioFrame?.(this.audio) ?? 0;
     this.audio.update(dtReal, {
-      windSpeed: this.ws.speed, gust: this.ws.gust, treeProximity: this.veg.treeProximity(pp.x, pp.z), inScope: inScopeView, heartRate: this.player.heartRate,
+      windSpeed: this.ws.speed, gust: this.ws.gust, treeProximity: this.veg.treeProximity(pp.x, pp.z), inScope: inScopeView, heartRate: this.player.heartRate, heart: !(this.online && !this.data.online?.pulse),
       breath: sc.breath, marketActivity, alarm: this.mission.alarm, timeScale: this.state === 'pause' ? 1 : this.timeScale, menu: this.state === 'menu',
     });
 
@@ -1495,7 +1533,7 @@ export class Game {
     if (tuto && tuto.active) {
       if (this.state !== 'pause' && this.state !== 'brief' && !this.blocked) this.updateTutorial(tuto, dtReal, inScopeView);
       // étape « changer d'arme » : la boussole mène au râtelier
-      if (tuto.stepId === 'rack' && !tuto.view?.done) {
+      if (tuto.stepId === 'rack' && !tuto.view?.done && rack) {
         const g = this.guide;
         const dx = rack.x - pl.pos.x, dz = rack.z - pl.pos.z;
         g.x = rack.x; g.z = rack.z; g.dist = Math.hypot(dx, dz); g.bearing = Math.atan2(dx, -dz); g.hint = ''; g.label = 'Râtelier'; g.arrived = g.dist < 3.6;
@@ -1563,6 +1601,7 @@ export class Game {
       }
       this.groundGuide.update(dtReal, show ? gs : null);
     }
+    if (this.online) this.online.hud(h);
     this.ui.hud(h, dtReal);
     // --- commandes tactiles ---
     if (this.touchCtl) {
@@ -1584,8 +1623,32 @@ export class Game {
       f.portrait = e.view.portrait;
       // chargeur vide en lunette : le bouton Recharger s'éclaire (en portrait, pas d'invite sur le champ)
       if (sc.active && !r.chambered && r.mag === 0 && r.reloadT <= 0 && r.boltT <= 0) f.halo = [...f.halo, 'reload'];
+      this.online?.touchFrame?.(f);
       this.touchCtl.update(f);
     }
+  }
+
+  // ------------------------------------------------------------------ prêts au mode en ligne (OnlineHost)
+  /** Télécharge et construit la carte, puis lance la boucle de jeu ; sans effet si c'est déjà fait ou en cours. */
+  async loadMap(): Promise<void> {
+    if (this.ready || this.loading) return;
+    this.loading = true;
+    await this.load();
+  }
+  /** Ajoute une cible en cours de partie : scène, liste des cibles, vol des balles. */
+  addTarget(t: Target): void {
+    this.targets.set(t.id, t);
+    this.engine.scene.add(t.group);
+    this.shots.targets = [...this.targets.values()];
+  }
+  removeTarget(t: Target): void {
+    if (this.targets.get(t.id) === t) this.targets.delete(t.id);
+    this.engine.scene.remove(t.group);
+    this.shots.targets = [...this.targets.values()];
+  }
+  /** Écran noir qui se lève : après un déplacement instantané du joueur. */
+  fadeIn(): void {
+    this.fade = 1;
   }
 
   private rt: LevelRuntime | null = null;
@@ -1611,6 +1674,8 @@ export class Game {
   /** distance du joueur au râtelier (m) */
   private rackDist(): number {
     const r = this.data.site.rack, p = this.player.pos;
+    // carte sans râtelier : il est hors d'atteinte
+    if (!r) return Infinity;
     return Math.hypot(p.x - r.x, p.z - r.z);
   }
 

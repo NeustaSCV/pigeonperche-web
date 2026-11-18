@@ -14,7 +14,10 @@ export interface ScoreEntry {
   /** date d'inscription, ISO 8601 (UTC) */
   date: string;
 }
-export type ScoreBoards = Record<ScoreLevel, ScoreEntry[]>;
+/** carte hors classement (mode en ligne) : absente de `SCORE_LEVELS`, aucun score n'y est inscrit ni affiché */
+export type UnrankedLevel = 'ville';
+/** un tableau par carte classée ; une carte hors classement n'en a pas */
+export type ScoreBoards = Record<ScoreLevel, ScoreEntry[]> & Partial<Record<UnrankedLevel, ScoreEntry[]>>;
 /** résultat d'une mission, avant inscription */
 export type ScoreResult = Omit<ScoreEntry, 'name' | 'date'>;
 

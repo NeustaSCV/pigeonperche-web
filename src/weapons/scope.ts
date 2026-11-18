@@ -37,6 +37,8 @@ export class Scope {
   /** facteur de stabilité de la posture (1 = couché sur bipied) */
   stability = 1;
   blackout = 0;
+  /** vrai : Maj (gauche ou droite) + flèche tourne 1 mrad sur les deux tourelles (carte en ligne qui le déclare). Faux en solo. */
+  coarseBoth = false;
   /** décalage de l'œil derrière l'oculaire (ombre de lunette) */
   eyeX = 0;
   eyeY = 0;
@@ -81,11 +83,13 @@ export class Scope {
         const z = Math.min(b, Math.max(a, rifle.zoom * (input.wheel < 0 ? 1.18 : 1 / 1.18)));
         rifle.zoom = z;
       }
-      const fine = input.down('ShiftRight') ? 10 : 1;
+      // Maj droite : 1 mrad d'un coup en élévation ; avec `coarseBoth`, l'une ou l'autre Maj, sur les deux tourelles
+      const fine = input.down('ShiftRight') || (this.coarseBoth && input.down('ShiftLeft')) ? 10 : 1;
+      const fineW = this.coarseBoth ? fine : 1;
       if (input.hit('ArrowUp')) rifle.clickElev(fine);
       if (input.hit('ArrowDown')) rifle.clickElev(-fine);
-      if (input.hit('ArrowRight')) rifle.clickWind(1);
-      if (input.hit('ArrowLeft')) rifle.clickWind(-1);
+      if (input.hit('ArrowRight')) rifle.clickWind(fineW);
+      if (input.hit('ArrowLeft')) rifle.clickWind(-fineW);
       // commandes tactiles : clics de tourelle et grossissement
       if (input.enabled) {
         if (input.elevDelta !== 0) rifle.clickElev(input.elevDelta);

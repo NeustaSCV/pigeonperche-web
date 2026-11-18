@@ -9,6 +9,8 @@ import type { Terrain } from '../world/terrain';
 import { CharacterMesh, defaultPose, type Stance } from './character';
 import type { Surface } from '../audio/types';
 
+/** hauteur de l'œil derrière la lunette, debout (m) : seulement sur une carte qui épaule debout (`Player.standingEye`) */
+export const STAND_EYE = 1.6;
 /** caméra à l'épaule en portrait : recul (facteur), décalage latéral et hauteur du pivot au-dessus de la tête (m) */
 const PORTRAIT_CAM = { dist: 1.12, side: 0.56, lift: 0.38 };
 
@@ -39,6 +41,15 @@ export class Player {
   moving = false;
   /** appui disponible (mur à portée) pour le tir accroupi */
   supported = false;
+  /** joueur fixé à sa place : ni déplacement ni changement de posture ; le regard reste libre. Faux en solo. */
+  locked = false;
+  /** appui forcé, quelle que soit la posture et sans mur à portée (`supported` reste vrai). Faux en solo. */
+  braced = false;
+  /**
+   * la lunette s'épaule aussi debout (`data.online.standingScope`) : l'œil est alors à 1,6 m au-dessus des pieds, à
+   * l'aplomb du tireur quel que soit son regard. Faux en solo, où l'on n'épaule qu'accroupi ou couché.
+   */
+  standingEye = false;
   surface: Surface = 'grass';
   group = new Group();
   char: CharacterMesh;
@@ -85,9 +96,11 @@ export class Player {
   update(dt: number, input: Input, inScope: boolean): void {
     // --- postures ---
     if (!inScope) {
-      if (input.hit('KeyC')) this.setStance(this.stance === 'crouch' ? 'stand' : 'crouch');
-      if (input.hit('KeyX') || input.hit('ControlLeft')) this.setStance(this.stance === 'prone' ? 'crouch' : 'prone');
-      if (input.hit('Space')) this.setStance(this.stance === 'prone' ? 'crouch' : 'stand');
+      if (!this.locked) {
+        if (input.hit('KeyC')) this.setStance(this.stance === 'crouch' ? 'stand' : 'crouch');
+        if (input.hit('KeyX') || input.hit('ControlLeft')) this.setStance(this.stance === 'prone' ? 'crouch' : 'prone');
+        if (input.hit('Space')) this.setStance(this.stance === 'prone' ? 'crouch' : 'stand');
+      }
       const sens = 0.0022;
       this.yaw += input.dx * sens;
       this.pitch = Math.min(1.2, Math.max(-1.25, this.pitch - input.dy * sens));
@@ -98,7 +111,7 @@ export class Player {
 
     // --- déplacement ---
     let fx = 0, fz = 0;
-    if (!inScope) {
+    if (!inScope && !this.locked) {
       if (input.down('KeyW') || input.down('ArrowUp')) fz += 1;
       if (input.down('KeyS') || input.down('ArrowDown')) fz -= 1;
       if (input.down('KeyD') || input.down('ArrowRight')) fx += 1;
@@ -193,8 +206,8 @@ export class Player {
     this.heartRate = damp(this.heartRate, effort, effort > this.heartRate ? 0.22 : 0.055, dt);
 
     // --- appui : un mur à moins de 0,95 m ---
-    this.supported = false;
-    if (this.stance === 'crouch') {
+    this.supported = this.braced;
+    if (!this.braced && this.stance === 'crouch') {
       for (const s of this.col.segs) {
         const dx = s.bx - s.ax, dz = s.bz - s.az;
         let t = ((this.pos.x - s.ax) * dx + (this.pos.z - s.az) * dz) / (dx * dx + dz * dz);
@@ -219,6 +232,7 @@ export class Player {
 
   /** Position de l'œil derrière la lunette. */
   eye(out: Vector3): Vector3 {
+    if (this.standingEye && this.stance === 'stand') return out.set(this.pos.x, this.pos.y + STAND_EYE, this.pos.z);
     const h = this.stance === 'prone' ? 0.27 : this.supported ? 1.16 : 1.12;
     const f = this.stance === 'prone' ? 0.3 : this.supported ? 0.55 : 0.34;
     return out.set(this.pos.x + Math.sin(this.yaw) * f, this.pos.y + h, this.pos.z - Math.cos(this.yaw) * f);

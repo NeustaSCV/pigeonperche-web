@@ -3,14 +3,17 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { AudioEngine } from '../src/audio/engine';
 import { SAMPLE_FILES, SampleBank, parseWav, type Pcm, type SampleName } from '../src/audio/samples';
 import { bakeShot } from '../src/audio/shot-bake';
 import { SR, bq } from '../src/audio/shot-dsp';
 import { DEFAULT_ECHO, MAX_ECHO_TAPS, echoPan, echoTaps, shotSound } from '../src/audio/shot-params';
+import { Kit } from '../src/audio/synth';
 import { WEAPONS, weaponById } from '../src/config/weapons';
 import { ECHO as ECHO_AVANCE } from '../src/levels/avance/map';
 import { ECHO as ECHO_FACILE } from '../src/levels/facile/map';
 import { ECHO as ECHO_STANDARD } from '../src/levels/standard/map';
+import { DIVERSION_COUNT, OnlineSounds, SOUND_SPEED, VOICE_COUNT, chime, chimes, dryShot, farShot, farShotKey, farVoice, turretTick, whip } from '../src/online/sounds';
 
 const DIR = join('public', 'assets', 'audio');
 const file = (name: SampleName): ArrayBuffer => {
@@ -305,5 +308,288 @@ describe('écho des cartes', () => {
     expect(echoPan(90, 0, 1)).toBeLessThan(-0.8); // face au sud : à gauche
     expect(Math.abs(echoPan(90, 1, 0))).toBeLessThan(1e-9); // face à l'est : devant
     expect(echoPan(90, 0, 0)).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Mode en ligne : `AudioEngine.playBuffer`, accès au tir cuit, recettes de src/online/sounds.ts
+// ---------------------------------------------------------------------------------------------------------------
+
+/** Doublure du graphe audio : nœuds qui notent leurs branchements, sources qui notent leur instant de départ. */
+function fakeEngine(state = 'running') {
+  const started: any[] = [];
+  const node = (kind: string, extra: object = {}): any => {
+    const n: any = { kind, to: [] as any[], connect(d: any) { n.to.push(d); }, disconnect() { n.to.length = 0; }, ...extra };
+    return n;
+  };
+  const ctx: any = {
+    state, currentTime: 12.5, sampleRate: 48000,
+    createBuffer(ch: number, len: number, sr: number) {
+      const d = Array.from({ length: ch }, () => new Float32Array(len));
+      return { numberOfChannels: ch, length: len, sampleRate: sr, getChannelData: (c: number) => d[c] };
+    },
+    createBufferSource() { const s = node('source', { buffer: null, start(t: number) { s.at = t; started.push(s); } }); return s; },
+    createGain: () => node('gain', { gain: { value: 1 } }),
+    createStereoPanner: () => node('pan', { pan: { value: 0 } }),
+  };
+  const graph = { ctx, k: new Kit(ctx, {} as any), sfx: node('sfx'), world: node('world'), ui: node('ui'), shotBus: node('shotBus') };
+  const engine = new AudioEngine();
+  (engine as any).n = graph;
+  /** chaîne d'un son joué : source → gain → (panoramique) → bus */
+  const chain = (s: any) => {
+    const gain = s.to[0], next = gain.to[0];
+    const pan = next.kind === 'pan' ? next : null;
+    return { gain: gain.gain.value as number, pan: pan ? (pan.pan.value as number) : 0, bus: (pan ? pan.to[0] : next).kind as string, delay: s.at - ctx.currentTime, buffer: s.buffer };
+  };
+  return { engine, ctx, started, chain };
+}
+
+describe('AudioEngine.playBuffer', () => {
+  const l = Float32Array.from({ length: 480 }, (_, i) => Math.sin(i / 7)), r = Float32Array.from({ length: 480 }, (_, i) => Math.cos(i / 5));
+
+  it('ne joue rien tant que le moteur n’est pas démarré, ou qu’il est suspendu', () => {
+    expect(new AudioEngine().playBuffer(l, r)).toBe(false);
+    const f = fakeEngine('suspended');
+    expect(f.engine.playBuffer(l, r, { delay: 2 })).toBe(false);
+    expect(f.started.length).toBe(0);
+    const ok = fakeEngine();
+    expect(ok.engine.playBuffer(new Float32Array(0), new Float32Array(0))).toBe(false);
+    expect(ok.engine.playBuffer(l, r.subarray(0, 100))).toBe(false);
+  });
+
+  it('copie les deux voies dans un tampon à 48 kHz, et par défaut joue tout de suite, au centre, sur le bus du joueur', () => {
+    const f = fakeEngine();
+    expect(f.engine.playBuffer(l, r)).toBe(true);
+    const c = f.chain(f.started[0]);
+    expect(c.buffer.sampleRate).toBe(SR);
+    expect(c.buffer.numberOfChannels).toBe(2);
+    expect(Array.from(c.buffer.getChannelData(0))).toEqual(Array.from(l));
+    expect(Array.from(c.buffer.getChannelData(1))).toEqual(Array.from(r));
+    expect([c.delay, c.pan, c.gain, c.bus]).toEqual([0, 0, 1, 'sfx']);
+  });
+
+  it('applique le retard, le placement, le niveau et le bus demandés', () => {
+    const f = fakeEngine();
+    f.engine.playBuffer(l, r, { delay: 2.94, pan: -0.6, gain: 0.85, bus: 'shot' });
+    f.engine.playBuffer(l, r, { delay: 0.5, pan: 0.3, bus: 'world' });
+    f.engine.playBuffer(l, r, { bus: 'ui' });
+    const [a, b, c] = f.started.map(f.chain);
+    expect(a.delay).toBeCloseTo(2.94, 9);
+    expect([a.pan, a.gain, a.bus]).toEqual([-0.6, 0.85, 'shotBus']);
+    expect(b.delay).toBeCloseTo(0.5, 9);
+    expect([b.pan, b.bus]).toEqual([0.3, 'world']);
+    expect(c.bus).toBe('ui');
+    // le même son rejoué ne recopie pas ses échantillons
+    expect(b.buffer).toBe(a.buffer);
+  });
+
+  it('borne le placement et refuse un retard négatif ou invalide', () => {
+    const f = fakeEngine();
+    f.engine.playBuffer(l, r, { pan: 3, delay: -1 });
+    f.engine.playBuffer(l, r, { pan: -7, delay: NaN });
+    const [a, b] = f.started.map(f.chain);
+    expect([a.pan, a.delay]).toEqual([1, 0]);
+    expect([b.pan, b.delay]).toEqual([-1, 0]);
+  });
+
+  it('donne accès au tir cuit que joue shot(), sans changer l’arme du joueur', () => {
+    const f = fakeEngine();
+    const mine = weaponById('308'), other = weaponById('375ct');
+    f.engine.prepareShot(mine);
+    const b = f.engine.bakedShot(other);
+    expect(b.sound.id).toBe('375ct');
+    expect(b.l.length).toBe(b.r.length);
+    expect(f.engine.bakedShot(other)).toBe(b);
+    expect((f.engine as any).lastWeapon).toBe(mine);
+  });
+});
+
+describe('sons du mode en ligne', () => {
+  const VOIX = join('public', 'ville', 'voix');
+  const voice = (i: number): Pcm => {
+    const b = readFileSync(join(VOIX, `voix-${String(i).padStart(2, '0')}.wav`));
+    return parseWav(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer) as Pcm;
+  };
+  const pk = (x: Float32Array): number => { let m = 0; for (let i = 0; i < x.length; i++) m = Math.max(m, Math.abs(x[i])); return m; };
+  /** part de l'énergie au-dessus de `f` Hz */
+  const above = (x: Float32Array, f: number): number => rms(bq(bq(x, 'highpass', f, 0.7), 'highpass', f, 0.7)) / rms(x);
+  const dry = dryShot(bakeShot(S('375ct'), parseWav(file('magnum'))));
+
+  it('les dix voix sont là, lisibles, à la cadence des tampons', () => {
+    expect(readdirSync(VOIX).filter((n) => n.endsWith('.wav')).length).toBe(VOICE_COUNT);
+    for (let i = 1; i <= VOICE_COUNT; i++) {
+      const p = voice(i);
+      expect(p, `voix ${i}`).not.toBeNull();
+      expect(p.sr).toBe(SR);
+      expect(p.data.length / SR).toBeGreaterThan(0.3);
+      expect(p.data.length / SR).toBeLessThan(1.2);
+    }
+  });
+
+  it('tir lointain : niveau 28 / d (plein à moins de 28 m), aigu retiré par l’air, par tranche de 50 m', () => {
+    expect(dry.length).toBe(Math.round(3.2 * SR));
+    expect([farShotKey(0), farShotKey(60), farShotKey(1234), farShotKey(1976)]).toEqual([50, 50, 1250, 2000]);
+    let prevHigh = Infinity;
+    for (const d of [50, 200, 500, 1000, 2000]) {
+      const s = farShot(dry, d);
+      expect(s.l).toBe(s.r);
+      expect(s.l.length).toBe(dry.length);
+      expect(pk(s.l), `${d} m`).toBeCloseTo(Math.min(1, 28 / d), 5);
+      const high = above(s.l, 1500);
+      expect(high, `${d} m`).toBeLessThan(prevHigh);
+      prevHigh = high;
+      // fin en fondu : pas de claquement à la coupure
+      expect(Math.abs(s.l[s.l.length - 1])).toBeLessThan(1e-4);
+    }
+  });
+
+  it('balle qui passe : un tiers de seconde, d’une oreille à l’autre dans le sens du passage', () => {
+    for (const dir of [1, -1]) {
+      const w = whip(0.34, 600, 2800, 1.8, dir);
+      expect(w.l.length / SR).toBeCloseTo(0.34, 3);
+      const n = w.l.length, head = (x: Float32Array) => rms(x.subarray(0, n >> 1)), tail = (x: Float32Array) => rms(x.subarray(n >> 1));
+      const from = dir > 0 ? w.l : w.r, to = dir > 0 ? w.r : w.l;
+      expect(head(from)).toBeGreaterThan(head(to) * 1.5);
+      // le souffle culmine à 45 % de sa durée, juste avant de passer au centre : la seconde moitié est moins tranchée
+      expect(tail(to)).toBeGreaterThan(tail(from) * 1.2);
+      expect(Math.max(pk(w.l), pk(w.r))).toBeLessThanOrEqual(1);
+      expect(Math.max(pk(w.l), pk(w.r))).toBeGreaterThan(0.5);
+    }
+  });
+
+  it('voix au loin : plus faible et plus sourde avec la distance, une petite réverbération et pas d’écho', () => {
+    const v = voice(3).data;
+    let prev = Infinity;
+    for (const d of [100, 500, 1000, 2000]) {
+      const s = farVoice(v, d);
+      const p = Math.max(pk(s.l), pk(s.r));
+      expect(p, `${d} m`).toBeCloseTo(Math.min(0.8, Math.sqrt(45 / d)), 5);
+      expect(p).toBeLessThan(prev);
+      prev = p;
+      // la réverbération n'allonge la voix que de 0,5 à 0,7 s, et meurt : rien d'audible dans le dernier dixième de seconde
+      const extra = s.l.length / SR - v.length / SR;
+      expect(extra).toBeGreaterThanOrEqual(0.5);
+      expect(extra).toBeLessThanOrEqual(0.71);
+      expect(dB(rms(s.l.subarray(s.l.length - 4800)) / p)).toBeLessThan(-30);
+      // pas d'écho : après la fin de la voix, le niveau ne remonte jamais (fenêtres de 50 ms)
+      const start = v.length + 2400;
+      let last = Infinity;
+      for (let o = start; o + 2400 <= s.l.length; o += 2400) {
+        const e = rms(s.l.subarray(o, o + 2400));
+        expect(e, `${d} m, ${((o - v.length) / SR).toFixed(2)} s après la voix`).toBeLessThan(last * 1.25 + 1e-5);
+        last = e;
+      }
+    }
+    expect(above(farVoice(v, 2000).l, 3000)).toBeLessThan(above(farVoice(v, 100).l, 3000));
+  });
+
+  it('cran de tourelle et repères de manche : niveaux et durées de la maquette', () => {
+    const t = turretTick();
+    expect(pk(t.l)).toBeCloseTo(0.45, 5);
+    expect(t.l.length / SR).toBeLessThan(0.04);
+    expect(pk(chime(660, 0.07, 0.5))).toBeCloseTo(0.5, 5);
+    expect(chime(660, 0.07, 0.5).length / SR).toBeCloseTo(0.35, 3);
+    expect(pk(chime(990, 0.4, 0.8))).toBeCloseTo(0.8, 5);
+    expect(chime(990, 0.4, 0.8).length / SR).toBeCloseTo(2, 3);
+    const a = chimes([392, 523, 659], 0.16, 0.3), z = chimes([659, 523, 392], 0.2, 0.35);
+    expect(a.l.length / SR).toBeCloseTo(1.68, 3);
+    expect(z.l.length / SR).toBeCloseTo(1.8, 3);
+    for (const s of [a, z]) { expect(pk(s.l)).toBeGreaterThan(0.5); expect(pk(s.l)).toBeLessThan(1.3); }
+  });
+
+  describe('lecture par le moteur du solo', () => {
+    afterEach(() => vi.unstubAllGlobals());
+    const withVoices = async () => {
+      const f = fakeEngine();
+      vi.stubGlobal('fetch', vi.fn((url: string) => {
+        const m = /(voix|pet)-(\d\d)\.wav$/.exec(url);
+        // la voix 7 et le son de diversion 4 manquent : ils sont ignorés
+        if (!m || (m[1] === 'voix' && m[2] === '07') || (m[1] === 'pet' && m[2] === '04')) return Promise.resolve({ ok: false, arrayBuffer: () => Promise.resolve(new ArrayBuffer(0)) });
+        const b = readFileSync(m[1] === 'voix' ? join(VOIX, `voix-${m[2]}.wav`) : join(VOIX, '..', 'diversion', `pet-${m[2]}.wav`));
+        return Promise.resolve({ ok: true, arrayBuffer: () => Promise.resolve(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength)) });
+      }));
+      const sounds = new OnlineSounds(f.engine, 'base/ville/voix/', 'base/ville/diversion/');
+      await sounds.load();
+      await sounds.load();
+      return { f, sounds };
+    };
+
+    it('tir d’un autre : retardé de d / 340 s, du côté demandé, sans compresseur ; un rendu par tranche de 50 m', async () => {
+      const f = fakeEngine();
+      const sounds = new OnlineSounds(f.engine, 'x/');
+      const w = weaponById('375ct');
+      expect(SOUND_SPEED).toBe(340);
+      expect(sounds.distantShot(w, 1000, -0.7)).toBe(true);
+      expect(sounds.distantShot(w, 1010, 0.4)).toBe(true);
+      expect(sounds.distantShot(w, 300, 0)).toBe(true);
+      const [a, b, c] = f.started.map(f.chain);
+      expect(a.delay).toBeCloseTo(1000 / 340, 9);
+      expect([a.pan, a.gain, a.bus]).toEqual([-0.7, 1, 'shotBus']);
+      expect(b.delay).toBeCloseTo(1010 / 340, 9);
+      expect(b.buffer).toBe(a.buffer);
+      expect(c.buffer).not.toBe(a.buffer);
+      expect(pk(c.buffer.getChannelData(0))).toBeCloseTo(28 / 300, 5);
+      expect(pk(a.buffer.getChannelData(0))).toBeCloseTo(28 / 1000, 5);
+    });
+
+    it('balle qui passe, cran, repères : joués tels quels ; rien si le moteur est suspendu', async () => {
+      const f = fakeEngine();
+      const sounds = new OnlineSounds(f.engine, 'x/');
+      expect(sounds.bulletPass(1, 0.8)).toBe(true);
+      expect(sounds.bulletPass(-1)).toBe(true);
+      expect(sounds.turretClick() && sounds.roundStart() && sounds.roundEnd() && sounds.countdown() && sounds.countdown(true)).toBe(true);
+      const all = f.started.map(f.chain);
+      expect(all.length).toBe(7);
+      expect(all[0].delay).toBeCloseTo(0.8, 9);
+      expect(all[0].buffer).not.toBe(all[1].buffer);
+      for (const c of all) expect([c.pan, c.gain, c.bus]).toEqual([0, 1, 'shotBus']);
+      const off = fakeEngine('suspended');
+      const mute = new OnlineSounds(off.engine, 'x/');
+      expect(mute.turretClick() || mute.bulletPass(1) || mute.distantShot(weaponById('375ct'), 500, 0)).toBe(false);
+      expect(off.started.length).toBe(0);
+    });
+
+    it('touche : l’une des voix chargées, toute proche pour soi (0,85), au loin pour sa propre touche ; muette sans voix', async () => {
+      const none = new OnlineSounds(fakeEngine().engine, 'x/');
+      expect(none.hitSelf()).toBe(false);
+      expect(none.hitFar(800)).toBe(false);
+      const { f, sounds } = await withVoices();
+      expect((globalThis.fetch as any).mock.calls.length).toBe(VOICE_COUNT + DIVERSION_COUNT);
+      expect((globalThis.fetch as any).mock.calls[0][0]).toBe('base/ville/voix/voix-01.wav');
+      expect(sounds.voiceCount).toBe(VOICE_COUNT - 1);
+      const seen = new Set<number>();
+      for (let i = 0; i < 60; i++) { expect(sounds.hitSelf()).toBe(true); seen.add(f.chain(f.started[f.started.length - 1]).buffer.length); }
+      expect(seen.size).toBeGreaterThan(4);
+      const near = f.chain(f.started[0]);
+      expect([near.delay, near.pan, near.gain, near.bus]).toEqual([0, 0, 0.85, 'shotBus']);
+      expect(sounds.hitFar(900, 0.5)).toBe(true);
+      const far = f.chain(f.started[f.started.length - 1]);
+      expect([far.delay, far.pan, far.gain, far.bus]).toEqual([0, 0.5, 1, 'shotBus']);
+      expect(pk(far.buffer.getChannelData(0))).toBeLessThanOrEqual(Math.sqrt(45 / 900) + 1e-6);
+    });
+
+    it('diversion : le son demandé, tout proche pour soi ; pour un autre, comme une voix au loin, retardé de d / 340 s', async () => {
+      const none = new OnlineSounds(fakeEngine().engine, 'x/', 'y/');
+      expect(none.diversionSelf(1)).toBe(false);
+      expect(none.diversionFar(1, 500)).toBe(false);
+      const { f, sounds } = await withVoices();
+      expect((globalThis.fetch as any).mock.calls.some((c: any[]) => c[0] === 'base/ville/diversion/pet-05.wav')).toBe(true);
+      const n0 = f.started.length;
+      expect(sounds.diversionSelf(2)).toBe(true);
+      const near = f.chain(f.started[n0]);
+      expect([near.delay, near.pan, near.gain, near.bus]).toEqual([0, 0, 0.85, 'shotBus']);
+      // le fichier 4 manque, le 6 n'existe pas : rien
+      expect(sounds.diversionSelf(4) || sounds.diversionFar(4, 300) || sounds.diversionSelf(6) || sounds.diversionSelf(0)).toBe(false);
+      expect(sounds.diversionFar(2, 680, -0.6)).toBe(true);
+      const far = f.chain(f.started[f.started.length - 1]);
+      expect(far.delay).toBeCloseTo(2, 9);
+      expect([far.pan, far.gain, far.bus]).toEqual([-0.6, 1, 'shotBus']);
+      // même traitement que les voix : plus long que le son d'origine (réverbération), niveau qui fond avec la distance
+      expect(far.buffer.length).toBeGreaterThan(near.buffer.length);
+      expect(pk(far.buffer.getChannelData(0))).toBeLessThanOrEqual(Math.sqrt(45 / 680) + 1e-6);
+      // un autre numéro, un autre son
+      expect(sounds.diversionSelf(1)).toBe(true);
+      expect(f.chain(f.started[f.started.length - 1]).buffer.length).not.toBe(near.buffer.length);
+    });
   });
 });

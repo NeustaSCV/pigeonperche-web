@@ -3,7 +3,8 @@
 // livrer une carte : il suffit que sa fiche porte `ready: true`.
 import type { CampaignId, Level, LevelId, LevelMeta } from './types';
 
-export const LEVEL_IDS: LevelId[] = ['facile', 'standard', 'avance', 'fete', 'phare', 'plaine'];
+/** Toutes les cartes. Les six premières forment les campagnes ; `ville` est hors campagne (mode en ligne), on l'ouvre par `?level=ville`. */
+export const LEVEL_IDS: LevelId[] = ['facile', 'standard', 'avance', 'fete', 'phare', 'plaine', 'ville'];
 
 /** Campagnes du menu : trois cartes chacune, de la plus facile à la plus difficile. */
 export const CAMPAIGNS: { id: CampaignId; title: string; levels: LevelId[] }[] = [
@@ -20,6 +21,7 @@ const SOON: Record<LevelId, LevelMeta> = {
   fete: { id: 'fete', title: 'Facile', name: 'La Fête foraine', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'assist', ready: false },
   phare: { id: 'phare', title: 'Standard', name: 'Le Phare', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'standard', ready: false },
   plaine: { id: 'plaine', title: 'Avancé', name: 'Le Château d’eau', campaign: 'lieux', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'real', ready: false },
+  ville: { id: 'ville', title: 'Ville nouvelle', tagline: 'Tir de précision', note: 'À venir.', difficulty: 'standard', ready: false },
 };
 
 const metas = import.meta.glob<{ meta: LevelMeta }>('./*/meta.ts', { eager: true });

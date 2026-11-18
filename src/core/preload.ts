@@ -12,12 +12,14 @@ export interface PreloadPlan {
   terrainDir: string;
   /** fichier du ciel pour la qualité choisie */
   sky: string;
+  /** fichiers de la carte à la place de ceux du relief d'origine (`data.preload`), chemins relatifs à public/ */
+  files?: string[];
 }
 
 /** Adresses à précharger, dans l'ordre où le chargement de la carte les demandera : relief, ciel, puis le reste. */
 export function preloadList(plan: PreloadPlan): string[] {
   const t = `terrain/${plan.terrainDir}/`;
-  return [t + 'meta.json', t + 'height.bin', t + 'splat.bin', 'assets/sky/' + plan.sky, ...COMMON];
+  return [...(plan.files ?? [t + 'meta.json', t + 'height.bin', t + 'splat.bin']), 'assets/sky/' + plan.sky, ...COMMON];
 }
 
 /** Connexion comptée (économie de données demandée, réseau mobile lent) : on ne télécharge rien d'avance. */

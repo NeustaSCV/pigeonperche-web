@@ -183,3 +183,94 @@ describe('physique avancée : le tir réel suit firingSolution', () => {
     expect(Math.abs(tof - r.tof)).toBeLessThan(0.005);
   });
 });
+
+describe('Shots.trace : la trajectoire d’un tir sans le tirer', () => {
+  // le tir réel (`fire` puis `update`) et sa trace, jusqu'à un plan à `range` m ; même arme, même vent
+  const both = (id: string, range: number, windSpeed: number, physics = NEUTRAL) => {
+    const def = weaponById(id);
+    const eye = new Vector3(40, 300, -15);
+    const b = (35 * Math.PI) / 180, p = -0.03;
+    const los = new Vector3(Math.sin(b) * Math.cos(p), Math.sin(p), -Math.cos(b) * Math.cos(p));
+    const sol = firingSolution(def, { range, heightDiff: Math.sin(p) * range, air: GAME_AIR, sightHeight: SIGHT_HEIGHT })!;
+    const shots = new Shots(flatTerrain, noColliders, steadyWind(windSpeed, 300), {} as any, { waterLevel: null, alertZone: null, physics });
+    const target = plane(eye, los, range);
+    const onHit = vi.fn(target.onHit);
+    target.onHit = onHit;
+    shots.targets = [target];
+    const impacts: ImpactReport[] = [];
+    shots.onImpact = (r) => impacts.push(r);
+    // la trace d'abord : elle ne doit rien laisser derrière elle
+    const origin = new Vector3(eye.x, eye.y - SIGHT_HEIGHT, eye.z);
+    const bore = boreDirection(los, def, sol.elevMil, 0.3, new Vector3());
+    const tr = shots.trace(origin, bore, def, 12);
+    expect(impacts.length).toBe(0);
+    expect(onHit).not.toHaveBeenCalled();
+    expect(shots.bullets.length).toBe(0);
+    expect(shots.targets).toEqual([target]);
+    shots.fire(eye, los, def, sol.elevMil, 0.3, false);
+    for (let i = 0; i < 2000 && !impacts.length; i++) shots.update(1 / 100);
+    return { tr, real: impacts[0], target, shots, origin, bore, def };
+  };
+
+  for (const [id, range] of [['375ct', 1000], ['375ct', 2000], ['338lm300', 1000], ['33xc', 2000]] as [string, number][]) {
+    for (const windSpeed of [0, 6]) {
+      it(`${id} à ${range} m, vent ${windSpeed} m/s : même point d’arrivée et même temps de vol que le tir réel`, () => {
+        const { tr, real, target } = both(id, range, windSpeed);
+        expect(real).toBeTruthy();
+        expect(tr.hit).toBe(true);
+        expect(tr.target).toBe(target);
+        const k = (tr.n - 1) * 4;
+        const end = new Vector3(tr.pts[k], tr.pts[k + 1], tr.pts[k + 2]);
+        expect(end.distanceTo(real.point)).toBeLessThan(1e-6);
+        expect(Math.abs(tr.tof - real.tof)).toBeLessThan(1e-9);
+        expect(tr.pts[k + 3]).toBe(tr.tof);
+        expect(real.distance).toBeGreaterThan(range - 2);
+      });
+    }
+  }
+
+  it('le vent pèse réellement sur la trace, comme sur le tir', () => {
+    const calm = both('375ct', 2000, 0), windy = both('375ct', 2000, 6);
+    const end = (t: typeof calm.tr) => new Vector3(t.pts[(t.n - 1) * 4], t.pts[(t.n - 1) * 4 + 1], t.pts[(t.n - 1) * 4 + 2]);
+    expect(end(calm.tr).distanceTo(end(windy.tr))).toBeGreaterThan(1);
+  });
+
+  it('suit aussi le vol avancé du niveau (Coriolis, dérive gyroscopique, densité), hors saut aérodynamique', () => {
+    const { tr, real } = both('375ct', 2000, 0, { ...FULL, aeroJump: false });
+    const k = (tr.n - 1) * 4;
+    expect(new Vector3(tr.pts[k], tr.pts[k + 1], tr.pts[k + 2]).distanceTo(real.point)).toBeLessThan(1e-6);
+    expect(Math.abs(tr.tof - real.tof)).toBeLessThan(1e-9);
+  });
+
+  it('donne un point par centième de seconde, du départ au point d’arrêt, sur la trajectoire du tir réel', () => {
+    const { tr, shots, origin, bore, def } = both('375ct', 1000, 6);
+    expect([tr.pts[0], tr.pts[1], tr.pts[2], tr.pts[3]]).toEqual([origin.x, origin.y, origin.z, 0]);
+    for (let i = 1; i < tr.n - 1; i++) expect(tr.pts[i * 4 + 3]).toBeCloseTo(i / 100, 5);
+    expect(tr.pts[(tr.n - 1) * 4 + 3] - tr.pts[(tr.n - 2) * 4 + 3]).toBeLessThanOrEqual(0.01 + 1e-6);
+    // point intermédiaire : la balle réelle, 0,5 s après le départ (sans cible sur le chemin)
+    shots.targets = [];
+    const eye = new Vector3(origin.x, origin.y + SIGHT_HEIGHT, origin.z);
+    const los = new Vector3(Math.sin((35 * Math.PI) / 180) * Math.cos(-0.03), Math.sin(-0.03), -Math.cos((35 * Math.PI) / 180) * Math.cos(-0.03));
+    const sol = firingSolution(def, { range: 1000, heightDiff: Math.sin(-0.03) * 1000, air: GAME_AIR, sightHeight: SIGHT_HEIGHT })!;
+    expect(boreDirection(los, def, sol.elevMil, 0.3, new Vector3()).distanceTo(bore)).toBe(0);
+    const b = shots.fire(eye, los, def, sol.elevMil, 0.3, false);
+    shots.update(200 / 400 + 1e-9);
+    expect(b.s.t).toBeCloseTo(0.5, 9);
+    expect(Math.hypot(tr.pts[50 * 4] - b.s.x, tr.pts[50 * 4 + 1] - b.s.y, tr.pts[50 * 4 + 2] - b.s.z)).toBeLessThan(1e-3);
+  });
+
+  it('s’arrête à maxT sans obstacle, et ne heurte pas la cible à ignorer', () => {
+    const { shots, origin, bore, def, target } = both('375ct', 1000, 0);
+    const cut = shots.trace(origin, bore, def, 0.4);
+    expect(cut.hit).toBe(false);
+    expect(cut.target).toBeNull();
+    expect(cut.tof).toBeCloseTo(0.4, 6);
+    expect(cut.n).toBe(41);
+    const free = shots.trace(origin, bore, def, 3, target);
+    expect(free.hit).toBe(false);
+    expect(free.tof).toBeCloseTo(3, 6);
+    // la liste des cibles du jeu est rendue intacte
+    expect(shots.targets).toEqual([target]);
+    expect(shots.trace(origin, bore, def, 3).hit).toBe(true);
+  });
+});

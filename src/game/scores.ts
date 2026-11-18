@@ -3,7 +3,7 @@
 // - « local » : pas d'API (site servi en statique simple, hors ligne) ; les scores restent dans le navigateur
 //   (localStorage), sur cet appareil seulement.
 // Rien ici ne lève d'erreur : stockage indisponible (navigation privée), données abîmées ou réseau coupé sont tolérés.
-import { DEFAULT_NAME, SCORE_LEVELS, addEntry, cleanName, emptyBoards, normalizeBoards, normalizeEntry, parseBoards, serializeBoards, type ScoreBoards, type ScoreEntry, type ScoreLevel, type ScoreResult } from '../shared/scores-core.mjs';
+import { DEFAULT_NAME, SCORE_LEVELS, addEntry, cleanName, emptyBoards, normalizeBoards, normalizeEntry, parseBoards, serializeBoards, type ScoreBoards, type ScoreEntry, type ScoreLevel, type ScoreResult, type UnrankedLevel } from '../shared/scores-core.mjs';
 
 export * from '../shared/scores-core.mjs';
 
@@ -105,7 +105,10 @@ export class ScoreService {
   }
 
   /** Inscrit un score sous `name`. En ligne : au serveur ; s'il ne répond plus, ou hors ligne : dans le navigateur. */
-  async submit(level: ScoreLevel, result: ScoreResult, rawName: string): Promise<SubmitOutcome> {
+  async submit(asked: ScoreLevel | UnrankedLevel, result: ScoreResult, rawName: string): Promise<SubmitOutcome> {
+    // carte hors classement (mode en ligne) : rien n'est inscrit, ni au serveur ni dans le navigateur
+    const level = SCORE_LEVELS.find((l) => l === asked);
+    if (!level) return { status: 'refused', message: 'Cette carte n’a pas de classement.' };
     const name = cleanName(rawName) || DEFAULT_NAME;
     this.set(NAME_KEY, name);
     if (this.online) {

@@ -80,6 +80,21 @@ interface Baked {
   buffer: AudioBuffer | null;
 }
 
+/**
+ * Bus de sortie d'un tampon joué par `playBuffer` : `sfx` (joueur), `world` (monde) et `ui` passent par le compresseur
+ * et le limiteur de sortie ; `shot` rejoint directement le volume, comme le coup de feu.
+ */
+export type BufferBus = 'sfx' | 'world' | 'ui' | 'shot';
+export interface PlayBufferOpts {
+  /** retard avant le début du son, s */
+  delay?: number;
+  /** placement : −1 à gauche … 1 à droite */
+  pan?: number;
+  gain?: number;
+  /** défaut : `sfx` */
+  bus?: BufferBus;
+}
+
 const STEEL: ReadonlyArray<readonly [number, number, number]> = [
   [1, 1.5, 1],
   [1.006, 1.3, 0.5],
@@ -119,6 +134,8 @@ export class AudioEngine implements IAudioEngine {
   private samples = new SampleBank();
   private sampleBufs = new Map<SampleName, AudioBuffer>();
   private bakes = new Map<string, Baked>();
+  /** tampons de `playBuffer`, par voie gauche */
+  private pcmBufs = new WeakMap<Float32Array, { r: Float32Array; buf: AudioBuffer }>();
   private lastWeapon: ShotSource | null = null;
 
   private lx = 0;
@@ -297,6 +314,61 @@ export class AudioEngine implements IAudioEngine {
         g.setTargetAtTime(1, now + 0.18 + 0.35 * duck, 0.5 + 1.3 * duck);
       }
     });
+  }
+
+  /**
+   * Tir cuit de l'arme sur la carte en cours (tampon stéréo à 48 kHz, shot-bake.ts) : celui que joue `shot()`.
+   * Pour en dériver un autre son (tir entendu de loin) ; l'objet rendu change quand le tir est recuit.
+   */
+  bakedShot(w: ShotSource): BakedShot {
+    // `baked` note l'arme pour la recuire à l'arrivée de son enregistrement : celle du joueur doit le rester
+    const keep = this.lastWeapon;
+    const b = this.baked(w);
+    if (keep) this.lastWeapon = keep;
+    return b.shot;
+  }
+
+  /**
+   * Joue un tampon stéréo déjà calculé (48 kHz, comme ceux de shot-dsp.ts) : après `delay` secondes, placé à `pan`,
+   * au niveau `gain`, sur le bus `bus`. Renvoie faux si rien n'est joué (moteur arrêté ou suspendu, tampon vide).
+   */
+  playBuffer(l: Float32Array, r: Float32Array, o: PlayBufferOpts = {}): boolean {
+    const n = this.n;
+    if (!n || n.ctx.state !== 'running' || !l.length || r.length !== l.length) return false;
+    try {
+      const ctx = n.ctx;
+      let c = this.pcmBufs.get(l);
+      if (!c || c.r !== r) {
+        const buf = ctx.createBuffer(2, l.length, SR);
+        buf.getChannelData(0).set(l);
+        buf.getChannelData(1).set(r);
+        c = { r, buf };
+        this.pcmBufs.set(l, c);
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = c.buf;
+      const gn = n.k.gain(finite(o.gain ?? 1, 1));
+      src.connect(gn);
+      const pan = clamp(finite(o.pan ?? 0, 0), -1, 1);
+      const pn = pan !== 0 ? n.k.pan(pan) : null;
+      if (pn) gn.connect(pn);
+      const bus = o.bus ?? 'sfx';
+      (pn ?? gn).connect(bus === 'shot' ? n.shotBus : bus === 'world' ? n.world : bus === 'ui' ? n.ui : n.sfx);
+      src.onended = () => {
+        try {
+          src.disconnect();
+          gn.disconnect();
+          pn?.disconnect();
+        } catch {
+          /* déjà déconnecté */
+        }
+      };
+      src.start(ctx.currentTime + Math.max(0, finite(o.delay ?? 0, 0)));
+      return true;
+    } catch (e) {
+      n.k.warn(e);
+      return false;
+    }
   }
 
   /** Tampon du tir de l'arme : cuit à la première demande, recuit si l'attaque enregistrée est arrivée entre-temps. */
@@ -901,7 +973,7 @@ export class AudioEngine implements IAudioEngine {
     k.set(n.breathF.frequency, bf, 0.05);
 
     // cœur : lub-dub programmé avec une courte avance
-    const hl = scope ? (held ? 0.6 : gasp ? 0.45 : 0.28) + 0.15 * effort : 0;
+    const hl = scope && s.heart !== false ? (held ? 0.6 : gasp ? 0.45 : 0.28) + 0.15 * effort : 0;
     k.set(n.heartG.gain, hl, held ? 0.5 : 0.25);
     const beat = 60 / hr;
     if (this.nextBeat < now) this.nextBeat = now + 0.05;

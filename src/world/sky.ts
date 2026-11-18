@@ -30,11 +30,11 @@ import type { SkySpec } from '../levels/types';
  * Ciel dégagé de référence (SkySpec.clear), dans le repère de la photographie : bleu profond au zénith, clair à
  * l'horizon, réchauffé vers le soleil. Mêmes formules ici (table réduite du ciel) et dans le shader du dôme.
  */
-function clearSky(dx: number, dy: number, dz: number, sun: Vector3, out: [number, number, number]): [number, number, number] {
+function clearSky(dx: number, dy: number, dz: number, sun: Vector3, out: [number, number, number], glow = 1): [number, number, number] {
   const up = Math.max(0, dy);
   const hz = Math.pow(1 - up, 4);
   const c = Math.max(0, dx * sun.x + dy * sun.y + dz * sun.z);
-  const g = Math.pow(c, 6) * 0.45 + Math.pow(c, 40) * 0.6;
+  const g = Math.pow(c, 6) * 0.45 * glow + Math.pow(c, 40) * 0.6;
   const low = dy < 0 ? Math.min(1, -dy * 6) : 0;
   out[0] = (0.13 + 0.56 * hz + 1.0 * g) * (1 - 0.45 * low);
   out[1] = (0.3 + 0.48 * hz + 0.78 * g) * (1 - 0.45 * low);
@@ -42,12 +42,13 @@ function clearSky(dx: number, dy: number, dz: number, sun: Vector3, out: [number
   return out;
 }
 const CLEAR_GLSL = /* glsl */ `
-vec3 clearSky(vec3 d, vec3 sun) {
-  float up = max(0.0, d.y);
+vec3 clearSky(vec3 d, vec3 sun, vec3 upv, float glow) {
+  float dy = dot(d, upv);
+  float up = max(0.0, dy);
   float hz = pow(1.0 - up, 4.0);
   float c = max(0.0, dot(d, sun));
-  float g = pow(c, 6.0) * 0.45 + pow(c, 40.0) * 0.6;
-  float low = d.y < 0.0 ? min(1.0, -d.y * 6.0) : 0.0;
+  float g = pow(c, 6.0) * 0.45 * glow + pow(c, 40.0) * 0.6;
+  float low = dy < 0.0 ? min(1.0, -dy * 6.0) : 0.0;
   return (vec3(0.13, 0.3, 0.8) + vec3(0.56, 0.48, 0.14) * hz + vec3(1.0, 0.78, 0.5) * g) * (1.0 - 0.45 * low);
 }`;
 
@@ -204,7 +205,7 @@ export class Sky {
       for (let y = 0; y < LUT_H; y++)
         for (let x = 0; x < LUT_W; x++) {
           const e = ((y + 0.5) / LUT_H - 0.5) * Math.PI, a = ((x + 0.5) / LUT_W - 0.5) * Math.PI * 2;
-          clearSky(Math.cos(e) * Math.cos(a), Math.sin(e), Math.cos(e) * Math.sin(a), this.sunHdr, cs);
+          clearSky(Math.cos(e) * Math.cos(a), Math.sin(e), Math.cos(e) * Math.sin(a), this.sunHdr, cs, this.spec.sunGlow ?? 1);
           const k = (y * LUT_W + x) * 4;
           for (let c = 0; c < 3; c++) lut[k + c] += (cs[c] / this.gain - lut[k + c]) * clear;
         }
@@ -238,10 +239,10 @@ export class Sky {
     this.lut.needsUpdate = true;
 
     this.mat = new ShaderMaterial({
-      uniforms: { tSky: { value: tex }, uRot: { value: this.rot3 }, uGain: { value: this.gain }, uClamp: { value: 1e6 }, uFlip: { value: topFirst ? 1 : 0 }, uClear: { value: clear }, uExpo: { value: this.spec.exposure ?? 1 }, uSunH: { value: this.sunHdr } },
+      uniforms: { tSky: { value: tex }, uRot: { value: this.rot3 }, uGain: { value: this.gain }, uClamp: { value: 1e6 }, uFlip: { value: topFirst ? 1 : 0 }, uClear: { value: clear }, uExpo: { value: this.spec.exposure ?? 1 }, uSunH: { value: this.sunHdr }, uUpH: { value: new Vector3(0, 1, 0) }, uGlow: { value: this.spec.sunGlow ?? 1 } },
       vertexShader: /* glsl */ `varying vec3 vDir; void main(){ vDir = position; vec4 p = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * p; gl_Position.z = gl_Position.w * 0.9999999; }`,
       fragmentShader: /* glsl */ `
-        uniform sampler2D tSky; uniform mat3 uRot; uniform float uGain; uniform float uClamp; uniform float uFlip; uniform float uClear; uniform float uExpo; uniform vec3 uSunH;
+        uniform sampler2D tSky; uniform mat3 uRot; uniform float uGain; uniform float uClamp; uniform float uFlip; uniform float uClear; uniform float uExpo; uniform vec3 uSunH; uniform vec3 uUpH; uniform float uGlow;
         ${CLEAR_GLSL}
         varying vec3 vDir;
         void main(){
@@ -249,7 +250,7 @@ export class Sky {
           vec2 uv = vec2(atan(d.z, d.x) * 0.15915494 + 0.5, asin(clamp(d.y, -1.0, 1.0)) * 0.31830989 + 0.5);
           vec3 c = texture2D(tSky, uv).rgb * uGain;
           // le disque du soleil et son halo restent ceux de la photographie
-          if (uClear > 0.0) c = mix(c, clearSky(d, uSunH) * uExpo, uClear * (1.0 - smoothstep(4.0, 12.0, dot(c, vec3(0.2126, 0.7152, 0.0722)))));
+          if (uClear > 0.0) c = mix(c, clearSky(d, uSunH, uUpH, uGlow) * uExpo, uClear * (1.0 - smoothstep(4.0, 12.0, dot(c, vec3(0.2126, 0.7152, 0.0722)))));
           gl_FragColor = vec4(min(c, vec3(uClamp)), 1.0);
         }`,
       side: BackSide,
@@ -282,6 +283,8 @@ export class Sky {
     const q = qt.multiply(qy);
     this.rotWorldFromHdr.makeRotationFromQuaternion(q);
     this.rot3.setFromMatrix4(this.rotWorldFromHdr).transpose(); // monde → HDRI
+    // ciel dégagé d'aplomb : son horizon suit celui du monde, pas celui de la photographie inclinée pour placer le soleil
+    if (this.spec.clearUpright && this.mat) (this.mat.uniforms.uUpH.value as Vector3).set(0, 1, 0).applyMatrix3(this.rot3);
     this.sunDir.copy(target);
     // le soleil rougit et faiblit en descendant
     const warm = new Color().copy(this.sunColor).lerp(new Color(1, 0.5, 0.24), c * 0.45);

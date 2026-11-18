@@ -58,6 +58,19 @@ export interface Prediction {
   target: Target | null;
   velocity: number;
 }
+/** Trajectoire calculée par `Shots.trace` : rien n'est tiré, rien n'est touché. */
+export interface ShotTrace {
+  /** x, y, z, t (s) de chaque point : le départ, puis un point tous les centièmes de seconde, puis le point d'arrêt */
+  pts: Float64Array;
+  /** nombre de points */
+  n: number;
+  /** vrai si le vol s'arrête sur un obstacle (cible, décor, relief, eau) ; faux s'il est seulement coupé à `maxT` */
+  hit: boolean;
+  /** cible atteinte, ou null */
+  target: Target | null;
+  /** temps de vol jusqu'au dernier point, s */
+  tof: number;
+}
 
 const gauss = (): number => {
   let u = 0, v = 0;
@@ -340,6 +353,42 @@ export class Shots {
     const n = Math.ceil(maxT / SUB);
     for (let i = 0; i < n; i++) if (this.advance(b, this.wind.time + i * SUB, false, frozenWind, out)) return out.tof > 0 ? out : null;
     return null;
+  }
+
+  /**
+   * Trajectoire d'un coup parti de la bouche `origin` dans la direction du canon `boreDir` (zérotage et tourelles
+   * déjà compris), sans dispersion : le vol et les collisions sont ceux du tir réel (`advance`), mais rien n'est émis
+   * (ni impact, ni effet sur les cibles, ni balle ajoutée). Sert à dessiner le tir d'un autre joueur.
+   * `maxT` : durée de vol au plus, s. `ignore` : cible à ne pas heurter (le tireur lui-même, dont la zone de touche
+   * entoure la bouche).
+   */
+  trace(origin: Vector3, boreDir: Vector3, def: WeaponDef, maxT = 8, ignore: Target | null = null): ShotTrace {
+    const flight = makeFlight(def, this.benv, { air: GAME_AIR, frame: 'world', y0: origin.y });
+    const d = this.ld.copy(boreDir).normalize();
+    const s: BulletState = { x: origin.x, y: origin.y, z: origin.z, vx: d.x * flight.v0, vy: d.y * flight.v0, vz: d.z * flight.v0, t: 0 };
+    const o = origin.clone();
+    const b: Bullet = { s, def, flight, origin: o, pos: o.clone(), prev: o.clone(), alive: true, wasSupersonic: false, transonicDone: true, campCrack: 1e9, id: 0 };
+    const out: Prediction = { point: new Vector3(), tof: 0, target: null, velocity: 0 };
+    const n = Math.max(1, Math.ceil(maxT / SUB));
+    const pts: number[] = [s.x, s.y, s.z, 0];
+    const all = this.targets;
+    if (ignore) this.targets = all.filter((t) => t !== ignore);
+    let hit = false;
+    try {
+      for (let i = 1; i <= n; i++) {
+        if (this.advance(b, this.wind.time + (i - 1) * SUB, false, false, out)) {
+          // arrêt sur un obstacle (point d'impact), ou balle à bout de course
+          hit = out.tof > 0;
+          if (hit) pts.push(out.point.x, out.point.y, out.point.z, out.tof);
+          else pts.push(s.x, s.y, s.z, s.t);
+          break;
+        }
+        if (i % 4 === 0 || i === n) pts.push(s.x, s.y, s.z, s.t);
+      }
+    } finally {
+      this.targets = all;
+    }
+    return { pts: new Float64Array(pts), n: pts.length / 4, hit, target: hit ? out.target : null, tof: pts[pts.length - 1] };
   }
 
   /** Position du projectile (sans collision) quand il a parcouru la distance donnée. Sert à la visée automatique des tests. */

@@ -270,11 +270,11 @@ export class UI {
           <div data-id="stance"></div>
         </div>
         <div class="br stat scope-ui" data-id="scopeBR">
-          <div class="r-tur">Élévation <b data-id="elev"></b> mrad</div>
+          <div class="r-tur r-elev">Élévation <b data-id="elev"></b> mrad</div>
           <div class="r-tur r-hold hidden" data-id="holdRow">Contre-visée <b class="hold" data-id="hold"></b></div>
-          <div class="r-tur">Dérive <b data-id="windT"></b> mrad</div>
+          <div class="r-tur r-wind">Dérive <b data-id="windT"></b> mrad</div>
           <div class="r-tur">Grossissement <b data-id="zoom"></b></div>
-          <div class="r-vit">Pouls <b data-id="heart"></b></div>
+          <div class="r-vit r-pulse">Pouls <b data-id="heart"></b></div>
           <div class="r-vit">Souffle <span class="gauge" data-id="airG"><i></i></span></div>
         </div>
         <div class="bc"><div class="prompt" data-id="prompt"></div></div>
@@ -370,7 +370,7 @@ export class UI {
           <button class="mbtn" data-act="guide">Régler la lunette</button>
           <button class="mbtn" data-act="help">Commandes</button>
           <button class="mbtn hidden" data-act="skipTuto" data-id="pauseSkip">Passer le tutoriel</button>
-          <button class="mbtn" data-act="restart">Recommencer la mission</button>
+          <button class="mbtn" data-act="restart" data-id="pauseRestart">Recommencer la mission</button>
         </div></div></div>
 
       <div class="screen veil-full" id="rack"><div class="card wide panel"><div class="kicker">Râtelier${touch ? '<button class="xclose" data-act="close">Fermer</button>' : ''}</div><h2>Choisir une carabine</h2>
@@ -707,6 +707,14 @@ export class UI {
   /** compteur des changements de la carte du tutoriel (sa hauteur a pu changer) */
   tutoRev = 0;
   /** hauteur de la carte logée au-dessus du champ de la lunette (tutoriel, ou conseil), en pixels CSS ; 0 s'il n'y en a pas */
+  /**
+   * Mode en ligne : les lignes du HUD que l'affichage du mode remplace ou supprime sont masquées (classe `online`,
+   * src/ui/style.css), et « Recommencer la mission » devient « Quitter la manche ». Jamais appelé en solo.
+   */
+  setOnline(): void {
+    this.el.hud.classList.add('online');
+    this.el.pauseRestart.textContent = 'Quitter la manche';
+  }
   tutoHeight(): number {
     // seul le tutoriel réserve de la place au-dessus du champ : le conseil, lui, s'affiche par-dessus la lunette
     return this.el.tuto.classList.contains('hidden') ? 0 : this.el.tuto.offsetHeight;

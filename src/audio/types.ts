@@ -49,6 +49,8 @@ export interface AmbienceState {
   inScope: boolean;
   /** Battements par minute (55 à 150). */
   heartRate: number;
+  /** Faux : pas de son du cœur (mode en ligne sans pouls). Absent : le cœur s'entend en lunette, comme en solo. */
+  heart?: boolean;
   /** État du souffle. */
   breath: 'normal' | 'held' | 'gasping';
   /** 0..1 activité du marché (rumeur lointaine) ; passe à 0 après la panique. */

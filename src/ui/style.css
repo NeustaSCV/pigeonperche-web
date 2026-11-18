@@ -162,6 +162,8 @@ table.dope.adv tr.sub .hold { color: var(--gold); }
 .toast { font-family: var(--serif); font-size: 26px; letter-spacing: 0.08em; opacity: 0; transition: opacity 0.5s; }
 .toast.on { opacity: 1; }
 .toast small { display: block; font-family: var(--sans); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); margin-top: 6px; }
+/* mode en ligne (UI.setOnline) : l'encart des tourelles du mode porte élévation, dérive et contre-visée ; ni pouls, ni objectif */
+#hud.online .r-elev, #hud.online .r-wind, #hud.online .r-hold, #hud.online .r-pulse, #hud.online .obj { display: none; }
 .scope-ui { opacity: 0; transition: opacity 0.25s; }
 .scope-ui.on { opacity: 1; }
 .windrose { display: inline-block; width: 30px; height: 30px; border: 1px solid var(--line); border-radius: 50%; position: relative; vertical-align: middle; margin-left: 8px; }

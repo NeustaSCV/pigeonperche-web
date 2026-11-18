@@ -1,7 +1,7 @@
 // Manche multijoueur de la Ville nouvelle : arbitrage du serveur (server/manche.mjs), sans réseau.
 import { describe, expect, it } from 'vitest';
 // @ts-ignore module JavaScript du serveur, sans déclarations de types
-import { createManche, pointsPour, adresseRobot, VIE_MAX, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, MANCHE_MS, PAUSE_MS, ROBOT_ATTENTE_MS, ROBOT_VISEE_MS } from '../server/manche.mjs';
+import { createManche, pointsPour, adresseRobot, VIE_MAX, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, DIVERSION_MS, DIVERSION_SONS, MANCHE_MS, PAUSE_MS, ROBOT_ATTENTE_MS, ROBOT_VISEE_MS } from '../server/manche.mjs';
 // @ts-ignore
 import { ROBOTS } from '../server/robots.mjs';
 
@@ -166,7 +166,7 @@ describe('manche multijoueur', () => {
     expect(m.zone('facile')).toHaveLength(15); expect(m.zone('standard')).toHaveLength(25); expect(m.zone('avance')).toHaveLength(30);
     expect(m.zone('facile').every((n: string) => n.startsWith('S'))).toBe(true);
     const a = entre('Anna'), b = entre('Bob'), c = entre('Chloé');
-    expect(a.recu[0].reglages).toEqual({ niveau: 'standard', vent: null });
+    expect(a.recu[0].reglages).toEqual({ niveau: 'facile', vent: null });
     expect(m.vote(a.id, { niveau: 'facile' })).toBe('hors salon');
     avance(MANCHE_MS + 50);
     expect(m.vote(a.id, { niveau: 'facile', vent: true })).toBe('ok');
@@ -184,6 +184,39 @@ describe('manche multijoueur', () => {
     expect(a.recu.at(-1).reglages.niveau).toBe('facile'); expect(a.recu.at(-1).reglages.vent).not.toBeNull();
     // puis la majorité coupe le vent
     avance(MANCHE_MS); m.vote(a.id, { vent: false }); m.vote(b.id, { vent: false, niveau: 'avance' }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages).toEqual({ niveau: 'avance', vent: null });
+  });
+  it('étalement « facile » par défaut : sans aucune voix sur l’étalement, la manche suivante se joue en facile, même après une manche en avancé', () => {
+    const { m, avance, entre } = salle();
+    const a = entre('Anna'), b = entre('Bob');
+    expect(a.recu[0].reglages.niveau).toBe('facile');
+    // la majorité choisit « avancé »
+    avance(MANCHE_MS + 50); m.vote(a.id, { niveau: 'avance' }); m.vote(b.id, { niveau: 'avance' }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages.niveau).toBe('avance');
+    // égalité avec des voix : le réglage en cours reste
+    avance(MANCHE_MS); m.vote(a.id, { niveau: 'facile' }); m.vote(b.id, { niveau: 'standard' }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages.niveau).toBe('avance');
+    // aucune voix sur l'étalement (une voix sur le vent seul ne compte pas) : retour à facile
+    avance(MANCHE_MS); m.vote(a.id, { vent: true }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).t).toBe('debut'); expect(a.recu.at(-1).reglages.niveau).toBe('facile');
+  });
+  it('coupe le vent par défaut : sans aucune voix sur le vent, la manche suivante se joue sans, même après une manche ventée', () => {
+    const { m, avance, entre } = salle();
+    const a = entre('Anna'), b = entre('Bob');
+    expect(a.recu[0].reglages.vent).toBeNull();
+    // personne ne vote : toujours pas de vent
+    avance(MANCHE_MS + 50); avance(PAUSE_MS);
+    expect(a.recu.at(-1).t).toBe('debut'); expect(a.recu.at(-1).reglages).toEqual({ niveau: 'facile', vent: null });
+    // la majorité met du vent
+    avance(MANCHE_MS); m.vote(a.id, { vent: true, niveau: 'facile' }); m.vote(b.id, { vent: true, niveau: 'facile' }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages.niveau).toBe('facile'); expect(a.recu.at(-1).reglages.vent).not.toBeNull();
+    // manche suivante, aucune voix (ni vent ni niveau) : le vent retombe, le niveau reste
+    avance(MANCHE_MS); avance(PAUSE_MS);
+    expect(a.recu.at(-1).t).toBe('debut'); expect(a.recu.at(-1).reglages).toEqual({ niveau: 'facile', vent: null });
+    // une voix sur le niveau seulement ne vaut pas voix sur le vent
+    avance(MANCHE_MS); m.vote(a.id, { vent: true }); m.vote(b.id, { vent: true }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages.vent).not.toBeNull();
+    avance(MANCHE_MS); m.vote(a.id, { niveau: 'avance' }); avance(PAUSE_MS);
     expect(a.recu.at(-1).reglages).toEqual({ niveau: 'avance', vent: null });
   });
   it('relaie aux autres l’emplacement et la direction du canon de chaque tir, et écarte une direction fantaisiste', () => {
@@ -215,5 +248,31 @@ describe('manche multijoueur', () => {
     expect(de(a.id!)).toMatchObject({ touches: 3, points: pointsPour(dab) * 2 + Math.round(pointsPour(dac) * 1.5) });
     avance(RETOUR_MS);
     expect(de(b.id!)).toMatchObject({ vie: VIE_MAX, vivant: true }); expect(de(c.id!)).toMatchObject({ vie: VIE_MAX, vivant: true });
+  });
+  it('diversion : annoncée à toute la salle avec l’emplacement et un son tiré par le serveur, dix secondes au moins entre deux', () => {
+    const tirages = [0, 0, 0.99, 0.5]; let k = 0;
+    const { m, avance, entre } = salle({ rand: () => tirages[Math.min(k++, tirages.length - 1)] });
+    const a = entre('Anna'), b = entre('Bob'); const recus: any[] = []; m.watch((x: any) => recus.push(x));
+    const emp = m.etat().find((j: any) => j.id === a.id).emp;
+    expect(m.diversion(a.id)).toBe('ok');
+    const msg = { t: 'diversion', id: a.id, emp, son: DIVERSION_SONS };
+    expect(b.recu.at(-1)).toEqual(msg); expect(a.recu.at(-1)).toEqual(msg); expect(recus.at(-1)).toEqual(msg);      // les autres, l'auteur, les spectateurs
+    // dix secondes par joueur : Anna attend, Bob peut en faire une tout de suite
+    avance(DIVERSION_MS - 1); expect(m.diversion(a.id)).toBe('cadence'); expect(b.recu.at(-1)).toEqual(msg);
+    expect(m.diversion(b.id)).toBe('ok'); expect(a.recu.at(-1)).toMatchObject({ t: 'diversion', id: b.id, son: 3 });
+    avance(1); expect(m.diversion(a.id)).toBe('ok');
+    expect(a.recu.at(-1).son).toBeGreaterThanOrEqual(1); expect(a.recu.at(-1).son).toBeLessThanOrEqual(DIVERSION_SONS);
+    expect(m.diversion(999)).toBe('inconnu');
+  });
+  it('diversion : refusée à un tireur abattu, à un robot, et pendant la minute de salon', () => {
+    const { m, avance, entre, dist } = salle();
+    const a = entre('Anna'), b = entre('Bob');
+    m.shot(a.id, { cible: b.id, dist: dist(a.id!, b.id!), tof: 1, zone: 'tete' }); avance(1100);
+    expect(m.diversion(b.id)).toBe('couché');
+    avance(RETOUR_MS); expect(m.diversion(b.id)).toBe('ok');
+    avance(MANCHE_MS); expect(m.diversion(a.id)).toBe('pause');
+    const r = salle({ robots: ROBOTS }); const h = r.entre('Anna');
+    const robot = r.m.etat().find((j: any) => j.robot);
+    expect(robot).toBeTruthy(); expect(r.m.diversion(robot.id)).toBe('inconnu'); expect(r.m.diversion(h.id)).toBe('ok');
   });
 });

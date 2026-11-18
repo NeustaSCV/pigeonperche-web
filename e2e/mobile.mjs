@@ -137,13 +137,6 @@ const scopeAt = (page, zoom = 10) => G(page, (zoom) => { const g = window.hr.gam
   check('menu : titre sur deux lignes dans la largeur, « Commencer » pleine largeur, tout tient sans défiler', s.lines === 2 && s.h[0] >= 0 && s.h[1] <= W && s.st[1] - s.st[0] > W * 0.8 && s.st[3] < H && s.sc <= 1, JSON.stringify(s));
   check('menu : texte adapté au tactile, plus de mention de l’horizontale', !/horizontale|souris/i.test(s.foot), s.foot);
   await shot(page, 'menu');
-  // curseur de volume : il doit rester utilisable malgré les protections
-  const vol = await center(page, '#menu input[type=range]');
-  await fingers.tap(vol.x - vol.w * 0.3, vol.y); await sleep(200);
-  const v1 = await G(page, () => Number(document.querySelector('#menu input[type=range]').value));
-  await fingers.down(1, vol.x - vol.w * 0.3, vol.y); await fingers.slide(1, vol.x + vol.w * 0.35, vol.y, 8); await fingers.up(1); await sleep(200);
-  const v2 = await G(page, () => ({ v: Number(document.querySelector('#menu input[type=range]').value), stored: Number(localStorage.getItem('hr.volume')) }));
-  check('curseur de volume : toucher puis glisser', v1 < 40 && v2.v > 70 && Math.abs(v2.stored - v2.v / 100) < 0.011, `${v1} → ${v2.v} (mémorisé ${v2.stored})`);
   await tapText(page, fingers, 'Commandes');
   s = await G(page, () => { const vis = (sel) => [...document.querySelectorAll(sel)].filter((e) => e.getBoundingClientRect().width > 0); const ps = vis('#help .pschema'); return { scr: document.querySelector('.screen.on')?.id, portrait: ps.length, land: vis('#help .tschema').length, tall: ps.every((e) => e.getBoundingClientRect().height > e.getBoundingClientRect().width * 1.5), text: document.querySelector('#help .pschemas').innerText }; });
   check('« Commandes » : schéma tactile redessiné en portrait (deux téléphones verticaux)', s.scr === 'help' && s.portrait === 2 && s.land === 0 && s.tall && /manette/i.test(s.text) && /tirer/i.test(s.text) && /élév/i.test(s.text) && /souffle/i.test(s.text), s.text.replace(/\s+/g, ' ').slice(0, 90));

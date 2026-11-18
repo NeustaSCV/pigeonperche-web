@@ -14,8 +14,10 @@ report('boot');
 // niveau : ?level=<id>, sinon le dernier choisi au menu, sinon le niveau par défaut ; seul son module est chargé
 const levelId = resolveLevelId(params);
 loadLevel(levelId)
-  .then((level) => {
-    const game = new Game(canvas, ui, params, level);
+  // le contrôleur du mode en ligne n'est chargé que pour une carte qui le déclare : rien de lui n'entre dans le solo
+  .then(async (level) => ({ level, online: level.data.online ? (await import('./online/mode')).createOnlineMode : undefined }))
+  .then(({ level, online }) => {
+    const game = new Game(canvas, ui, params, level, online);
     report('game-created', { touch: game.touch, quality: game.engine.q.name, level: levelId });
     (window as any).hr = { game, engine: game.engine, ready: false, touch: game.touch, guards: game.guards, level: level.data };
     return game.init();

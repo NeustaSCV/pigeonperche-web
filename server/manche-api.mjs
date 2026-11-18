@@ -6,6 +6,7 @@
 //   GET  /api/manche/flux?role=spectateur   flux d'un spectateur (refusé sans joueur humain dans la salle)
 //   POST /api/manche/tir             { id, jeton, cible?, dist?, tof?, zone?, dir? }
 //   POST /api/manche/vise            { id, jeton, cible }   qui le joueur tient dans sa lunette (null : personne)
+//   POST /api/manche/diversion       { id, jeton }   bruit de diversion, entendu de tous (dix secondes au moins entre deux)
 //   POST /api/manche/vote            { id, jeton, vent?, niveau? }   vote pour la manche suivante, pendant le salon
 import { randomBytes } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -57,13 +58,13 @@ export function createMancheApi({ fichier, records }) {
         req.on('close', () => { clearInterval(battement); jetons.delete(id); m.leave(id); });
         return true;
       }
-      if (['/api/manche/tir', '/api/manche/vise', '/api/manche/vote'].includes(u.pathname) && req.method === 'POST') {
+      if (['/api/manche/tir', '/api/manche/vise', '/api/manche/vote', '/api/manche/diversion'].includes(u.pathname) && req.method === 'POST') {
         let corps = '';
         for await (const c of req) { corps += c; if (corps.length > TAILLE_MAX) { json(res, 413, { erreur: 'trop long' }); return true; } }
         let a; try { a = JSON.parse(corps); } catch { json(res, 400, { erreur: 'requête illisible' }); return true; }
         const id = Number(a?.id);
         if (!manche || jetons.get(id) !== a?.jeton) { json(res, 403, { erreur: 'joueur inconnu' }); return true; }
-        json(res, 200, { r: u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof, dir: a.dir, zone: a.zone }) });
+        json(res, 200, { r: u.pathname.endsWith('/diversion') ? manche.diversion(id) : u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof, dir: a.dir, zone: a.zone }) });
         return true;
       }
       json(res, 404, { erreur: 'introuvable' });

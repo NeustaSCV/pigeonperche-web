@@ -565,7 +565,8 @@ export class Drone extends Target {
 }
 
 // ---------------------------------------------------------------- personnage ciblable (sentinelle)
-function humanColliders(t: Target, ch: CharacterMesh): void {
+/** Zones touchables d'un personnage : tête (sphère), torse et jambes (boîtes), attachées à son squelette. */
+export function humanColliders(t: Target, ch: CharacterMesh): void {
   t.decorSolid = false;
   const head = new Object3D();
   head.position.set(0, 0.13, 0);

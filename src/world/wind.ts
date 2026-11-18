@@ -26,6 +26,11 @@ export class Wind {
   private smoothBearing = 255;
   /** amplitude des rafales (1 = référence : le vent local va de 0,5 à 1,5 fois la moyenne ; 0 = vent régulier) */
   gusts = 1;
+  /**
+   * errance lente du cap et de la force moyenne (1 = référence : ±21° et ±32 % sur plusieurs minutes ; 0 = cap et
+   * force constants). Avec `gusts` à 0 aussi, le vent est le même partout et à tout instant.
+   */
+  wander = 1;
   /** abri du fond de vallée : part du vent qui reste au fond (0,62), altitude du fond, hauteur où le vent est plein */
   private shelter = 0.62;
   private shelterGain = 0.38;
@@ -36,10 +41,11 @@ export class Wind {
    * Vent d'un niveau (data.wind, data.atmosphere) : consigne appliquée d'emblée, sans la lente montée du lissage.
    * Sans appel, le vent d'origine : 3,5 m/s du 255°, abri de 62 % au niveau 0, plein vent à 200 m.
    */
-  configure(w: { fromBearing?: number; speed?: number; gusts?: number; shelter?: number; shelterHeight?: number; valleyY?: number }): void {
+  configure(w: { fromBearing?: number; speed?: number; gusts?: number; wander?: number; shelter?: number; shelterHeight?: number; valleyY?: number }): void {
     if (w.fromBearing !== undefined) this.fromBearing = this.smoothBearing = w.fromBearing;
     if (w.speed !== undefined) this.baseSpeed = this.smoothBase = this.speedNow = w.speed;
     if (w.gusts !== undefined) this.gusts = w.gusts;
+    if (w.wander !== undefined) this.wander = w.wander;
     if (w.shelter !== undefined) { this.shelter = w.shelter; this.shelterGain = 1 - w.shelter; }
     if (w.shelterHeight !== undefined) this.shelterHeight = w.shelterHeight;
     if (w.valleyY !== undefined) this.valleyY = w.valleyY;
@@ -61,8 +67,10 @@ export class Wind {
     db = ((db + 540) % 360) - 180;
     this.smoothBearing += db * k;
     const t = this.time;
-    const bearing = this.smoothBearing + 14 * Math.sin(t * 0.011) + 7 * Math.sin(t * 0.037 + 1.3);
-    this.speedNow = this.smoothBase * (1 + 0.22 * Math.sin(t * 0.017 + 1) + 0.1 * Math.sin(t * 0.053));
+    // `w` vaut 1 en solo : les produits `w * 14`… sont alors exacts, le vent est celui d'origine au bit près
+    const w = this.wander;
+    const bearing = this.smoothBearing + w * 14 * Math.sin(t * 0.011) + w * 7 * Math.sin(t * 0.037 + 1.3);
+    this.speedNow = this.smoothBase * (1 + w * 0.22 * Math.sin(t * 0.017 + 1) + w * 0.1 * Math.sin(t * 0.053));
     // le vent va à l'opposé de l'azimut d'où il vient
     const b = ((bearing + 180) * Math.PI) / 180;
     this.dir.set(Math.sin(b), -Math.cos(b));
