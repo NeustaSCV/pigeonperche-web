@@ -912,8 +912,8 @@ meta.reperes["Parc de l'université"] = [492, 315];
 
 const bar = document.getElementById('bar');
 // outils du prototype (étiquettes de tous les emplacements, vol libre, planche de contrôle, diagnostic) : réservés à
-// la mise au point, avec ?outils ou ?solo ; un joueur ne voit que sa lunette, le tableau de la manche et son encart de tir
-const OUTILS = ['outils', 'solo'].some((k) => new URLSearchParams(location.search).get(k) !== null);
+// la mise au point, avec ?solo ; un joueur ne voit que sa lunette, le tableau de la manche et son encart de tir
+const OUTILS = new URLSearchParams(location.search).get('solo') !== null;
 document.body.classList.toggle('outils', OUTILS);
 const btn = (label, fn, cls = '') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = () => { fn(); b.blur(); }; bar.appendChild(b); };
 const lab = (t, cls = '') => { const s = document.createElement('span'); s.textContent = t; s.className = cls; bar.appendChild(s); };
@@ -973,7 +973,7 @@ document.addEventListener('mousemove', (e) => {
 document.addEventListener('mousedown', (e) => { if (!capture) return; if (e.button === 0) tir.tirer(); else if (e.button === 2) state.scope = !state.scope; });
 view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(PLAGE_ZOOM[0], Math.min(PLAGE_ZOOM[1], state.mag * (e.deltaY < 0 ? 1.18 : 1 / 1.18))); }, { passive: false });
 document.addEventListener('contextmenu', (e) => e.preventDefault());
-window.addEventListener('keydown', (e) => { keys.add(e.code); if ((e.code === 'KeyF' || e.code === 'KeyE') && !state.salon) state.scope = !state.scope;   // F comme en solo (E gardé)
+window.addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyF' && !state.salon) state.scope = !state.scope;   // F comme en solo
   if (OUTILS && e.code === 'KeyT') state.tags = !state.tags; if (OUTILS && e.code === 'KeyP') state.quad = !state.quad; if (!state.scope && e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (!state.scope && e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 

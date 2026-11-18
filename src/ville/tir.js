@@ -289,7 +289,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
       b.nuage.scale.setScalar(b.k * (2.5 + 9 * Math.sqrt(age)));
       b.voile.opacity = 0.6 * Math.max(0, 1 - age / 1.2); b.mat.opacity = 0.95 * Math.max(0, 1 - Math.max(0, age - 1.2) / (DUREE - 1.2));
     }
-    const e = vise(), s = e && solution(e);
+    const e = state.scope ? vise() : null, s = e && solution(e);      // la vue de l'observateur n'apparaît que lunette à l'œil : à l'œil nu, rien ne trahit un tireur
     const attente = now < t.pret ? 'Culasse…' : '';
     viseur.innerHTML = s ? `<div class="v-cible"><div class="v-lieu">${e.nom}</div><div class="v-ligne"><b>${Math.round(s.range)}</b><span>m</span></div><div class="v-ligne v-corr"><span>Correction</span>${texteCorrection(e)}</div></div>` : '';
     const h = state.tactile ? null : state.scope ? htmlTourelles(now) : '';

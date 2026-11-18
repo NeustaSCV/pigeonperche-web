@@ -247,7 +247,8 @@ export class UI {
     const camp = camps.find((c) => c.levels.includes(init.level)) ?? camps[0];
     const inCamp = (c: { levels: LevelId[] }): LevelEntry[] => c.levels.map((id) => init.levels.find((l) => l.id === id)).filter((l): l is LevelEntry => !!l);
     const boardCol = (l: LevelEntry): string => `<section class="board-col${l.id === init.level ? ' cur' : ''}"><h3>${l.meta.title}${l.meta.name ? `<small>${l.meta.name}</small>` : ''}</h3><ol class="board" data-board="${l.id}"><li class="none">Aucun score</li></ol></section>`;
-    const boardCols = inCamp(camp).map(boardCol).join('');
+    // accueil : les deux campagnes du solo l'une sous l'autre, chacune avec ses trois cartes
+    const boardCamps = camps.map((c) => `<div class="boards-c">${c.title ? `<div class="boards-ct">${c.title}</div>` : ''}<div class="boards-g">${inCamp(c).map(boardCol).join('')}</div></div>`).join('');
     // écran « Scores » : une campagne à la fois (ses trois cartes tiennent sans défiler), un sélecteur passe de l'une à l'autre
     const allBoards = `${camps.length > 1 ? '<div class="seg boards-camp" data-id="segScoreCamp"></div>' : ''}${camps.map((c) => `<div class="boards-g${c === camp ? '' : ' hidden'}" data-camp="${c.id}">${inCamp(c).map(boardCol).join('')}</div>`).join('')}`;
     root.insertAdjacentHTML(
@@ -333,7 +334,13 @@ export class UI {
           </div>
         </div>
         <div class="foot">${touch ? 'Jouez au casque.' : 'Jouez au casque. Clic pour capturer la souris, Échap pour la libérer.'}${init.homeTip ? `<span class="hometip"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>Sans les barres de Safari : <i>Partager</i>, puis <i>Sur l’écran d’accueil</i>.</span>` : ''}</div>
-        <div class="boards"><div class="boards-h"><span>Meilleurs scores</span><i data-mode></i></div><div class="boards-g">${boardCols}</div></div>
+        <div class="m-droite" data-id="mDroite">
+          <div class="boards" data-id="soloBoards"><div class="boards-h"><span>Solo · meilleurs scores</span><i data-mode></i></div>${boardCamps}</div>
+          <div class="boards mj-global"><div class="boards-h"><span>Multijoueur · classement global</span></div><div class="boards-g">
+            <section class="board-col cur"><h3>Meilleurs scores</h3><ol class="board" data-id="mjTop"></ol></section>
+            <section class="board-col cur"><h3>Pires scores</h3><ol class="board" data-id="mjFlop"></ol></section>
+          </div></div>
+        </div>
       </div>
 
       <div class="screen veil" id="brief"><div class="card scroll" data-id="briefCard"></div></div>
@@ -449,9 +456,22 @@ export class UI {
         if (this.current !== 'menu' && this.current !== 'loading') return;
         fetch('./api/manche/etat').then((r) => (r.ok ? r.json() : null)).then((e) => {
           n.textContent = !e ? '' : e.connectes > 0 ? `${e.connectes} connecté${e.connectes > 1 ? 's' : ''}` : 'Personne en ligne';
+          // classement global du multijoueur, sous les scores du solo (mêmes lignes que les tableaux du solo)
+          const lignes = (l: any[] | undefined): string => (l?.length
+            ? l.map((x, i) => `<li><span class="rk">${i + 1}</span><span class="nm">${escapeHtml(String(x.pseudo ?? ''))}</span><span class="sc">${fr(Number(x.points) || 0)}</span><span class="ac">${Number(x.touches) || 0}/${Number(x.tirs) || 0}</span></li>`).join('')
+            : '<li class="none">Aucun score</li>');
+          this.el.mjTop.innerHTML = lignes(e?.meilleurs); this.el.mjFlop.innerHTML = lignes(e?.pires);
         }).catch(() => { n.textContent = ''; });
       };
       lire(); setInterval(lire, 10_000);
+      // sur ordinateur, les scores du solo s'alignent sur le haut du cadre « Solo », et le classement du multijoueur sur
+      // le haut du cadre « En ligne » (le panneau du solo occupe au moins la hauteur qui les sépare)
+      const cale = (): void => {
+        const c = root.querySelector('.m-solo') as HTMLElement | null, m = root.querySelector('.m-multi') as HTMLElement | null, d = this.el.mDroite; if (!c || !m || !d) return;
+        const t = c.getBoundingClientRect().top; if (t <= 0) return;
+        d.style.top = `${Math.round(t)}px`; this.el.soloBoards.style.minHeight = `${Math.max(0, Math.round(m.getBoundingClientRect().top - t - 14))}px`;
+      };
+      cale(); window.addEventListener('resize', cale); setInterval(cale, 1000);
     }
     // le volume se règle dans le menu de pause (il a laissé sa place au cadre multijoueur sur l'accueil)
     for (const id of ['vol2']) {

@@ -79,6 +79,7 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
       <div class="s-rang">
         <button class="s-go" data-s="jouer">Rejoindre la partie</button>
         <button class="s-lien" data-s="voir">Regarder en spectateur</button>
+        <a class="s-lien s-menu" href="./index.html">← Menu principal</a>
       </div>
       <div class="s-note" data-s="note"></div>
     </div>

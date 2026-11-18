@@ -38,7 +38,7 @@ html, body { margin: 0; height: 100%; background: #000; overflow: hidden; color:
 /* accueil : un cadre pour le jeu en solo (campagne, niveau, tutoriel), un cadre pour le multijoueur, de même largeur ;
    chacun s'ouvre par le même bouton de départ */
 .m-cadre { position: relative; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; box-sizing: border-box; width: 580px; max-width: 86vw; margin: 4px 0 8px -16px; padding: 14px 20px 12px 16px; border: 1px solid var(--line); background: rgba(10, 12, 14, 0.28); }
-.m-cadre-t { position: absolute; top: 12px; right: 16px; font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--faint); }
+.m-cadre-t { position: absolute; top: 11px; right: 16px; font-size: 13px; letter-spacing: 0.26em; text-transform: uppercase; color: var(--ink); }
 .m-multi { flex-direction: row; align-items: center; gap: 20px; }
 .m-ville { text-decoration: none; }
 .m-multi-n { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gold); }
@@ -688,6 +688,22 @@ html.touch.portrait #menu h1.title { font-size: clamp(42px, 15vw, 106px); paddin
 .boards-h i { font-style: normal; color: var(--faint); letter-spacing: 0.16em; }
 #menu .boards .board { min-height: 112px; }
 /* fenêtre étroite : seul le classement du niveau choisi ; trop étroite ou trop basse : rien (le titre et les options d'abord) */
+/* colonne de droite de l'accueil : les scores du solo à hauteur du cadre « Solo », le classement global du multijoueur dessous */
+#menu .m-droite { position: absolute; right: 4vw; top: 30vh; display: flex; flex-direction: column; gap: 14px; width: min(780px, 52vw); }
+#menu .m-droite .boards { position: static; width: auto; }
+#menu .mj-global .boards-g { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* les deux campagnes du solo : un petit titre par campagne, trois lignes par carte sur l'accueil (les cinq restent sur l'écran « Scores ») */
+#menu .boards-c + .boards-c { margin-top: 10px; }
+#menu .boards-ct { margin-bottom: 5px; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--dim); }
+#menu .m-droite .boards .board { min-height: 0; } #menu .m-droite [data-board] li:nth-child(n+4) { display: none; }
+#menu .m-droite .board-col h3 { font-size: 15px; margin-bottom: 2px; padding-bottom: 3px; } #menu .m-droite .board li { padding: 2px 0; }
+@media (max-width: 1500px) { #menu .boards-c:not(:has(.board-col.cur)) { display: none; } }
+#menu .mj-global .board { min-height: 0; }
+@media (max-width: 1500px) { #menu .m-droite { width: 270px; } #menu .mj-global .boards-g { grid-template-columns: 1fr; gap: 10px; } }
+/* fenêtre étroite ou basse : trois lignes par liste, pour que la colonne tienne à l'écran */
+@media (max-width: 1500px), (max-height: 960px) { #menu .mj-global .board li:nth-child(n+4) { display: none; } #menu .m-droite .boards .board { min-height: 0; } }
+@media (max-width: 940px), (max-height: 560px) { #menu .m-droite { display: none; } }
+html.touch #menu .m-droite { display: none; }
 @media (max-width: 1500px) { #menu .boards { width: 270px; } #menu .boards .boards-g { grid-template-columns: 1fr; } #menu .boards .board-col:not(.cur) { display: none; } #menu .boards .boards-h i { display: none; } }
 @media (max-width: 940px), (max-height: 560px) { #menu .boards { display: none; } }
 /* appareil tactile : bouton « Scores » et écran à part (l'accueil en portrait est déjà plein) */
