@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { buildPostes, FACADES } from './postes.js';
 import { installTir } from './tir.js';
 import { installReseau } from './reseau.js';
+import { installEffets } from './effets.js';
 
 const D = './ville/';
 const view = document.getElementById('view');
@@ -818,7 +819,7 @@ const CRANE_H = 46;
   const lattice = (ru, rv) => { const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(ru, rv); t.anisotropy = 8; return new THREE.MeshLambertMaterial({ map: t, transparent: true, alphaTest: 0.4, side: THREE.DoubleSide }); };
   const solid = (c) => new THREE.MeshLambertMaterial({ color: c });
   const box = (g, w, h, d, mat, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(px, py, pz); g.add(m); return m; };
-  const rod = (g, a, b) => { const d = new THREE.Vector3().subVectors(b, a); const m = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, d.length(), 5), solid(0x3a3a3a)); m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(THREE.Object3D.DEFAULT_UP, d.normalize()); g.add(m); };
+  const rod = (g, a, b, r = 0.07) => { const d = new THREE.Vector3().subVectors(b, a); const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 5), solid(0x3a3a3a)); m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(THREE.Object3D.DEFAULT_UP, d.normalize()); g.add(m); };
   for (const e of EMP) if (e.type === 'grue') {         // grues des emplacements : on reprend celles déjà posées, on ajoute les autres
     const c = meta.grues.find((q) => Math.hypot(q.x - e.x, q.z - e.z) < 15);
     if (c) c.nom = e.nom; else meta.grues.push({ nom: e.nom, x: e.x + 24, z: e.z + 10, sol: groundY(e.x + 24, e.z + 10), cap: 200 });
@@ -844,8 +845,9 @@ const CRANE_H = 46;
     scene.add(g);
     box(g, 2.6, 0.12, 2.6, solid(0x9a7a52), 0, H + 11.6, 0);             // plateforme au sommet de la grue, au-dessus de la cabine
     for (const [ax, az, bx, bz] of [[-1.3, -1.3, 1.3, -1.3], [1.3, -1.3, 1.3, 1.3], [1.3, 1.3, -1.3, 1.3], [-1.3, 1.3, -1.3, -1.3]]) {
-      for (const hh of [1.05, 0.55]) rod(g, new THREE.Vector3(ax, H + 11.66 + hh, az), new THREE.Vector3(bx, H + 11.66 + hh, bz));
-      rod(g, new THREE.Vector3(ax, H + 11.66, az), new THREE.Vector3(ax, H + 12.71, az));
+      // garde-corps en tube fin : de loin, il ne doit pas masquer le tireur
+      for (const hh of [1.05, 0.55]) rod(g, new THREE.Vector3(ax, H + 11.66 + hh, az), new THREE.Vector3(bx, H + 11.66 + hh, bz), 0.025);
+      rod(g, new THREE.Vector3(ax, H + 11.66, az), new THREE.Vector3(ax, H + 12.71, az), 0.03);
     }
     const eye = g.localToWorld(new THREE.Vector3(0, H + 13.26, 0));     // debout au sommet : rien ne masque le tour d'horizon
     meta.postes[c.nom] = [eye.x, eye.y, eye.z];
@@ -900,8 +902,12 @@ meta.reperes["Parc de l'université"] = [492, 315];
 }
 
 const bar = document.getElementById('bar');
-const btn = (label, fn) => { const b = document.createElement('button'); b.textContent = label; b.onclick = () => { fn(); b.blur(); }; bar.appendChild(b); };
-const lab = (t) => { const s = document.createElement('span'); s.textContent = t; bar.appendChild(s); };
+// outils du prototype (étiquettes de tous les emplacements, vol libre, planche de contrôle, diagnostic) : réservés à
+// la mise au point, avec ?outils ou ?solo ; un joueur ne voit que sa lunette, le tableau de la manche et son encart de tir
+const OUTILS = ['outils', 'solo'].some((k) => new URLSearchParams(location.search).get(k) !== null);
+document.body.classList.toggle('outils', OUTILS);
+const btn = (label, fn, cls = '') => { const b = document.createElement('button'); b.textContent = label; b.className = cls; b.onclick = () => { fn(); b.blur(); }; bar.appendChild(b); };
+const lab = (t, cls = '') => { const s = document.createElement('span'); s.textContent = t; s.className = cls; bar.appendChild(s); };
 const tir = installTir({ scene, camera, view, state, EMP, meta, bendY, groundY, bats, inPoly });
 lab('Emplacement :');
 const sel = document.createElement('select');
@@ -916,8 +922,8 @@ sel.onchange = () => { allerA(sel.value); sel.blur(); };
 bar.appendChild(sel);
 const voisin = (d) => { const i = EMP.findIndex((e) => e.nom === sel.value); allerA(EMP[(i + d + EMP.length) % EMP.length].nom); };
 btn('◀ précédent', () => voisin(-1)); btn('suivant ▶', () => voisin(1));
-btn('Étiquettes (T)', () => (state.tags = !state.tags)); btn('Vol libre', () => { state.fly = true; camera.position.y += 60; });
-lab('Lunette :'); btn('Œil nu / lunette (E)', () => (state.scope = !state.scope));
+btn('Étiquettes (T)', () => (state.tags = !state.tags), 'b-dev'); btn('Vol libre', () => { state.fly = true; camera.position.y += 60; }, 'b-dev');
+lab('Lunette :', 'b-dev'); btn('Œil nu / lunette (E)', () => (state.scope = !state.scope), 'b-dev');
 // étiquettes des autres emplacements : un point numéroté, et le nom avec la distance quand on vise près de lui
 const tagsBox = document.getElementById('tags');
 const tags = EMP.map((e) => { const d = document.createElement('div'); d.className = 'tag'; tagsBox.appendChild(d); return d; });
@@ -926,14 +932,18 @@ const drawTags = () => {
   const w = view.clientWidth, h = view.clientHeight;
   EMP.forEach((e, i) => {
     const d = tags[i], p = meta.postes[e.nom];
-    if (!state.tags || e.nom === state.post) { d.style.display = 'none'; return; }
-    tv.set(p[0], p[1] + bendY(p[0], p[2]) - 0.5, p[2]);
+    // en manche, rien n'indique où sont les tireurs : seule l'étiquette de celui qu'on vise apparaît (le spectateur les voit tous)
+    const manche = state.enLigne || state.spectateur;
+    if (!state.tags || e.nom === state.post || (manche && !(state.occupes && state.occupes.has(e.nom)))) { d.style.display = 'none'; return; }
+    tv.set(p[0], p[1] + bendY(p[0], p[2]) + (manche ? 0.75 : -0.5), p[2]);      // en manche : le nom flotte au-dessus de la tête, sans masquer le tireur
     const dist = tv.distanceTo(camera.position); tv.project(camera);
     if (tv.z > 1 || Math.abs(tv.x) > 1.02 || Math.abs(tv.y) > 1.02) { d.style.display = 'none'; return; }
-    const pres = Math.hypot(tv.x * camera.aspect, tv.y) < (state.scope ? 0.5 : 0.16);
+    const pres = state.spectateur || Math.hypot(tv.x * camera.aspect, tv.y) < (state.scope ? 0.5 : 0.16);
+    if (manche && !pres) { d.style.display = 'none'; return; }
     d.style.display = 'block'; d.style.left = `${((tv.x + 1) / 2) * w}px`; d.style.top = `${((1 - tv.y) / 2) * h}px`;
-    d.className = pres ? 'tag pres' : 'tag'; const qui = state.pseudoA ? state.pseudoA(e.nom) : '';
-    d.textContent = pres ? `${qui ? qui + ' · ' : ''}${e.n}. ${e.nom} · ${Math.round(dist)} m · ${tir.texteCorrection(e)}` : e.n;
+    const qui = state.pseudoA ? state.pseudoA(e.nom) : '';
+    d.className = manche ? 'tag nom' : pres ? 'tag pres' : 'tag';
+    d.textContent = manche ? qui : !pres ? e.n : `${e.n}. ${e.nom} · ${Math.round(dist)} m · ${tir.texteCorrection(e)}`;
   });
 };
 let drag = false;
@@ -946,7 +956,7 @@ window.addEventListener('mousemove', (e) => {
 });
 view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(4, Math.min(25, state.mag * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); }, { passive: false });
 view.addEventListener('contextmenu', (e) => { e.preventDefault(); state.scope = !state.scope; });
-window.addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyE') state.scope = !state.scope; if (e.code === 'KeyT') state.tags = !state.tags; if (e.code === 'KeyP') state.quad = !state.quad; if (e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
+window.addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyE') state.scope = !state.scope; if (OUTILS && e.code === 'KeyT') state.tags = !state.tags; if (OUTILS && e.code === 'KeyP') state.quad = !state.quad; if (!state.scope && e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (!state.scope && e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 
 const sc = document.getElementById('scope'), sx = sc.getContext('2d');
@@ -993,7 +1003,8 @@ const draw = (now) => {
     if (keys.has('Space')) camera.position.y += v;
     if (keys.has('KeyC')) camera.position.y -= v;
   }
-  { const k = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0), kv = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0), v = dt * (state.scope ? 0.9 / state.mag : 0.9); if (!keys.has('ShiftLeft') && !keys.has('ShiftRight')) { state.yaw += k * v; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch + kv * v)); } }
+  // flèches : regarder à l'œil nu ; lunette à l'œil, elles tournent les tourelles (tir.js) et l'on vise à la souris
+  { const k = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0), kv = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0), v = dt * (state.scope ? 0.9 / state.mag : 0.9); if (!state.scope && !keys.has('ShiftLeft') && !keys.has('ShiftRight')) { state.yaw += k * v; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch + kv * v)); } }
   camera.rotation.set(state.pitch, state.yaw, 0);
   camera.fov = state.fovOverride ?? (state.scope ? SCOPE_FOV / state.mag : 60);
   camera.updateProjectionMatrix();
@@ -1004,7 +1015,7 @@ const draw = (now) => {
     for (let k = 0; k < 4; k++) { camera.rotation.set(state.pitch, state.yaw - (k * Math.PI) / 2, 0); camera.updateMatrixWorld(); const x = (k % 2) * (w / 2), y = k < 2 ? h / 2 : 0; renderer.setViewport(x, y, w / 2, h / 2); renderer.setScissor(x, y, w / 2, h / 2); renderer.render(scene, camera); }
     renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h);
   } else renderer.render(scene, camera);
-  tir.update(now);
+  tir.update(now); effets?.update(now);
   drawScope(); if (!state.quad) drawTags(); else tags.forEach((d) => (d.style.display = 'none'));
   fps.n++; fps.t += dt; fps.worst = Math.max(fps.worst, dt);
   if (fps.t >= 0.5) {
@@ -1013,12 +1024,13 @@ const draw = (now) => {
     const r = renderer.info.render;
     info.textContent = `${fps.avg.toFixed(0)} i/s (pire image : ${fps.min.toFixed(0)})   ${(r.triangles / 1e6).toFixed(2)} M triangles, ${r.calls} appels\n` +
       `azimut ${az.toFixed(1)}°  site ${((state.pitch * 180) / Math.PI).toFixed(2)}°  ${state.scope ? '×' + state.mag.toFixed(1) : 'œil nu'}\n` +
-      `${bats.length} bâtiments, ${nTrees - treesDropped} arbres — glisser ou flèches : regarder, clic droit ou E : lunette, molette : grossissement, Maj+flèches : emplacement suivant${state.fly ? ', ZQSD/espace/C : voler' : ''}`;
+      `${bats.length} bâtiments, ${nTrees - treesDropped} arbres — glisser ou flèches : regarder, clic droit ou E : lunette (flèches : tourelles), molette : grossissement, Maj+flèches : emplacement suivant${state.fly ? ', ZQSD/espace/C : voler' : ''}`;
   }
 };
 const frame = (now) => { draw(now); requestAnimationFrame(frame); };
 allerA(new URLSearchParams(location.search).get('poste') || 'La Médiathèque');
-const reseau = installReseau({ EMP, state, allerA, tir, sel, carte: { dalles: tiles.map((t) => ({ image: t.tex.image, x0: t.x0, z0: t.z0 })), cote: TS, ox: OX, oz: OZ, taille: N } });
+const effets = installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir });
+const reseau = installReseau({ EMP, state, allerA, tir, sel, effets, carte: { dalles: tiles.map((t) => ({ image: t.tex.image, x0: t.x0, z0: t.z0 })), cote: TS, ox: OX, oz: OZ, taille: N } });
 // la courbure est appliquée à l'affichage : on élargit les sphères englobantes d'autant, sinon les petits objets sont écartés à tort
 scene.traverse((o) => { const g = o.geometry; if (!g || !o.frustumCulled || g.userData.elargi) return; g.computeBoundingSphere(); g.boundingSphere.radius += BOMBE + 1; g.userData.elargi = true; });
 document.getElementById('load').remove();
@@ -1026,4 +1038,4 @@ requestAnimationFrame(frame);
 
 const bench = (n = 60) => { const gl = renderer.getContext(), px = new Uint8Array(4); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); const t0 = performance.now(); for (let i = 0; i < n; i++) { camera.rotation.y += 0.002; camera.updateMatrixWorld(); renderer.render(scene, camera); gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); } return (performance.now() - t0) / n; };
 const plan = (x, z, demi = 200) => { state.fly = true; camera.position.set(x, 1700, z); state.yaw = 0; state.pitch = -Math.PI / 2 + 1e-4; state.fovOverride = (2 * Math.atan(demi / (1700 - 160)) * 180) / Math.PI; document.getElementById('bar').style.display = 'none'; };
-window.ville = { tir, reseau, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };
+window.ville = { tir, reseau, effets, bats, draw: () => draw(performance.now()), plan, bench, EMP, allerA, bendY, eau: () => ({ plans: waterCount, surface: waterArea }), styleStats,  state, camera, renderer, scene, meta, goPost, aimAt, fps, counts: () => ({ lampadaires: nLamps, voitures: nCars, premiersPlans: hiRes, wallTris, roofTris, trees: nTrees - treesDropped, ecartes: treesDropped, bats: bats.length }) };

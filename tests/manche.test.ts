@@ -127,7 +127,7 @@ describe('manche multijoueur', () => {
     avance(ROBOT_ATTENTE_MS[0] + 10);
     expect(a.recu.at(-1)).toEqual({ t: 'vise', par: bot.id, actif: true });     // il épaule : sa cible voit le reflet
     avance(ROBOT_VISEE_MS);
-    expect(a.recu.filter((x: any) => x.t === 'tir')).toEqual([{ t: 'tir', id: bot.id }]);
+    expect(a.recu.filter((x: any) => x.t === 'tir')).toEqual([{ t: 'tir', id: bot.id, emp: bot.emp, vers: m.etat().find((j: any) => j.id === a.id).emp, touche: true }]);
     expect(a.recu.at(-1)).toEqual({ t: 'vise', par: bot.id, actif: false });
     avance(2000);
     const t = a.recu.find((x: any) => x.t === 'touche');
@@ -185,5 +185,14 @@ describe('manche multijoueur', () => {
     // puis la majorité coupe le vent
     avance(MANCHE_MS); m.vote(a.id, { vent: false }); m.vote(b.id, { vent: false, niveau: 'avance' }); avance(PAUSE_MS);
     expect(a.recu.at(-1).reglages).toEqual({ niveau: 'avance', vent: null });
+  });
+  it('relaie aux autres l’emplacement et la direction du canon de chaque tir, et écarte une direction fantaisiste', () => {
+    const { m, avance, entre } = salle();
+    const a = entre('Anna'), b = entre('Bob'); const emp = m.etat().find((j: any) => j.id === a.id).emp;
+    m.shot(a.id, { dir: [0.6, 0.01, -0.8] });
+    expect(b.recu.at(-1)).toEqual({ t: 'tir', id: a.id, emp, dir: [0.6, 0.01, -0.8] });
+    expect(a.recu.some((x: any) => x.t === 'tir')).toBe(false);          // le tireur ne reçoit pas son propre tir
+    avance(CADENCE_MS); m.shot(a.id, { dir: [5, 'x', NaN] as any });
+    expect(b.recu.at(-1)).toEqual({ t: 'tir', id: a.id, emp });
   });
 });

@@ -13,7 +13,7 @@ import { dirname } from 'node:path';
 import { createManche } from './manche.mjs';
 import { ROBOTS } from './robots.mjs';
 
-const TAILLE_MAX = 600;                 // octets : un tir tient en bien moins
+const TAILLE_MAX = 800;                 // octets : un tir tient en bien moins
 
 /**
  * @param {{ fichier: string, records?: string }} opt  `fichier` : emplacements.json de la carte (public/ville ou
@@ -63,7 +63,7 @@ export function createMancheApi({ fichier, records }) {
         let a; try { a = JSON.parse(corps); } catch { json(res, 400, { erreur: 'requête illisible' }); return true; }
         const id = Number(a?.id);
         if (!manche || jetons.get(id) !== a?.jeton) { json(res, 403, { erreur: 'joueur inconnu' }); return true; }
-        json(res, 200, { r: u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof }) });
+        json(res, 200, { r: u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof, dir: a.dir }) });
         return true;
       }
       json(res, 404, { erreur: 'introuvable' });

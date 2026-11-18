@@ -52,7 +52,7 @@ function planTactique(cv, { dalles, cote, ox, oz, taille }, EMP) {
   x.beginPath(); x.moveTo(PX - 60, 100); x.lineTo(PX - 60, 46); x.lineTo(PX - 68, 62); x.moveTo(PX - 60, 46); x.lineTo(PX - 52, 62); x.stroke(); x.fillText('N', PX - 66, 40);
 }
 
-export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
+export function installReseau({ EMP, state, allerA, tir, sel, carte, effets }) {
   const params = new URLSearchParams(location.search);
   if (params.get('solo') !== null) return null;
   let pseudo = params.get('pseudo') || '';
@@ -93,7 +93,8 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
       <section><h3>Depuis toujours</h3><h4>Meilleurs scores</h4><ol data-s="tm"></ol><h4>Pires scores</h4><ol data-s="tp"></ol></section>
       <section><h3>Dans la salle</h3><ol data-s="salle"></ol></section>
     </div>
-  </div>`;
+  </div>
+  <p class="s-avert">Avertissement : ce jeu vous est proposé à but ludique uniquement. Dans la vraie vie, ne tirez pas sur vos amis.</p>`;
   if (carte) { try { planTactique(salon.querySelector('.s-plan'), carte, EMP); } catch (e) { console.warn('plan du salon :', e); } }
   const S = Object.fromEntries([...salon.querySelectorAll('[data-s]')].map((e) => [e.dataset.s, e]));
   S.pseudo.value = pseudo;
@@ -166,13 +167,19 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
   const sur = {
     bienvenue(m) {
       charge(m.joueurs); horloge(m); dernierClassement = null;
+      document.body.classList.toggle('spectateur', !!m.spectateur);
       if (m.spectateur) { moi = null; state.enLigne = false; state.spectateur = true; sel.disabled = false; annonce = 'Vous regardez la partie : choisissez un emplacement dans la liste.'; }
       else { moi = m.id; jeton = m.jeton; state.enLigne = true; state.spectateur = false; sel.disabled = true; annonce = joueurs.size > 1 ? 'Trouvez les autres tireurs.' : 'Seul pour l’instant : en attente d’un autre tireur.'; allerA(joueurs.get(moi).emp, true); }
       majOccupes(); montreSalon(phase !== 'jeu');
     },
     arrive(m) { joueurs.set(m.joueur.id, m.joueur); annonce = `${m.joueur.pseudo} entre dans la salle.`; majOccupes(); },
     part(m) { annonce = `${nomDe(m.id)} quitte la salle.`; joueurs.delete(m.id); majOccupes(); },
-    tir(m) { const j = joueurs.get(m.id); if (j) j.tirs++; },
+    // tir d'un autre : traçante, flamme et détonation depuis son emplacement
+    tir(m) {
+      const j = joueurs.get(m.id); if (j) j.tirs++;
+      if (!effets || !m.emp || state.salon) return;
+      if (m.dir) effets.tirDistant(m.emp, m.dir); else if (m.vers) effets.tirRobot(m.emp, m.vers, m.touche);
+    },
     touche(m) {
       for (const s of m.scores) { const j = joueurs.get(s.id); if (j) Object.assign(j, s); }
       tir.effetTouche(m.emp, m.dist);
@@ -203,7 +210,7 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
 
   function quitter() {
     if (flux) { flux.close(); flux = null; }
-    role = null; moi = null; state.vent = null; state.enLigne = false; state.spectateur = false; state.occupes = null; state.pause = false; releve(); sel.disabled = false; joueurs.clear();
+    document.body.classList.remove('spectateur'); role = null; moi = null; state.vent = null; state.enLigne = false; state.spectateur = false; state.occupes = null; state.pause = false; releve(); sel.disabled = false; joueurs.clear();
     for (const e of EMP) if (e.figure) e.figure.visible = e.nom !== state.post;
     tableau();
   }
@@ -218,11 +225,12 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
   }
 
   // chaque tir part au serveur ; s'il atteint un joueur, on l'annonce avec la distance et le temps de vol
-  tir.etat.surTir = (res) => {
+  const annonceTir = (res, dir) => {
     if (!state.enLigne) return;
     const c = res.touche ? joueurA(res.touche.nom) : null;
-    fetch('./api/manche/tir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, ...(c ? { cible: c.id, dist: res.dist, tof: res.tof } : {}) }) }).catch(() => {});
+    fetch('./api/manche/tir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, dir, ...(c ? { cible: c.id, dist: res.dist, tof: res.tof } : {}) }) }).catch(() => {});
   };
+  if (effets) effets.surTirReseau = annonceTir; else tir.etat.surTir = (res) => annonceTir(res);
   // on signale au serveur le joueur qu'on tient dans sa lunette : lui seul verra notre reflet
   let tenu = null;
   setInterval(() => {

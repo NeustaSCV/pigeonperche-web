@@ -130,7 +130,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
         later(() => {
           const moi = joueurs.get(id), cible = joueurs.get(c.id);
           if (moi && cible && n === numero && phase === 'jeu' && moi.vivant && cible.vivant && moi.vise === cible.id) {
-            const d = ecart(moi, cible); moi.dernierTir = now(); moi.tirs++; diffuse({ t: 'tir', id });
+            const d = ecart(moi, cible); moi.dernierTir = now(); moi.tirs++; diffuse({ t: 'tir', id, emp: moi.emp, vers: cible.emp, touche });
             if (touche) engage(moi, cible, d, d / ROBOT_VITESSE);
           }
           if (moi) pointe(moi, null);
@@ -213,7 +213,9 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (!j.vivant) return 'couché';
       const t = now(); if (t - j.dernierTir < CADENCE_MS) return 'cadence';
       j.dernierTir = t; j.tirs++;
-      diffuse({ t: 'tir', id }, id);
+      // emplacement et direction du canon : les autres en tirent la traçante, la flamme et la détonation
+      const dir = Array.isArray(annonce.dir) && annonce.dir.length === 3 && annonce.dir.every((v) => Number.isFinite(v) && Math.abs(v) <= 1.001) ? annonce.dir.map((v) => Math.round(v * 1e5) / 1e5) : null;
+      diffuse({ t: 'tir', id, emp: j.emp, ...(dir ? { dir } : {}) }, id);
       if (annonce.cible == null) return 'ok';
       const c = joueurs.get(Number(annonce.cible)); if (!c || c.id === id) return 'cible inconnue';
       if (!c.vivant) return 'cible couchée';

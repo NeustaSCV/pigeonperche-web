@@ -18,14 +18,66 @@
       #bar select { font: inherit; color: #fff; background: rgba(20, 28, 36, 0.85); border: 1px solid rgba(255, 255, 255, 0.4); border-radius: 6px; padding: 5px 9px; max-width: 280px; }
       #tags { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
       .tag { position: absolute; transform: translate(-50%, -50%); min-width: 16px; height: 16px; line-height: 16px; text-align: center; font: bold 10px/16px system-ui, sans-serif; color: #fff; background: rgba(200, 40, 40, 0.8); border: 1px solid #fff; border-radius: 9px; padding: 0 2px; white-space: nowrap; }
+      /* vue du joueur, à la charte de l'accueil : étiquette du tireur visé, encart de tir, tableau de la manche */
       .tag.pres { transform: translate(-50%, -190%); font-size: 13px; height: 20px; line-height: 20px; padding: 0 8px; background: rgba(15, 20, 26, 0.88); border-radius: 5px; }
-      #tir { position: fixed; right: 12px; bottom: 12px; max-width: 46vw; padding: 8px 12px; font: 13px/1.5 system-ui, sans-serif; background: rgba(15, 20, 26, 0.72); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; pointer-events: none; }
-      #tir small { opacity: 0.7; }
-      #retour { position: fixed; right: 12px; top: 10px; color: #fff; text-decoration: none; background: rgba(20, 28, 36, 0.72); border: 1px solid rgba(255, 255, 255, 0.28); border-radius: 6px; padding: 5px 9px; }
-      #manche { position: fixed; right: 12px; top: 46px; min-width: 190px; padding: 8px 12px; font: 13px/1.5 system-ui, sans-serif; background: rgba(15, 20, 26, 0.72); border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 8px; pointer-events: none; }
-      #manche div { display: flex; gap: 10px; } #manche div span { flex: 1; } #manche div i { opacity: 0.6; font-style: normal; min-width: 34px; text-align: right; }
-      #manche .moi { color: #ffd76a; } #manche .hs { opacity: 0.45; } #manche small { display: block; margin-top: 4px; opacity: 0.8; max-width: 240px; }
-      #couche { position: fixed; inset: 0; place-items: center; text-align: center; font: 26px/1.4 system-ui, sans-serif; background: rgba(90, 0, 0, 0.45); pointer-events: none; }
+      /* nom du tireur : au-dessus de sa tête, sans fond */
+      .tag.nom { transform: translate(-50%, -100%); min-width: 0; height: auto; padding: 0; background: none; border: 0; border-radius: 0; font: 12px/1.2 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.14em; text-transform: uppercase; color: #f2ede3; white-space: nowrap; text-shadow: 0 0 3px #000, 0 0 6px #000, 0 1px 2px #000; }
+      #tir, #manche { position: fixed; right: 16px; padding: 12px 16px; color: #f2ede3; font: 13px/1.5 'Avenir Next', Avenir, 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; letter-spacing: 0.02em; background: rgba(14, 15, 14, 0.66); border: 1px solid rgba(242, 237, 227, 0.16); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); pointer-events: none; }
+      /* en bas à droite : rappel de l'arme à l'œil nu, dernier résultat lunette à l'œil */
+      #tir { bottom: 16px; padding: 8px 14px; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; text-align: right; text-shadow: 0 0 4px #000, 0 0 8px #000; }
+      #tir.epaule { max-width: 340px; padding: 10px 14px; text-align: left; text-shadow: none; background: rgba(14, 15, 14, 0.66); border: 1px solid rgba(242, 237, 227, 0.16); }
+      #tir span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(242, 237, 227, 0.6); }
+      .t-arme { font: 16px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: 0.06em; } .t-arme span { margin-left: 10px; }
+      .t-msg { color: rgba(242, 237, 227, 0.9); min-height: 20px; }
+      .t-aide { margin-top: 3px; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242, 237, 227, 0.5); }
+      kbd { display: inline-block; min-width: 20px; padding: 1px 5px; font: 11px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.04em; text-align: center; text-transform: none; color: #f2ede3; border: 1px solid rgba(242, 237, 227, 0.45); border-radius: 3px; background: rgba(14, 15, 14, 0.5); }
+      /* en haut à gauche : la cible visée */
+      #viseur { position: fixed; left: 18px; top: 16px; display: flex; flex-direction: column; gap: 14px; color: #f2ede3; font: 13px/1.4 'Avenir Next', Avenir, 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; pointer-events: none; text-shadow: 0 0 4px #000, 0 0 8px #000; }
+      body.outils #viseur { top: 92px; } body.au-salon #viseur { display: none; }
+      #viseur span { font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: rgba(242, 237, 227, 0.62); }
+      .v-lieu { font: 22px 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: 0.06em; }
+      .v-ligne { display: flex; align-items: baseline; gap: 8px; } .v-ligne b { font-weight: 400; font-size: 26px; color: #e7b565; font-variant-numeric: tabular-nums; }
+      .v-corr { font-size: 16px; color: #e7b565; font-variant-numeric: tabular-nums; }
+      /* lunette à l'œil : les tourelles, contre le bord gauche de la lunette (rayon 47 vh), à hauteur du fil horizontal du réticule.
+         La vue du tireur : où est chaque tourelle, ce qu'elle déplace, ses touches et son réglage. Jamais la correction à apporter. */
+      #tourelles { --tl: 336px; position: fixed; top: 50%; right: min(calc(50vw + 47vh + 12px), calc(100vw - var(--tl) - 10px)); width: var(--tl); box-sizing: border-box; transform: translateY(-50%); padding: 12px 14px; color: #f2ede3; font: 13px/1.4 'Avenir Next', Avenir, 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; background: rgba(14, 15, 14, 0.66); border: 1px solid rgba(242, 237, 227, 0.16); pointer-events: none; user-select: none; -webkit-user-select: none; }
+      body.au-salon #tourelles { display: none !important; }
+      .tr-bloc { padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid rgba(242, 237, 227, 0.16); }
+      /* l'élévation se lit de haut en bas : touches l'une sur l'autre, ruban debout ; la dérive de gauche à droite : touches côte à côte, ruban couché */
+      .tr-elev { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr; column-gap: 10px; }
+      .tr-elev .ruban { grid-column: 2; grid-row: 1 / span 2; } .tr-elev .tr-regl { align-self: end; }
+      .tr-tete { display: flex; align-items: center; gap: 12px; } .tr-tete > div { display: flex; flex-direction: column; min-width: 0; }
+      .tr-tete span { font-size: 11px; letter-spacing: 0.26em; text-transform: uppercase; color: #f2ede3; margin-bottom: 2px; }
+      .tr-tete em { font-style: normal; font-size: 11.5px; line-height: 1.35; color: rgba(242, 237, 227, 0.72); }
+      .tr-picto { flex: none; } .tr-picto circle, .tr-picto rect, .tr-picto path { fill: none; stroke: rgba(242, 237, 227, 0.7); stroke-width: 1; }
+      .tr-picto .p-fin { stroke: rgba(242, 237, 227, 0.28); } .tr-picto .p-or { fill: #e7b565; stroke: #e7b565; } .tr-picto .p-fl { stroke: #e7b565; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
+      .tr-regl { display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; margin-top: 8px; }
+      .tr-regl .regle { display: flex; align-items: baseline; gap: 7px; }
+      .tr-regl .regle b { font-weight: 400; font-size: 26px; line-height: 1.1; color: #e7b565; font-variant-numeric: tabular-nums; white-space: nowrap; }
+      .tr-regl .regle span { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242, 237, 227, 0.55); }
+      .tr-regl i { display: flex; gap: 5px; font-style: normal; } .tr-elev .tr-regl i { flex-direction: column; }
+      #tourelles kbd[data-t] { pointer-events: auto; cursor: pointer; } #tourelles kbd[data-t]:hover { border-color: #f2ede3; }
+      .tr-regl kbd { box-sizing: border-box; min-width: 34px; height: 28px; padding: 0; font-size: 14px; line-height: 26px; }
+      #tourelles kbd.appui { color: #14120e; background: #e7b565; border-color: #e7b565; }
+      .tr-aide p { margin: 0; font-size: 11.5px; line-height: 1.4; color: rgba(242, 237, 227, 0.72); } .tr-aide p + p { margin-top: 5px; } .tr-aide kbd { margin-right: 3px; }
+      .ruban { display: block; flex: none; shape-rendering: crispEdges; } .ruban path { fill: none; stroke-width: 1; }
+      .ruban.horiz { margin: 8px 0 0 4px; -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+      .ruban.vert { border-left: 1px solid rgba(242, 237, 227, 0.16); padding-left: 6px; -webkit-mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(transparent, #000 7%, #000 93%, transparent); }
+      .ruban .r-fin { stroke: rgba(242, 237, 227, 0.4); } .ruban .r-fort { stroke: rgba(242, 237, 227, 0.85); }
+      .ruban text { font: 10px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; fill: rgba(242, 237, 227, 0.62); font-variant-numeric: tabular-nums; }
+      .ruban .r-idx { fill: #f2ede3; stroke: none; shape-rendering: geometricPrecision; } .ruban .r-trait { stroke: #f2ede3; }
+      #retour { position: fixed; right: 16px; top: 14px; padding: 4px 2px; font: 11px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(242, 237, 227, 0.62); text-decoration: none; text-shadow: 0 0 6px #000; }
+      #retour:hover { color: #f2ede3; }
+      #manche { top: 44px; min-width: 250px; }
+      #manche > b { font-weight: 400; font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase; color: #e7b565; }
+      #manche div { display: flex; gap: 10px; color: rgba(242, 237, 227, 0.62); } #manche div span { flex: 1; } #manche div b { font-weight: 400; color: #f2ede3; font-variant-numeric: tabular-nums; } #manche div i { font-style: normal; color: rgba(242, 237, 227, 0.35); min-width: 34px; text-align: right; }
+      #manche .moi, #manche .moi b { color: #e7b565; } #manche .hs { opacity: 0.4; }
+      #manche small { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(242, 237, 227, 0.16); font-size: 11px; color: rgba(242, 237, 227, 0.62); max-width: 260px; }
+      #couche { position: fixed; inset: 0; place-items: center; text-align: center; font: 28px/1.5 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: 0.06em; color: #f2ede3; background: rgba(90, 0, 0, 0.45); pointer-events: none; }
+      #couche small { font: 12px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.8; }
+      /* outils de mise au point : masqués aux joueurs ; le spectateur garde le choix de l'emplacement */
+      body:not(.outils) #bar, body:not(.outils) #info { display: none; }
+      body.spectateur:not(.au-salon) #bar { display: flex; } body.spectateur:not(.outils) #bar .b-dev { display: none; }
       /* salon d'attente : la charte de l'accueil du jeu (src/ui/style.css) */
       :root { --ink: #f2ede3; --dim: rgba(242, 237, 227, 0.62); --faint: rgba(242, 237, 227, 0.28); --gold: #e7b565; --panel: rgba(14, 15, 14, 0.66); --line: rgba(242, 237, 227, 0.16);
         --serif: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Book Antiqua', Georgia, serif; --sans: 'Avenir Next', Avenir, 'Helvetica Neue', 'Segoe UI', system-ui, sans-serif; }
@@ -37,6 +89,9 @@
       .s-plan { position: absolute; top: 0; right: 0; height: 100%; width: auto; aspect-ratio: 1; max-width: none; z-index: 0; }
       #salon::before { content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(90deg, #070908 0%, #070908 calc(100% - 100vh), rgba(7, 9, 8, 0.82) calc(100% - 100vh + 40px), rgba(7, 9, 8, 0.3) calc(100% - 100vh + 300px), rgba(7, 9, 8, 0) calc(100% - 100vh + 520px)); }
       .s-gauche, .s-boards { position: relative; z-index: 2; }
+      /* avertissement, tout en bas de l'écran */
+      .s-avert { position: absolute; z-index: 2; left: 9vw; right: 4vw; bottom: 22px; margin: 0; font-size: 11px; letter-spacing: 0.14em; color: var(--dim); text-shadow: 0 0 6px #000; }
+      @media (max-height: 760px) { .s-avert { position: relative; left: auto; right: auto; bottom: auto; margin: 4px 0 0 4px; } }
       #salon h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(40px, 5.4vw, 84px); letter-spacing: 0.2em; text-transform: uppercase; margin: 0; line-height: 1; text-shadow: 0 2px 40px rgba(0, 0, 0, 0.5); }
       .s-sub { color: var(--dim); letter-spacing: 0.3em; text-transform: uppercase; font-size: 12px; margin: 16px 0 26px 4px; } .s-sub b { color: var(--gold); font-weight: 400; font-variant-numeric: tabular-nums; }
       .s-cadre { position: relative; display: flex; flex-direction: column; gap: 6px; width: 580px; max-width: 86vw; margin-left: -16px; padding: 16px 20px 12px 16px; border: 1px solid var(--line); background: rgba(10, 12, 14, 0.28); }
