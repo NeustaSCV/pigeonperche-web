@@ -60,6 +60,7 @@ html.touch:not(.portrait) #menu .m-cadre-t, html.touch:not(.portrait) #menu .m-m
 .seg button.sel { color: #14120e; background: var(--gold); border-color: var(--gold); }
 .opt-note { color: var(--dim); font-size: 12px; margin: 2px 0 0 126px; min-height: 16px; max-width: 420px; }
 #menu .foot { position: absolute; left: 9vw; bottom: 34px; color: var(--faint); font-size: 11px; letter-spacing: 0.14em; }
+.opt-val { font-style: normal; font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; white-space: nowrap; }
 input[type='range'] { -webkit-appearance: none; appearance: none; width: 150px; height: 1px; background: var(--line); outline: none; }
 input[type='range']::-webkit-slider-thumb { -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%; background: var(--gold); cursor: pointer; }
 input[type='range']::-moz-range-thumb { width: 11px; height: 11px; border: 0; border-radius: 50%; background: var(--gold); cursor: pointer; }

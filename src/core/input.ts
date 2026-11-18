@@ -16,6 +16,8 @@ export class Input {
   touch = false;
   /** tests automatisés : la souris est lue sans verrouillage du pointeur */
   free = false;
+  /** vitesse du regard réglée par le joueur (menu de pause) : multiplie le déplacement de la souris et du doigt */
+  sens = 1;
   /** manette analogique (tactile) : −1..1, x vers la droite, y vers l'avant */
   axisX = 0;
   axisY = 0;
@@ -39,8 +41,8 @@ export class Input {
     window.addEventListener('blur', () => { this.keys.clear(); this.releaseVirtual(); });
     document.addEventListener('mousemove', (e) => {
       if (!this.locked && !this.free) return;
-      this.dx += e.movementX;
-      this.dy += e.movementY;
+      this.dx += e.movementX * this.sens;
+      this.dy += e.movementY * this.sens;
     });
     document.addEventListener('mousedown', (e) => {
       if (!this.locked && !this.free) return;
@@ -102,8 +104,8 @@ export class Input {
   /** déplacement du regard, en pixels équivalents souris */
   addLook(dx: number, dy: number): void {
     if (!this.enabled) return;
-    this.dx += dx;
-    this.dy += dy;
+    this.dx += dx * this.sens;
+    this.dy += dy * this.sens;
   }
   /** relâche tout ce qui est tenu par le tactile (geste interrompu, perte de focus, changement d'écran) */
   releaseVirtual(): void {

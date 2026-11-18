@@ -27,6 +27,8 @@ export interface UIHandlers {
   setLevel(id: LevelId): void;
   setQuality(q: QualityName): void;
   setVolume(v: number): void;
+  /** vitesse du regard (souris, doigt) : 1 = d'origine */
+  setSens(v: number): void;
   pickWeapon(id: string): void;
   turret(kind: 'elev' | 'wind', n: number): void;
   continueBrief(): void;
@@ -195,6 +197,7 @@ export interface UIInit {
   difficulty: Difficulty;
   quality: QualityName;
   volume: number;
+  sens: number;
   touch?: boolean;
   tutorial?: boolean;
   /** conseils après plusieurs tirs manqués */
@@ -367,6 +370,7 @@ export class UI {
       <div class="screen veil-full" id="pause"><div class="card scroll"><div class="kicker">Pause</div><h2 class="title small"><span class="struck"><s>Fau</s><span class="at"><span class="pin"><em class="fix">Pigeon</em></span></span><s>con</s></span> perché</h2>
         <div class="opt"><span>Qualité</span><div class="seg" data-id="segQual2"></div></div>
         <div class="opt"><span>Volume</span><input type="range" min="0" max="100" data-id="vol2" /></div>
+        <div class="opt"><span>${touch ? 'Défilement' : 'Souris'}</span><input type="range" min="0" max="100" data-id="sens" aria-label="${touch ? 'Vitesse du défilement' : 'Vitesse de la souris'}" /><em class="opt-val" data-id="sensVal"></em></div>
         <div class="menu-list" style="margin-top:18px">
           <button class="mbtn primary" data-act="resume">Reprendre</button>
           <button class="mbtn" data-act="guide">Régler la lunette</button>
@@ -482,6 +486,14 @@ export class UI {
       const v = this.el[id] as HTMLInputElement;
       v.value = String(Math.round(init.volume * 100));
       v.addEventListener('input', () => h.setVolume(Number(v.value) / 100));
+    }
+    // vitesse du regard : curseur de 0 à 100, le milieu vaut la vitesse d'origine, les bouts un tiers et le triple
+    {
+      const s = this.el.sens as HTMLInputElement, lit = (): number => Math.pow(3, (Number(s.value) - 50) / 50);
+      const montre = (): void => { this.el.sensVal.textContent = `× ${lit().toFixed(lit() < 1 ? 2 : 1).replace('.', ',')}`; };
+      s.value = String(Math.round(50 + (50 * Math.log(Math.min(3, Math.max(1 / 3, init.sens)))) / Math.log(3)));
+      montre();
+      s.addEventListener('input', () => { h.setSens(lit()); montre(); });
     }
     // lien direct ou ancre saisie à la main, et Échap pour revenir
     window.addEventListener('hashchange', () => { if (this.guideLinked && (this.current === 'menu' || this.current === 'pause')) this.openGuide(); });

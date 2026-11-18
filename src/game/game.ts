@@ -259,6 +259,9 @@ export class Game implements OnlineHost {
     }
     if (params.get('dr') === '0') this.engine.dynamicRes = false;
     this.input = new Input(canvas);
+    let sens = 1;
+    try { const v = Number(localStorage.getItem('hr.sens')); if (v >= 0.3 && v <= 3.1) sens = v; } catch { /* stockage indisponible */ }
+    this.input.sens = sens;
     this.input.touch = this.touch;
     // tests sur ordinateur : la souris simulée est lue sans capture
     this.input.free = this.testMode && !this.touch;
@@ -280,6 +283,7 @@ export class Game implements OnlineHost {
         setLevel: (id) => { if (id !== this.data.id) switchLevel(id); },
         setQuality: (q) => { if (q !== this.engine.q.name) { localStorage.setItem('hr.quality', q); location.reload(); } },
         setVolume: (v) => { this.volume = v; localStorage.setItem('hr.volume', String(v)); this.audio.setMasterVolume(v); },
+        setSens: (v) => { this.input.sens = v; try { localStorage.setItem('hr.sens', v.toFixed(3)); } catch { /* stockage indisponible */ } },
         pickWeapon: (id) => { this.equip(id); this.audio.ui('confirm'); this.setState('play'); },
         turret: (k, n) => { if (k === 'elev') this.rifle.clickElev(n); else this.rifle.clickWind(n); this.ui.bookTurrets(this.rifle.elevMil, this.rifle.windMil); },
         continueBrief: () => this.continueBrief(),
@@ -295,7 +299,7 @@ export class Game implements OnlineHost {
         clearLocalScores: () => { this.scores.clearLocal(); this.showBoards(); },
       },
       {
-        difficulty: this.difficulty, quality, volume: this.volume, touch: this.touch, tutorial: this.tutoPref === null || this.tutoPref === 'on', coach: this.coachPref !== 'off', fullscreen: this.touch && canFullscreen(), homeTip: this.touch && needsHomeScreenTip(params),
+        difficulty: this.difficulty, quality, volume: this.volume, sens, touch: this.touch, tutorial: this.tutoPref === null || this.tutoPref === 'on', coach: this.coachPref !== 'off', fullscreen: this.touch && canFullscreen(), homeTip: this.touch && needsHomeScreenTip(params),
         levels: LEVELS, campaigns: CAMPAIGNS, level: this.data.id, steps: this.data.steps, weapons: this.weapons, hasTutorial: !!this.data.tutorial,
         alertLabel: this.data.alertZone ? this.data.alertLabel : null, alertTexts: this.data.alertTexts, failNote: this.data.failNote,
       },
