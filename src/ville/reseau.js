@@ -102,7 +102,8 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
   // ---------- salon ----------
   const liste = (el, l, vide) => { el.innerHTML = l?.length ? l.map((j) => `<li><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></li>`).join('') : `<li class="vide">${vide}</li>`; };
   const salonVisible = () => salon.style.display !== 'none';
-  const montreSalon = (oui) => { salon.style.display = oui ? 'grid' : 'none'; document.body.classList.toggle('au-salon', oui); state.salon = oui; if (oui) { state.scope = false; S.pseudo.disabled = role !== null; } };
+  const montreSalon = (oui) => { if (oui && document.pointerLockElement) document.exitPointerLock();      // le salon se manie au pointeur : on libère la souris
+    salon.style.display = oui ? 'grid' : 'none'; document.body.classList.toggle('au-salon', oui); state.salon = oui; if (oui) { state.scope = false; S.pseudo.disabled = role !== null; } };
   const dessineSalon = () => {
     if (!salonVisible()) return;
     const reste = echeance - performance.now(), n = resume?.connectes ?? 0;

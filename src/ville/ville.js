@@ -954,17 +954,24 @@ const drawTags = () => {
     d.textContent = manche ? qui : !pres ? e.n : `${e.n}. ${e.nom} · ${Math.round(dist)} m · ${tir.texteCorrection(e)}`;
   });
 };
-let drag = false;
-view.addEventListener('mousedown', () => (drag = true));
-window.addEventListener('mouseup', () => (drag = false));
-window.addEventListener('mousemove', (e) => {
-  if (!drag) return;
-  const k = (camera.fov * Math.PI) / 180 / view.clientHeight;
-  state.yaw += e.movementX * k; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch + e.movementY * k));
+// Regard à la souris, comme dans le jeu solo : un clic sur l'image capture la souris, Échap la libère. Souris capturée,
+// bouger regarde (même sensibilité que le solo, réduite avec le grossissement), clic gauche tire, clic droit épaule ou
+// quitte la lunette, la molette règle le grossissement.
+const SENS_SOURIS = 0.0022, FOV_REF = 55;
+let capture = false;
+const aideCapture = document.createElement('div'); aideCapture.id = 'capture'; aideCapture.textContent = 'Clic pour capturer la souris, Échap pour la libérer.'; document.body.appendChild(aideCapture);
+view.addEventListener('click', () => { if (!TACTILE && !capture && !state.salon && !state.fly) { try { view.requestPointerLock()?.catch?.(() => {}); } catch { /* refusé par le navigateur */ } } });
+document.addEventListener('pointerlockchange', () => { capture = document.pointerLockElement === view; state.capture = capture; document.body.classList.toggle('capture', capture); });
+document.addEventListener('mousemove', (e) => {
+  if (!capture) return;
+  const s = state.scope ? SENS_SOURIS * (camera.fov / FOV_REF) * 0.9 : SENS_SOURIS;
+  state.yaw -= e.movementX * s; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch - e.movementY * s));
 });
-view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(4, Math.min(25, state.mag * (e.deltaY < 0 ? 1.12 : 1 / 1.12))); }, { passive: false });
-view.addEventListener('contextmenu', (e) => { e.preventDefault(); state.scope = !state.scope; });
-window.addEventListener('keydown', (e) => { keys.add(e.code); if (e.code === 'KeyE') state.scope = !state.scope; if (OUTILS && e.code === 'KeyT') state.tags = !state.tags; if (OUTILS && e.code === 'KeyP') state.quad = !state.quad; if (!state.scope && e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (!state.scope && e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
+document.addEventListener('mousedown', (e) => { if (!capture) return; if (e.button === 0) tir.tirer(); else if (e.button === 2) state.scope = !state.scope; });
+view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(4, Math.min(25, state.mag * (e.deltaY < 0 ? 1.18 : 1 / 1.18))); }, { passive: false });
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+window.addEventListener('keydown', (e) => { keys.add(e.code); if ((e.code === 'KeyF' || e.code === 'KeyE') && !state.salon) state.scope = !state.scope;   // F comme en solo (E gardé)
+  if (OUTILS && e.code === 'KeyT') state.tags = !state.tags; if (OUTILS && e.code === 'KeyP') state.quad = !state.quad; if (!state.scope && e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (!state.scope && e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 
 const sc = document.getElementById('scope'), sx = sc.getContext('2d');

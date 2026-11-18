@@ -78,6 +78,9 @@
       #manche small { display: block; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(242, 237, 227, 0.16); font-size: 11px; color: rgba(242, 237, 227, 0.62); max-width: 260px; }
       #couche { position: fixed; inset: 0; place-items: center; text-align: center; font: 28px/1.5 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif; letter-spacing: 0.06em; color: #f2ede3; background: rgba(90, 0, 0, 0.45); pointer-events: none; }
       #couche small { font: 12px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.2em; text-transform: uppercase; opacity: 0.8; }
+      /* rappel, souris libre : la même phrase que l'accueil du jeu solo */
+      #capture { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); font: 11px 'Avenir Next', Avenir, 'Helvetica Neue', sans-serif; letter-spacing: 0.14em; color: rgba(242, 237, 227, 0.75); text-shadow: 0 0 4px #000, 0 0 8px #000; pointer-events: none; white-space: nowrap; }
+      body.capture #capture, body.au-salon #capture, html.touch #capture { display: none; }
       /* outils de mise au point : masqués aux joueurs ; le spectateur garde le choix de l'emplacement */
       body:not(.outils) #bar, body:not(.outils) #info { display: none; }
       body.spectateur:not(.au-salon) #bar { display: flex; } body.spectateur:not(.outils) #bar .b-dev { display: none; }

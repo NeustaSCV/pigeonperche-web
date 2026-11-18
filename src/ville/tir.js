@@ -192,7 +192,6 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   window.addEventListener('keydown', (ev) => {
     if (CRANS[ev.code]) { if (state.scope && !state.salon) { ev.preventDefault(); cran(ev.code, ev.shiftKey); } }
     else if (ev.code === 'KeyG') reglerSurCible();
-    else if (ev.code === 'Space' && !state.fly) { ev.preventDefault(); tirer(); }
   });
   // les touches dessinées dans l'encart se cliquent aussi (Maj + clic : 1 mrad)
   tourelles.addEventListener('mousedown', (ev) => {
@@ -200,8 +199,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     ev.preventDefault(); if (b.dataset.t === 'KeyG') reglerSurCible(); else cran(b.dataset.t, ev.shiftKey);
   });
   let bas = null;
-  view.addEventListener('mousedown', (ev) => { if (ev.button === 0) bas = [ev.clientX, ev.clientY]; });
-  view.addEventListener('mouseup', (ev) => { if (ev.button === 0 && bas && !state.tactile && Math.hypot(ev.clientX - bas[0], ev.clientY - bas[1]) < 4) tirer(); bas = null; });      // au doigt, on ne tire qu'au bouton (tactile.js)
+  // (le tir à la souris est géré avec la capture du pointeur, dans ville.js : clic gauche, comme en solo)
 
   // --- encart des tourelles ---
   // Ruban gradué d'une tourelle, vu comme le tambour déroulé : il défile sous un repère fixe, la valeur réglée. Un cran = PAS pixels ;
@@ -295,7 +293,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     // en bas à droite : un simple rappel de l'arme à l'œil nu ; lunette à l'œil, le dernier résultat et la culasse
     box.className = state.scope ? 'epaule' : '';
     box.innerHTML = state.scope
-      ? `<div class="t-msg">${t.msg}</div><div class="t-aide">${attente || (state.tactile ? '' : '<kbd>Espace</kbd> tirer')}</div>`
+      ? `<div class="t-msg">${t.msg}</div><div class="t-aide">${attente || (state.tactile ? '' : '<kbd>Clic gauche</kbd> tirer')}</div>`
       : `<div class="t-arme">${W.name}<span>${W.caliber}</span></div>`;
   };
 
