@@ -120,13 +120,14 @@ export class Lobby {
   </div>
   <section class="ol-fin" data-s="fin">
     <div class="ol-fin-h"><h2>Dernière partie</h2><p data-s="synth"></p></div>
-    <table><thead><tr><th class="c-r"></th><th class="c-n">Tireur</th><th class="c-p">Points</th><th class="c-pr">Précision</th><th class="c-tt">Touches / tirs</th><th class="c-te">À la tête</th><th class="c-ab">Abattus</th><th class="c-pl">Plus long tir</th><th class="c-su">Touché</th></tr></thead><tbody data-s="pm"></tbody></table>
+    <table>${ENTETE}<tbody data-s="pm"></tbody></table>
     <p class="ol-fin-vide">Aucune partie jouée pour l’instant.</p>
   </section>
   <div class="ol-bas">
     <section class="ol-boards ol-presents"><div class="ol-boards-h"><span data-s="salleT">Dans la salle</span></div><ol data-s="salle"></ol></section>
     <section class="ol-boards ol-global"><div class="ol-boards-h"><span>Classement global</span></div>
-      <div class="ol-toujours"><div><h4>Meilleurs scores</h4><ol data-s="tm"></ol></div><div><h4>Pires scores</h4><ol data-s="tp"></ol></div></div>
+      <h4>Meilleurs scores</h4><table>${ENTETE}<tbody data-s="tm"></tbody></table>
+      <h4>Pires scores</h4><table>${ENTETE}<tbody data-s="tp"></tbody></table>
     </section>
   </div>
   <p class="ol-avert">Avertissement : ce jeu vous est proposé à but ludique uniquement. Dans la vraie vie, ne tirez pas sur vos amis.</p>`;
@@ -216,14 +217,12 @@ export class Lobby {
     const c = s.lastRanking ?? resume?.precedente?.classement ?? [];
     // la dernière partie, en grand : tous les tireurs dans l'ordre des points, robots compris (en retrait), la ligne du
     // joueur mise en évidence ; une statistique absente (ligne d'avant son ajout) ou sans objet s'écrit d'un tiret
-    const moi = s.self?.pseudo, tiret = '<s>–</s>', long = plusLongTir(c);
-    const stat = (v: number | null | undefined, suffixe = ''): string => (v == null ? tiret : fr(v) + suffixe);
+    const moi = s.self?.pseudo, long = plusLongTir(c);
     S.fin.classList.toggle('vide', !c.length);
     html(S.synth, long ? `Plus long tir <b>${fr(long.plusLong!)} m</b> ${nom(long)}` : '');
-    html(S.pm, c.map((j, i) => `<tr class="${j.robot ? 'bot' : ''}${!j.robot && j.pseudo === moi ? ' moi' : ''}"><td class="c-r">${i + 1}</td><td class="c-n">${nom(j)}</td><td class="c-p">${fr(j.points)}</td>`
-      + `<td class="c-pr">${stat(precision(j), ' %')}</td><td class="c-tt">${j.touches} / ${j.tirs}</td><td class="c-te">${stat(j.tetes)}</td><td class="c-ab">${stat(j.abattus)}</td>`
-      + `<td class="c-pl">${j.plusLong ? fr(j.plusLong) + ' m' : tiret}</td><td class="c-su">${j.subies ?? 0} fois</td></tr>`).join(''));
-    liste(S.tm, resume?.meilleurs, 'Aucun score enregistré.'); liste(S.tp, resume?.pires, '—');
+    html(S.pm, lignes(c, moi));
+    // le classement global : les mêmes colonnes que la dernière partie, pour les meilleurs puis les pires scores
+    html(S.tm, lignes(resume?.meilleurs ?? [], moi) || VIDE('Aucun score enregistré.')); html(S.tp, lignes(resume?.pires ?? [], moi) || VIDE('—'));
     liste(S.salle, (role ? s.ranking() : resume?.joueurs)?.filter((j) => !j.robot), 'Personne en ligne pour l’instant.');
   }
 
@@ -233,6 +232,20 @@ export class Lobby {
     this.el.remove();
   }
 }
+
+/** en-tête commun aux tableaux de scores (dernière partie, classement global) */
+const ENTETE = '<thead><tr><th class="c-r"></th><th class="c-n">Tireur</th><th class="c-p">Points</th><th class="c-pr">Précision</th><th class="c-tt">Touches / tirs</th><th class="c-te">À la tête</th><th class="c-ab">Abattus</th><th class="c-pl">Plus long tir</th><th class="c-su">Touché</th></tr></thead>';
+const VIDE = (texte: string): string => `<tr class="vide"><td colspan="9">${texte}</td></tr>`;
+/**
+ * Les lignes d'un tableau de scores, toutes statistiques comprises. Robots en retrait, ligne du joueur (`moi`) en
+ * évidence ; une statistique absente (ligne enregistrée avant son ajout) ou sans objet s'écrit d'un tiret.
+ */
+const lignes = (c: readonly Ligne[], moi: string | undefined): string => {
+  const tiret = '<s>–</s>', stat = (v: number | null | undefined, suffixe = ''): string => (v == null ? tiret : fr(v) + suffixe);
+  return c.map((j, i) => `<tr class="${j.robot ? 'bot' : ''}${!j.robot && j.pseudo === moi ? ' moi' : ''}"><td class="c-r">${i + 1}</td><td class="c-n">${nom(j)}</td><td class="c-p">${fr(j.points)}</td>`
+    + `<td class="c-pr">${stat(precision(j), ' %')}</td><td class="c-tt">${j.touches} / ${j.tirs}</td><td class="c-te">${stat(j.tetes)}</td><td class="c-ab">${stat(j.abattus)}</td>`
+    + `<td class="c-pl">${j.plusLong ? fr(j.plusLong) + ' m' : tiret}</td><td class="c-su">${j.subies ?? 0} fois</td></tr>`).join('');
+};
 
 /** Ne réécrit l'élément que si son contenu change (le salon est redessiné deux fois par seconde). */
 const ecrit = new WeakMap<HTMLElement, string>();
