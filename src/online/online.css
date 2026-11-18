@@ -227,6 +227,9 @@ html.touch #ol-salon.saisie h1, html.touch #ol-salon.saisie .ol-sub, html.touch 
   html:not(.touch) #ol-salon .ol-fin, html:not(.touch) #ol-salon .ol-bas { grid-column: 1 / -1; }
   html:not(.touch) #ol-salon .ol-bas { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
   html:not(.touch) #ol-salon .ol-bas .ol-boards { grid-column: auto; }
+  /* les présents à gauche sur toute la hauteur ; à droite, le classement global puis celui des téléphones */
+  html:not(.touch) #ol-salon .ol-bas .ol-presents { grid-row: span 2; }
+  html:not(.touch) #ol-salon .ol-bas .ol-tel { grid-column: 2; }
 }
 /* écran bas : lignes resserrées, pour garder le plus de tireurs possible au-dessus du pli */
 @media (max-height: 800px) {

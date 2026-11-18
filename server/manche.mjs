@@ -76,6 +76,8 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const spectateurs = new Map();        // id → send
   let suivant = 1, numero = 0, precedente = null;
   let meilleurs = (records.meilleurs ?? []).filter((l) => !l.robot), pires = (records.pires ?? []).filter((l) => !l.robot);
+  // classement à part des joueurs sur téléphone (ils figurent aussi dans les deux listes ci-dessus, qui restent mixtes)
+  let telephone = (records.telephone ?? []).filter((l) => !l.robot && l.tel);
 
   /** Les `n` emplacements les plus resserrés : ceux qui tiennent dans le plus petit cercle centré sur l'un d'eux. */
   const zoneDe = (n) => {
@@ -94,8 +96,8 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)), z = ZONES[reglages.niveau]; return emplacements.filter((e) => z.has(e.nom) && !pris.has(e.nom) && e.nom !== sauf); };
   const tirage = (sauf) => { const l = libres(sauf); return l.length ? l[Math.floor(rand() * l.length)].nom : null; };
   const lieu = (nom) => emplacements.find((e) => e.nom === nom);
-  const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, emp: j.emp, vivant: j.vivant, vie: j.vie, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
-  const ligne = (j) => ({ pseudo: j.pseudo, robot: !!j.robot, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies, tetes: j.tetes, abattus: j.abattus, plusLong: j.plusLong });
+  const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, tel: !!j.tel, emp: j.emp, vivant: j.vivant, vie: j.vie, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
+  const ligne = (j) => ({ pseudo: j.pseudo, robot: !!j.robot, tel: !!j.tel, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies, tetes: j.tetes, abattus: j.abattus, plusLong: j.plusLong });
   const diffuse = (msg, sauf) => { for (const j of joueurs.values()) if (j.id !== sauf) j.send(msg); for (const s of spectateurs.values()) s(msg); };
   const humains = () => [...joueurs.values()].filter((j) => !j.robot).length;
   /** Où en est l'horloge : phase en cours et temps restant avant la suivante. */
@@ -139,10 +141,10 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const ecart = (a, b) => { const p = lieu(a.emp), q = lieu(b.emp); return Math.hypot(p.x - q.x, p.y - q.y, p.z - q.z); };
 
   // ---------- tireurs automatiques ----------
-  const entre = (pseudo, robot, send) => {
+  const entre = (pseudo, robot, send, tel = false) => {
     const emp = tirage(); if (!emp) return null;
     const id = suivant++;
-    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, tetes: 0, abattus: 0, plusLong: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
+    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, tel: !robot && !!tel, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, tetes: 0, abattus: 0, plusLong: 0, dernierTir: -1e9, derniereDiversion: -1e9, send };
     joueurs.set(id, j); return j;
   };
   // cadence des humains : délai moyen entre deux tirs d'un même joueur, en ms ; null tant que personne n'a tiré deux fois
@@ -212,7 +214,8 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (actifs.length) {
         meilleurs = [...meilleurs, ...actifs].sort(parRang).slice(0, RECORDS_MAX);
         pires = [...pires, ...actifs].sort((a, b) => parRang(b, a)).slice(0, RECORDS_MAX);
-        onRecords({ meilleurs, pires });
+        telephone = [...telephone, ...actifs.filter((l) => l.tel)].sort(parRang).slice(0, RECORDS_MAX);
+        onRecords({ meilleurs, pires, telephone });
       }
     }
     diffuse({ t: 'fin', ...temps(), classement });
@@ -222,11 +225,14 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   planifie();
 
   return {
-    /** Entrée d'un joueur. Renvoie son identifiant, ou null si la salle est pleine. `robot` : tireur automatique. */
-    join(pseudo, send, { robot = false } = {}) {
+    /**
+     * Entrée d'un joueur. Renvoie son identifiant, ou null si la salle est pleine. `robot` : tireur automatique.
+     * `tel` : le joueur se déclare sur téléphone (appareil tactile) ; c'est ce que dit son navigateur, sans contrôle.
+     */
+    join(pseudo, send, { robot = false, tel = false } = {}) {
       if (humains() >= MAX_JOUEURS || (robot && joueurs.size >= MAX_JOUEURS)) { send({ t: 'complet' }); return null; }
       if (!robot && joueurs.size >= MAX_JOUEURS) { const b = [...joueurs.values()].find((q) => q.robot); if (b) { joueurs.delete(b.id); diffuse({ t: 'part', id: b.id }); } }
-      const j = entre(pseudo, robot, send); if (!j) { send({ t: 'complet' }); return null; }
+      const j = entre(pseudo, robot, send, tel); if (!j) { send({ t: 'complet' }); return null; }
       send({ t: 'bienvenue', id: j.id, ...temps(), reglages, votes: decompte(), joueurs: [...joueurs.values()].map(vue) });
       diffuse({ t: 'arrive', joueur: vue(j) }, j.id);
       if (!robot) equilibre();
@@ -298,7 +304,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     /** Délai moyen entre deux tirs repris des humains (ms), ou null tant qu'ils n'ont pas donné le rythme. */
     rythmeRobots: () => rythme,
     resume: () => ({ ...temps(), reglages, votes: decompte(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, robots: joueurs.size - humains(), places: MAX_JOUEURS - humains(),
-      joueurs: [...joueurs.values()].sort(parRang).map(ligne), precedente, meilleurs: meilleurs.slice(0, 5), pires: pires.slice(0, 5) }),
+      joueurs: [...joueurs.values()].sort(parRang).map(ligne), precedente, meilleurs: meilleurs.slice(0, 5), pires: pires.slice(0, 5), telephone: telephone.slice(0, 5) }),
     etat: () => [...joueurs.values()].map(vue),
     zone: (niveau) => [...ZONES[niveau]],
     nombre: () => joueurs.size,

@@ -215,6 +215,22 @@ describe('manche multijoueur', () => {
     expect(r.meilleurs[0]).toEqual(ancien);                        // l'ancienne ligne reste telle quelle, sans les nouveaux champs
     expect(r.meilleurs[1]).toMatchObject({ pseudo: 'Anna', tetes: 0, abattus: 0, plusLong: 0 });
   });
+  it('marque les joueurs sur téléphone et leur tient un classement à part, le classement global restant mixte', () => {
+    const { m, avance, dist, gardes } = salle({ records: { telephone: [{ pseudo: 'Vieux', robot: false, tel: true, points: 5, touches: 1, tirs: 1, subies: 0 }, { pseudo: 'Intrus', robot: false, points: 900, touches: 1, tirs: 1, subies: 0 }] } });
+    const recu: any[] = [];
+    const tel = m.join('Mobile', (x: any) => recu.push(x), { tel: true }), pc = m.join('Bureau', () => {}), bot = m.join('Robot', () => {}, { robot: true, tel: true });
+    const e = m.etat(); const de = (id: number) => e.find((j: any) => j.id === id);
+    expect(de(tel).tel).toBe(true); expect(de(pc).tel).toBe(false); expect(de(bot).tel).toBe(false);   // un robot n'est jamais « sur téléphone »
+    expect(recu.find((x) => x.t === 'arrive' && x.joueur.id === pc).joueur.tel).toBe(false);
+    m.shot(tel, { cible: pc, dist: dist(tel, pc), tof: 1 }); avance(2000);
+    m.shot(pc, { cible: tel, dist: dist(tel, pc), tof: 1 }); avance(2000);
+    avance(MANCHE_MS);
+    const r = m.resume();
+    expect(r.precedente.classement.find((l: any) => l.pseudo === 'Mobile').tel).toBe(true);
+    expect(r.meilleurs.map((l: any) => l.pseudo).sort()).toEqual(['Bureau', 'Mobile']);                // mixte
+    expect(r.telephone.map((l: any) => l.pseudo)).toEqual(['Mobile', 'Vieux']);                        // téléphones seulement, relus du fichier
+    expect(gardes.at(-1).telephone.map((l: any) => l.pseudo)).toEqual(['Mobile', 'Vieux']);
+  });
   it('n’inscrit jamais un robot aux records de toujours, mais le garde au classement de la partie', () => {
     const deux = LIEUX.slice(0, 2);
     const { m, avance, entre, gardes } = salle({ robots: ROBOTS, emplacements: deux });

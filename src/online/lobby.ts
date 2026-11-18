@@ -129,6 +129,9 @@ export class Lobby {
       <h4>Meilleurs scores</h4><table>${ENTETE}<tbody data-s="tm"></tbody></table>
       <h4>Pires scores</h4><table>${ENTETE}<tbody data-s="tp"></tbody></table>
     </section>
+    <section class="ol-boards ol-global ol-tel"><div class="ol-boards-h"><span>Classement téléphone 📱</span></div>
+      <h4>Meilleurs scores</h4><table>${ENTETE}<tbody data-s="tt"></tbody></table>
+    </section>
   </div>
   <p class="ol-avert">Avertissement : ce jeu vous est proposé à but ludique uniquement. Dans la vraie vie, ne tirez pas sur vos amis.</p>`;
     for (const e of salon.querySelectorAll<HTMLElement>('[data-s]')) this.S[e.dataset.s!] = e;
@@ -223,6 +226,8 @@ export class Lobby {
     html(S.pm, lignes(c, moi));
     // le classement global : les mêmes colonnes que la dernière partie, pour les meilleurs puis les pires scores
     html(S.tm, lignes(resume?.meilleurs ?? [], moi) || VIDE('Aucun score enregistré.')); html(S.tp, lignes(resume?.pires ?? [], moi) || VIDE('—'));
+    // le classement des joueurs sur téléphone, à part (le classement global, lui, mêle tous les appareils)
+    html(S.tt, lignes(resume?.telephone ?? [], moi) || VIDE('Aucun score sur téléphone pour l’instant.'));
     liste(S.salle, (role ? s.ranking() : resume?.joueurs)?.filter((j) => !j.robot), 'Personne en ligne pour l’instant.');
   }
 

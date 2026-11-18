@@ -22,7 +22,7 @@ function monde(opt: Record<string, unknown> = {}) {
       summary: () => (panne ? Promise.reject(new Error('hors service')) : Promise.resolve(copie(m.resume()))),
       open(qui, onMessage, onError) {
         const jeton = 'jeton' + ++n, send = (msg: any) => onMessage(copie(msg));
-        const id: number | null = 'pseudo' in qui ? m.join(qui.pseudo, (msg: any) => send(msg.t === 'bienvenue' ? { ...msg, jeton } : msg)) : m.watch(send);
+        const id: number | null = 'pseudo' in qui ? m.join(qui.pseudo, (msg: any) => send(msg.t === 'bienvenue' ? { ...msg, jeton } : msg), { tel: !!qui.tel }) : m.watch(send);
         let ouvert = id != null;
         if (id != null && id > 0) jetons.set(id, jeton);
         const ferme = () => { if (!ouvert) return; ouvert = false; jetons.delete(id!); m.leave(id); };
@@ -162,8 +162,8 @@ describe('session du mode en ligne', () => {
     expect(a.s.phase).toBe('pause'); expect(a.s.inLobby).toBe(true); expect(a.s.announce).toBe('Manche terminée.');
     expect(a.s.remaining()).toBe(PAUSE_MS - 20);
     expect(a.s.lastRanking).toEqual([
-      { pseudo: 'Anna', robot: false, points: pointsPour(d), touches: 1, tirs: 1, subies: 0, tetes: 0, abattus: 0, plusLong: d },
-      { pseudo: 'Bob', robot: false, points: 0, touches: 0, tirs: 0, subies: 1, tetes: 0, abattus: 0, plusLong: 0 },
+      { pseudo: 'Anna', robot: false, tel: false, points: pointsPour(d), touches: 1, tirs: 1, subies: 0, tetes: 0, abattus: 0, plusLong: d },
+      { pseudo: 'Bob', robot: false, tel: false, points: 0, touches: 0, tirs: 0, subies: 1, tetes: 0, abattus: 0, plusLong: 0 },
     ]);
     expect(plusLongTir(a.s.lastRanking!)!.pseudo).toBe('Anna');
     expect(a.s.lastRanking!.map(precision)).toEqual([100, null]);

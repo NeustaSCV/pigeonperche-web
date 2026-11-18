@@ -19,6 +19,8 @@ export interface Choix { vent?: boolean; niveau?: Niveau }
 /** Un tireur de la salle, tel que le serveur le diffuse. */
 export interface Joueur {
   id: number; pseudo: string; robot: boolean;
+  /** joue sur téléphone (appareil tactile), d'après son navigateur */
+  tel?: boolean;
   /** nom de son emplacement */
   emp: string;
   vivant: boolean;
@@ -31,13 +33,15 @@ export interface Joueur {
  * `abattus` : adversaires abattus ; `plusLong` : plus long tir réussi, en mètres (0 : aucune touche). Ces trois-là
  * manquent aux lignes enregistrées avant leur ajout (fichier des records) : absentes, elles s'affichent d'un tiret.
  */
-export interface Ligne { pseudo: string; robot: boolean; points: number; touches: number; tirs: number; subies: number; tetes?: number; abattus?: number; plusLong?: number; date?: number }
+export interface Ligne { pseudo: string; robot: boolean; tel?: boolean; points: number; touches: number; tirs: number; subies: number; tetes?: number; abattus?: number; plusLong?: number; date?: number }
 
 /** Réponse de GET /api/manche/etat : ce que le salon affiche sans entrer dans la salle. */
 export interface Resume {
   phase: Phase; reste: number; reglages: Reglages; votes: Decompte;
   connectes: number; humains: number; spectateurs: number; robots: number; places: number;
   joueurs: Ligne[]; precedente: { fin: number; classement: Ligne[] } | null; meilleurs: Ligne[]; pires: Ligne[];
+  /** meilleurs scores des joueurs sur téléphone (absent d'un serveur plus ancien) */
+  telephone?: Ligne[];
 }
 
 // ---------- messages du serveur ----------
@@ -78,7 +82,7 @@ export interface SessionTransport {
   /** GET etat */
   summary(): Promise<Resume>;
   /** GET flux : `onMessage` reçoit chaque message déjà décodé, `onError` la perte ou le refus de la connexion. */
-  open(qui: { pseudo: string } | { spectateur: true }, onMessage: (m: unknown) => void, onError: () => void): Flux;
+  open(qui: { pseudo: string; tel?: boolean } | { spectateur: true }, onMessage: (m: unknown) => void, onError: () => void): Flux;
   /** POST tir, vise, vote ou diversion */
   post(action: 'tir' | 'vise' | 'vote' | 'diversion', corps: Record<string, unknown>): Promise<unknown>;
 }
@@ -88,7 +92,7 @@ export function browserTransport(base = './api/manche/'): SessionTransport {
   return {
     summary: () => fetch(base + 'etat').then((r) => (r.ok ? (r.json() as Promise<Resume>) : Promise.reject(new Error('etat')))),
     open(qui, onMessage, onError) {
-      const flux = new EventSource(base + 'flux?' + ('pseudo' in qui ? 'pseudo=' + encodeURIComponent(qui.pseudo) : 'role=spectateur'));
+      const flux = new EventSource(base + 'flux?' + ('pseudo' in qui ? 'pseudo=' + encodeURIComponent(qui.pseudo) + (qui.tel ? '&tel=1' : '') : 'role=spectateur'));
       flux.onmessage = (ev) => { let m: unknown; try { m = JSON.parse(ev.data); } catch { return; } onMessage(m); };
       flux.onerror = () => onError();
       return { close: () => flux.close() };
@@ -101,7 +105,7 @@ export function browserTransport(base = './api/manche/'): SessionTransport {
 export const fr = (v: number): string => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
 export const esc = (s: unknown): string => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
 /** Pseudo affiché (HTML) : les tireurs automatiques portent un robot devant leur nom. */
-export const nom = (j: { pseudo: string; robot?: boolean } | null | undefined): string => (j?.robot ? '🤖 ' : '') + esc(j?.pseudo ?? '?');
+export const nom = (j: { pseudo: string; robot?: boolean; tel?: boolean } | null | undefined): string => (j?.robot ? '🤖 ' : '') + esc(j?.pseudo ?? '?') + (j?.tel ? ' 📱' : '');
 /** Précision d'un tireur : touches / tirs, en pour cent arrondi (null : il n'a pas tiré). */
 export const precision = (l: { touches: number; tirs: number }): number | null => (l.tirs > 0 ? Math.round((100 * l.touches) / l.tirs) : null);
 /**
@@ -194,11 +198,13 @@ export class Session {
       if (!this.role) { this.phase = e.phase; this.deadline = this.now() + e.reste; }
     }).catch(() => { this.server = false; }).then(() => this.emit('change', undefined));
   }
+  /** ce joueur est sur téléphone (appareil tactile) : dit au serveur en rejoignant la partie */
+  tel = false;
   /** Rejoint la partie sous ce pseudo. */
-  join(pseudo: string): void { this.enter('joueur', { pseudo }); }
+  join(pseudo: string): void { this.enter('joueur', { pseudo, tel: this.tel }); }
   /** Regarde la partie en spectateur (refusé par le serveur s'il n'y a aucun joueur humain). */
   watch(): void { this.enter('spectateur', { spectateur: true }); }
-  private enter(role: Role, qui: { pseudo: string } | { spectateur: true }): void {
+  private enter(role: Role, qui: { pseudo: string; tel?: boolean } | { spectateur: true }): void {
     if (this.role) return;
     this.role = role;
     let flux: Flux | null = null; let ferme = false;

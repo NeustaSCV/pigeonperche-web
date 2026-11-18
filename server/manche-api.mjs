@@ -2,7 +2,7 @@
 // chaque joueur (text/event-stream) et de petites requêtes POST dans l'autre sens. Même code en production
 // (server/server.mjs) et en développement (vite.config.ts).
 //   GET  /api/manche/etat             résumé pour le menu et le salon d'attente (connectés, manche, classements)
-//   GET  /api/manche/flux?pseudo=…   flux du joueur ; il est dans la salle tant que la connexion reste ouverte
+//   GET  /api/manche/flux?pseudo=…[&tel=1]   flux du joueur (`tel=1` : il joue sur téléphone) ; il est dans la salle tant que la connexion reste ouverte
 //   GET  /api/manche/flux?role=spectateur   flux d'un spectateur (refusé sans joueur humain dans la salle)
 //   POST /api/manche/tir             { id, jeton, cible?, dist?, tof?, zone?, dir? }
 //   POST /api/manche/vise            { id, jeton, cible }   qui le joueur tient dans sa lunette (null : personne)
@@ -51,7 +51,7 @@ export function createMancheApi({ fichier, records }) {
         res.writeHead(200, { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
         const send = (msg) => { res.write(`data: ${JSON.stringify(msg)}\n\n`); };
         const jeton = randomBytes(12).toString('hex');
-        const id = u.searchParams.get('role') === 'spectateur' ? m.watch(send) : m.join(u.searchParams.get('pseudo') ?? '', (msg) => send(msg.t === 'bienvenue' ? { ...msg, jeton } : msg));
+        const id = u.searchParams.get('role') === 'spectateur' ? m.watch(send) : m.join(u.searchParams.get('pseudo') ?? '', (msg) => send(msg.t === 'bienvenue' ? { ...msg, jeton } : msg), { tel: u.searchParams.get('tel') === '1' });
         if (id == null) { res.end(); return true; }
         if (id > 0) jetons.set(id, jeton);
         const battement = setInterval(() => res.write(': .\n\n'), 15000);

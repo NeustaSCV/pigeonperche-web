@@ -119,6 +119,7 @@ class Mode implements OnlineMode {
     const asked = this.params.has('poste') ? Number(this.params.get('poste')) : NaN;
     this.visit = this.params.has('poste') ? (Number.isInteger(asked) && asked > 0 ? asked : DEFAULT_POSTE) : null;
     this.session = new Session(browserTransport());
+    this.session.tel = host.touch;
     this.sounds = new OnlineSounds(host.audio);
     this.ambience = new CityAmbience(host.audio);
   }
