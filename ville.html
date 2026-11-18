@@ -45,6 +45,11 @@
       .s-opt > span { width: 108px; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--faint); }
       .s-opt input { width: 300px; background: none; border: 0; border-bottom: 1px solid var(--line); outline: none; padding: 5px 2px; color: var(--ink); font: 18px var(--sans); letter-spacing: 0.08em; }
       .s-opt input:focus { border-bottom-color: var(--gold); } .s-opt input::placeholder { color: var(--faint); font-size: 14px; }
+      .s-vote { margin-top: 0; } .s-vote .s-opt { padding-bottom: 4px; }
+      .s-seg { display: flex; gap: 2px; }
+      .s-seg button { background: none; border: 1px solid transparent; border-bottom-color: var(--line); padding: 5px 12px; font: 12px var(--sans); letter-spacing: 0.12em; text-transform: uppercase; color: var(--dim); cursor: pointer; transition: all 0.2s; }
+      .s-seg button:hover { color: var(--ink); } .s-seg button.sel { color: #14120e; background: var(--gold); border-color: var(--gold); }
+      .s-seg button[data-n]:not([data-n=""])::after { content: ' ' attr(data-n); opacity: 0.7; }
       .s-rang { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
       .s-go { padding: 11px 22px; font: 17px var(--sans); letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink); border: 1px solid var(--gold); background: rgba(231, 181, 101, 0.1); cursor: pointer; transition: background 0.2s, color 0.2s; }
       .s-go:hover:not(:disabled), .s-go:focus-visible:not(:disabled) { background: var(--gold); color: #14120e; outline: none; }

@@ -159,4 +159,31 @@ describe('manche multijoueur', () => {
     m.leave(a.id);
     expect(vus(c).at(-1)).toEqual({ t: 'vise', par: a.id, actif: false });
   });
+  it('applique le vote de la minute de salon : niveau à la majorité, vent jusqu’à 5 m/s, égalité = réglage en cours', () => {
+    // 30 emplacements : 20 serrés de 100 m à l'ouest, 10 espacés de 1 km à l'est
+    const carte = [...Array.from({ length: 20 }, (_, i) => ({ nom: `S${i}`, x: i * 100, y: 180, z: 0 })), ...Array.from({ length: 10 }, (_, i) => ({ nom: `L${i}`, x: 10000 + i * 1000, y: 180, z: 0 }))];
+    const { m, avance, entre } = salle({ emplacements: carte });
+    expect(m.zone('facile')).toHaveLength(15); expect(m.zone('standard')).toHaveLength(25); expect(m.zone('avance')).toHaveLength(30);
+    expect(m.zone('facile').every((n: string) => n.startsWith('S'))).toBe(true);
+    const a = entre('Anna'), b = entre('Bob'), c = entre('Chloé');
+    expect(a.recu[0].reglages).toEqual({ niveau: 'standard', vent: null });
+    expect(m.vote(a.id, { niveau: 'facile' })).toBe('hors salon');
+    avance(MANCHE_MS + 50);
+    expect(m.vote(a.id, { niveau: 'facile', vent: true })).toBe('ok');
+    m.vote(b.id, { niveau: 'facile', vent: true }); m.vote(c.id, { niveau: 'avance', vent: false });
+    m.vote(c.id, { niveau: 'n’importe quoi' as any });
+    expect(a.recu.at(-1)).toEqual({ t: 'votes', votes: { vent: { oui: 2, non: 1 }, niveau: { facile: 2, standard: 0, avance: 1 } } });
+    avance(PAUSE_MS);
+    const d = a.recu.at(-1);
+    expect(d).toMatchObject({ t: 'debut', reglages: { niveau: 'facile' } });
+    expect(d.reglages.vent.vitesse).toBeGreaterThanOrEqual(2); expect(d.reglages.vent.vitesse).toBeLessThanOrEqual(5);
+    expect(d.joueurs.every((j: any) => j.emp.startsWith('S'))).toBe(true);            // tout le monde replacé dans la zone serrée
+    expect(new Set(d.joueurs.map((j: any) => j.emp)).size).toBe(3);
+    // manche suivante : un vote pour, un vote contre le vent, personne sur le niveau → rien ne change
+    avance(MANCHE_MS); m.vote(a.id, { vent: false }); m.vote(b.id, { vent: true }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages.niveau).toBe('facile'); expect(a.recu.at(-1).reglages.vent).not.toBeNull();
+    // puis la majorité coupe le vent
+    avance(MANCHE_MS); m.vote(a.id, { vent: false }); m.vote(b.id, { vent: false, niveau: 'avance' }); avance(PAUSE_MS);
+    expect(a.recu.at(-1).reglages).toEqual({ niveau: 'avance', vent: null });
+  });
 });

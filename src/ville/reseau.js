@@ -59,6 +59,10 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
   try { pseudo ||= localStorage.getItem('pp-pseudo') || ''; } catch { /* stockage indisponible */ }
   const joueurs = new Map(); let moi = null, jeton = '', flux = null, role = null;       // role : null (salon), 'joueur', 'spectateur'
   let phase = 'jeu', echeance = 0, resume = null, serveur = true, annonce = '', dernierClassement = null;
+  let reglages = { niveau: 'standard', vent: null }, votes = null; const monVote = {};
+  const ROSE = ['nord', 'nord-est', 'est', 'sud-est', 'sud', 'sud-ouest', 'ouest', 'nord-ouest'];
+  const NOMS = { facile: 'facile (15 emplacements serrés)', standard: 'standard (25 emplacements)', avance: 'avancé (toute la carte)' };
+  const texteVent = (v) => (v ? `vent de ${String(v.vitesse).replace('.', ',')} m/s venant du ${ROSE[Math.round(v.de / 45) % 8]}` : 'sans vent');
 
   // ---------- éléments ----------
   const box = document.createElement('div'); box.id = 'manche'; box.style.display = 'none'; document.body.appendChild(box);
@@ -75,6 +79,11 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
         <button class="s-lien" data-s="voir">Regarder en spectateur</button>
       </div>
       <div class="s-note" data-s="note"></div>
+    </div>
+    <div class="s-cadre s-vote" data-s="vote"><span class="s-cadre-t">Vote · manche suivante</span>
+      <div class="s-opt"><span>Vent</span><div class="s-seg" data-s="vVent"><button data-v="non">Sans</button><button data-v="oui">Avec</button></div></div>
+      <div class="s-opt"><span>Étalement</span><div class="s-seg" data-s="vNiveau"><button data-v="facile">Facile</button><button data-v="standard">Standard</button><button data-v="avance">Avancé</button></div></div>
+      <div class="s-note" data-s="vNote"></div>
     </div>
   </div>
   <div class="s-boards">
@@ -108,6 +117,14 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
       : !serveur ? '' : resume && resume.places < 1 ? 'La salle est complète (10 tireurs).'
       : p.length < 2 ? 'Choisissez un pseudo pour rejoindre la partie.'
       : !(resume?.humains >= 1) ? 'Le mode spectateur s’ouvre dès qu’un joueur est dans la salle.' : '';
+    // vote : offert aux joueurs inscrits, pendant la minute de salon
+    const vote = role === 'joueur' && phase === 'pause'; S.vote.style.display = vote ? 'flex' : 'none';
+    if (vote) {
+      const d = votes ?? resume?.votes;
+      for (const b of S.vVent.children) { const n = d?.vent?.[b.dataset.v] ?? 0; b.classList.toggle('sel', monVote.vent === (b.dataset.v === 'oui')); b.dataset.n = n || ''; }
+      for (const b of S.vNiveau.children) { const n = d?.niveau?.[b.dataset.v] ?? 0; b.classList.toggle('sel', monVote.niveau === b.dataset.v); b.dataset.n = n || ''; }
+      S.vNote.textContent = `En cours : ${NOMS[reglages.niveau]}, ${texteVent(reglages.vent)}. La majorité l’emporte ; à égalité, rien ne change.`;
+    }
     const c = dernierClassement ?? resume?.precedente?.classement ?? [];
     const k = Math.min(3, Math.floor(c.length / 2));               // la moitié basse du classement, trois au plus
     liste(S.pm, c.slice(0, Math.min(3, c.length - k)), 'Aucune partie jouée pour l’instant.'); liste(S.pp, k ? c.slice(-k).reverse() : [], c.length ? 'Il faut au moins deux tireurs.' : '—');
@@ -118,6 +135,9 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
     serveur = true; resume = e; if (!role) { phase = e.phase; echeance = performance.now() + e.reste; }
   }).catch(() => { serveur = false; }).then(dessineSalon);
   lisEtat(); setInterval(() => { if (salonVisible()) lisEtat(); }, 3000); setInterval(() => { dessineSalon(); tableau(); }, 500);
+  const voter = (choix) => { Object.assign(monVote, choix); dessineSalon(); fetch('./api/manche/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, ...choix }) }).catch(() => {}); };
+  S.vVent.onclick = (ev) => { const v = ev.target.dataset?.v; if (v) voter({ vent: v === 'oui' }); };
+  S.vNiveau.onclick = (ev) => { const v = ev.target.dataset?.v; if (v) voter({ niveau: v }); };
   S.pseudo.addEventListener('input', dessineSalon);
   S.pseudo.addEventListener('keydown', (ev) => { ev.stopPropagation(); if (ev.key === 'Enter' && !S.jouer.disabled) S.jouer.click(); });
   S.pseudo.addEventListener('keyup', (ev) => ev.stopPropagation());
@@ -134,12 +154,12 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
     box.style.display = 'block';
     const l = [...joueurs.values()].sort((a, b) => b.points - a.points);
     box.innerHTML = `<b>${phase === 'jeu' ? 'Manche' : 'Salon'}</b> · ${mmss(echeance - performance.now())}${role === 'spectateur' ? ' · spectateur' : ''}` +
-      l.map((j) => `<div class="${j.id === moi ? 'moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('') + `<small>${esc(annonce)}</small>`;
+      l.map((j) => `<div class="${j.id === moi ? 'moi' : ''}${j.vivant ? '' : ' hs'}"><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i></div>`).join('') + `<small>${esc(texteVent(reglages.vent))[0].toUpperCase() + esc(texteVent(reglages.vent)).slice(1)}.<br>${esc(annonce)}</small>`;
   }
   const nomDe = (id) => joueurs.get(id)?.pseudo ?? '?';
   const joueurA = (emp) => [...joueurs.values()].find((j) => j.emp === emp && j.id !== moi && j.vivant);
   state.pseudoA = (emp) => { const j = joueurA(emp); return j ? (j.robot ? '🤖 ' : '') + j.pseudo : ''; };
-  const horloge = (m) => { phase = m.phase; echeance = performance.now() + m.reste; state.pause = phase !== 'jeu'; };
+  const horloge = (m) => { phase = m.phase; echeance = performance.now() + m.reste; state.pause = phase !== 'jeu'; if (m.reglages) { reglages = m.reglages; state.vent = reglages.vent; } if (m.votes) votes = m.votes; };
   const charge = (l) => { joueurs.clear(); for (const j of l) joueurs.set(j.id, j); };
   const releve = () => { state.couche = false; voile.style.display = 'none'; };
 
@@ -167,17 +187,23 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte }) {
       majOccupes();
     },
     // reflet de lunette : ce tireur nous tient (ou ne nous tient plus) dans sa lunette
+    votes(m) { votes = m.votes; },
     vise(m) { const j = joueurs.get(m.par); if (j) tir.reflet(j.emp, m.actif); },
     // fin de manche : retour au salon pour une minute, avec le classement qui vient de tomber
     fin(m) { tir.eteindreReflets(); horloge(m); dernierClassement = m.classement; releve(); annonce = 'Manche terminée.'; montreSalon(true); lisEtat(); },
-    debut(m) { charge(m.joueurs); horloge(m); releve(); annonce = 'Nouvelle manche.'; majOccupes(); montreSalon(false); },
+    debut(m) {
+      charge(m.joueurs); horloge(m); releve(); votes = null; delete monVote.vent; delete monVote.niveau;
+      annonce = `Nouvelle manche : ${NOMS[reglages.niveau]}, ${texteVent(reglages.vent)}.`;
+      if (moi != null && joueurs.get(moi)) allerA(joueurs.get(moi).emp, true);      // chacun est replacé au hasard dans la zone
+      majOccupes(); montreSalon(false);
+    },
     complet() { annonce = 'La salle est complète (10 tireurs).'; quitter(); },
     vide() { annonce = 'Plus aucun joueur dans la salle.'; quitter(); },
   };
 
   function quitter() {
     if (flux) { flux.close(); flux = null; }
-    role = null; moi = null; state.enLigne = false; state.spectateur = false; state.occupes = null; state.pause = false; releve(); sel.disabled = false; joueurs.clear();
+    role = null; moi = null; state.vent = null; state.enLigne = false; state.spectateur = false; state.occupes = null; state.pause = false; releve(); sel.disabled = false; joueurs.clear();
     for (const e of EMP) if (e.figure) e.figure.visible = e.nom !== state.post;
     tableau();
   }

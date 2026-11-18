@@ -9,6 +9,10 @@
 // suivie d'une minute de salon. Le classement de la manche qui s'achève est gardé (« partie précédente ») et versé
 // aux records de toujours (meilleurs et pires scores).
 //
+// Vote : pendant la minute de salon, les joueurs humains votent pour la manche suivante. Le niveau règle l'étalement
+// des tireurs (facile : les 15 emplacements les plus resserrés ; standard : les 25 ; avancé : toute la carte), et le
+// vent est coupé ou tiré au hasard jusqu'à 5 m/s. La majorité l'emporte ; à égalité, on garde le réglage en cours.
+//
 // Tireurs automatiques : dès qu'un joueur humain est dans la salle, des robots occupent les places libres jusqu'à
 // dix tireurs ; ils cèdent leur place aux humains qui arrivent et s'en vont quand le dernier humain part. Ils tirent
 // peu et mal : une cible en vue toutes les quelques secondes, avec une chance de toucher qui fond avec la distance.
@@ -22,6 +26,9 @@ export const CYCLE_MS = MANCHE_MS + PAUSE_MS;   // 5 minutes : les manches comme
 export const RECORDS_MAX = 20;          // lignes gardées dans chaque liste de records
 const V_MAX = 1000;                     // m/s : aucune balle du jeu ne va plus vite
 const TOL_DIST = 40;                    // m : écart admis entre la distance annoncée et celle des emplacements
+/** Nombre d'emplacements ouverts selon le niveau voté : plus il y en a, plus les tireurs sont loin les uns des autres. */
+export const NIVEAUX = { facile: 15, standard: 25, avance: Infinity };
+export const VENT_MAX = 5;              // m/s
 export const ROBOT_ATTENTE_MS = [5000, 14000];   // délai entre deux tirs d'un robot : entre 5 et 14 s
 export const ROBOT_VISEE_MS = 2000;      // temps pendant lequel un robot tient sa cible avant de tirer
 const ROBOT_VITESSE = 700;              // m/s : vitesse moyenne prêtée à sa balle pour le temps de vol
@@ -49,7 +56,21 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   let suivant = 1, numero = 0, precedente = null;
   let meilleurs = (records.meilleurs ?? []).filter((l) => !l.robot), pires = (records.pires ?? []).filter((l) => !l.robot);
 
-  const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)); return emplacements.filter((e) => !pris.has(e.nom) && e.nom !== sauf); };
+  /** Les `n` emplacements les plus resserrés : ceux qui tiennent dans le plus petit cercle centré sur l'un d'eux. */
+  const zoneDe = (n) => {
+    if (n >= emplacements.length) return new Set(emplacements.map((e) => e.nom));
+    let best = null, br = Infinity;
+    for (const c of emplacements) {
+      const l = emplacements.map((e) => [Math.hypot(e.x - c.x, e.z - c.z), e.nom]).sort((a, b) => a[0] - b[0]).slice(0, n);
+      if (l[n - 1][0] < br) { br = l[n - 1][0]; best = l; }
+    }
+    return new Set(best.map((x) => x[1]));
+  };
+  const ZONES = Object.fromEntries(Object.entries(NIVEAUX).map(([k, n]) => [k, zoneDe(n)]));
+  let reglages = { niveau: 'standard', vent: null };      // vent : null, ou { vitesse (m/s), de (azimut d'où il vient, degrés) }
+  const votes = new Map();                                // id du joueur → { vent: booléen, niveau }
+  const decompte = () => { const d = { vent: { oui: 0, non: 0 }, niveau: { facile: 0, standard: 0, avance: 0 } }; for (const v of votes.values()) { if (v.vent != null) d.vent[v.vent ? 'oui' : 'non']++; if (v.niveau) d.niveau[v.niveau]++; } return d; };
+  const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)), z = ZONES[reglages.niveau]; return emplacements.filter((e) => z.has(e.nom) && !pris.has(e.nom) && e.nom !== sauf); };
   const tirage = (sauf) => { const l = libres(sauf); return l.length ? l[Math.floor(rand() * l.length)].nom : null; };
   const lieu = (nom) => emplacements.find((e) => e.nom === nom);
   const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, emp: j.emp, vivant: j.vivant, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
@@ -132,8 +153,16 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
 
   const debut = () => {
     numero++; phase = 'jeu';
-    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; }
-    diffuse({ t: 'debut', ...temps(), joueurs: [...joueurs.values()].map(vue) });
+    // dépouillement : la majorité l'emporte, l'égalité garde le réglage en cours
+    const d = decompte(), n = Object.entries(d.niveau).sort((a, b) => b[1] - a[1]);
+    const niveau = n[0][1] > n[1][1] ? n[0][0] : reglages.niveau;
+    const venteux = d.vent.oui !== d.vent.non ? d.vent.oui > d.vent.non : !!reglages.vent;
+    reglages = { niveau, vent: venteux ? { vitesse: Math.round((2 + rand() * (VENT_MAX - 2)) * 10) / 10, de: Math.floor(rand() * 360) } : null };
+    votes.clear();
+    // nouvelle manche : tout le monde est replacé au hasard dans la zone du niveau
+    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; j.vise = null; j.emp = null; }
+    for (const j of joueurs.values()) j.emp = tirage();
+    diffuse({ t: 'debut', ...temps(), reglages, joueurs: [...joueurs.values()].map(vue) });
   };
   const fin = () => {
     for (const j of joueurs.values()) j.vise = null;
@@ -161,7 +190,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       if (humains() >= MAX_JOUEURS || (robot && joueurs.size >= MAX_JOUEURS)) { send({ t: 'complet' }); return null; }
       if (!robot && joueurs.size >= MAX_JOUEURS) { const b = [...joueurs.values()].find((q) => q.robot); if (b) { joueurs.delete(b.id); diffuse({ t: 'part', id: b.id }); } }
       const j = entre(pseudo, robot, send); if (!j) { send({ t: 'complet' }); return null; }
-      send({ t: 'bienvenue', id: j.id, ...temps(), joueurs: [...joueurs.values()].map(vue) });
+      send({ t: 'bienvenue', id: j.id, ...temps(), reglages, votes: decompte(), joueurs: [...joueurs.values()].map(vue) });
       diffuse({ t: 'arrive', joueur: vue(j) }, j.id);
       if (!robot) equilibre();
       return j.id;
@@ -170,10 +199,10 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     watch(send) {
       if (humains() < 1) { send({ t: 'vide' }); return null; }
       const id = -(suivant++); spectateurs.set(id, send);
-      send({ t: 'bienvenue', id, spectateur: true, ...temps(), joueurs: [...joueurs.values()].map(vue) });
+      send({ t: 'bienvenue', id, spectateur: true, ...temps(), reglages, votes: decompte(), joueurs: [...joueurs.values()].map(vue) });
       return id;
     },
-    leave(id) { if (spectateurs.delete(id)) return; const p = joueurs.get(id); if (p) pointe(p, null); for (const q of joueurs.values()) if (q.vise === id) q.vise = null; if (joueurs.delete(id)) { diffuse({ t: 'part', id }); equilibre(); } },
+    leave(id) { if (spectateurs.delete(id)) return; votes.delete(id); const p = joueurs.get(id); if (p) pointe(p, null); for (const q of joueurs.values()) if (q.vise === id) q.vise = null; if (joueurs.delete(id)) { diffuse({ t: 'part', id }); equilibre(); } },
     /**
      * Un tir. `annonce` : { cible?: id du joueur que la balle atteint, dist?: m, tof?: s }.
      * Renvoie 'ok', ou la raison du refus.
@@ -195,12 +224,23 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       engage(j, c, d, tof);
       return 'ok';
     },
+    /** Vote d'un joueur humain pendant la minute de salon : { vent?: booléen, niveau?: 'facile' | 'standard' | 'avance' }. */
+    vote(id, choix = {}) {
+      const j = joueurs.get(id); if (!j || j.robot) return 'inconnu';
+      if (phase !== 'pause') return 'hors salon';
+      const v = votes.get(id) ?? {};
+      if (typeof choix.vent === 'boolean') v.vent = choix.vent;
+      if (choix.niveau in NIVEAUX) v.niveau = choix.niveau;
+      votes.set(id, v); diffuse({ t: 'votes', votes: decompte() });
+      return 'ok';
+    },
     /** Le joueur `id` tient le joueur `cible` dans sa lunette (nul : plus personne). */
     aim(id, cible) { const j = joueurs.get(id); if (!j) return 'inconnu'; pointe(j, cible == null ? null : joueurs.get(Number(cible)) ?? null); return 'ok'; },
     /** Ce que le menu et le salon d'attente affichent, sans entrer dans la salle. */
-    resume: () => ({ ...temps(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, robots: joueurs.size - humains(), places: MAX_JOUEURS - humains(),
+    resume: () => ({ ...temps(), reglages, votes: decompte(), connectes: joueurs.size, humains: humains(), spectateurs: spectateurs.size, robots: joueurs.size - humains(), places: MAX_JOUEURS - humains(),
       joueurs: [...joueurs.values()].sort(parRang).map(ligne), precedente, meilleurs: meilleurs.slice(0, 5), pires: pires.slice(0, 5) }),
     etat: () => [...joueurs.values()].map(vue),
+    zone: (niveau) => [...ZONES[niveau]],
     nombre: () => joueurs.size,
   };
 }

@@ -7,13 +7,13 @@ import { weaponById, SIGHT_HEIGHT, CLICK_MIL } from '../config/weapons';
 import { makeFlight, stepFlight, firingSolution, zeroAngle, splitElevation, GAME_AIR } from '../ballistics';
 
 const ARME = '375ct';
-const DEMI_HAUT = 0.9, RAYON = 0.28;         // silhouette : 1,8 m de haut, 56 cm de large
+const DEMI_HAUT = 1.0, RAYON = 0.5;          // zone de touche : un cylindre de 2 m de haut et 1 m de large autour du tireur
 const fr = (v, n = 1) => v.toFixed(n).replace('.', ',');
 
 export function installTir({ scene, camera, view, state, EMP, meta, bendY, groundY, bats = [], inPoly }) {
   const W = weaponById(ARME);
   const zero = zeroAngle(W, W.zero, SIGHT_HEIGHT, GAME_AIR);
-  const t = { elev: 0, tirs: 0, touches: 0, pret: 0, msg: 'Épaulez (E ou clic droit), visez une silhouette, réglez la tourelle, tirez.', dernier: null };
+  const t = { elev: 0, deriv: 0, tirs: 0, touches: 0, pret: 0, msg: 'Épaulez (E ou clic droit), visez une silhouette, réglez la tourelle, tirez.', dernier: null };
 
   // silhouettes : celles des perchoirs, plus une pour les emplacements qui n'en ont pas (grues)
   const gris = new THREE.MeshLambertMaterial({ color: 0x3f4a3a }), sombre = new THREE.MeshLambertMaterial({ color: 0x2e3338 }), peau = new THREE.MeshLambertMaterial({ color: 0xd9b08c });
@@ -97,33 +97,41 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     return best;
   };
 
+  /** Vent de la manche en vecteur monde (nord = −Z) : un vent qui vient de l'azimut `de` souffle vers l'opposé. */
+  const ventMonde = () => { const v = state.vent; if (!v) return [0, 0]; const a = (v.de * Math.PI) / 180; return [-Math.sin(a) * v.vitesse, Math.cos(a) * v.vitesse]; };
   /** Correction à afficher au télémètre pour un emplacement : distance, dénivelé, élévation en mrad. */
   const cache = new Map();
   const solution = (e) => {
-    const k = state.post + '>' + e.nom; let s = cache.get(k);
+    const k = state.post + '>' + e.nom + '>' + (state.vent ? state.vent.vitesse + '@' + state.vent.de : ''); let s = cache.get(k);
     if (s === undefined) {
       centre(e, c); const range = c.distanceTo(camera.position), heightDiff = c.y - camera.position.y;
-      const sol = firingSolution(W, { range, heightDiff, air: GAME_AIR, sightHeight: SIGHT_HEIGHT });
-      s = sol ? { range, heightDiff, elev: sol.elevMil, tof: sol.tof, ...splitElevation(sol.elevMil, W.turretMaxMil, CLICK_MIL) } : null;
+      const azimuthDeg = ((Math.atan2(c.x - camera.position.x, -(c.z - camera.position.z)) * 180) / Math.PI + 360) % 360;
+      const sol = firingSolution(W, { range, heightDiff, air: GAME_AIR, sightHeight: SIGHT_HEIGHT, azimuthDeg, ...(state.vent ? { windSpeed: state.vent.vitesse, windFromDeg: state.vent.de } : {}) });
+      s = sol ? { range, heightDiff, elev: sol.elevMil, deriv: Math.round(sol.windMil * 10) / 10, tof: sol.tof, ...splitElevation(sol.elevMil, W.turretMaxMil, CLICK_MIL) } : null;
       cache.set(k, s);
     }
     return s;
   };
-  const texteCorrection = (e) => { const s = solution(e); if (!s) return 'hors de portée'; return s.holdMil > 0.05 ? `tourelle ${fr(s.dialMil)} + contre-visée ${fr(s.holdMil)} mrad` : `↑ ${fr(s.elev)} mrad`; };
+  const texteCorrection = (e) => {
+    const s = solution(e); if (!s) return 'hors de portée';
+    const d = Math.abs(s.deriv) >= 0.1 ? ` · ${s.deriv > 0 ? '→' : '←'} ${fr(Math.abs(s.deriv))}` : '';
+    return (s.holdMil > 0.05 ? `tourelle ${fr(s.dialMil)} + contre-visée ${fr(s.holdMil)}` : `↑ ${fr(s.elev)}`) + d + ' mrad';
+  };
 
   const tirer = (now = performance.now()) => {
     if (!state.scope || state.fly || state.quad || state.couche || state.pause || state.spectateur || state.salon || now < t.pret) return null;
     t.pret = now + W.boltTime * 1000; t.tirs++;
     const eye = camera.position; camera.getWorldDirection(los);
     right.crossVectors(los, UP).normalize(); up.crossVectors(right, los).normalize();
-    dir.copy(los).addScaledVector(up, Math.tan(zero + t.elev * 0.001)).normalize();
+    dir.copy(los).addScaledVector(up, Math.tan(zero + t.elev * 0.001)).addScaledVector(right, t.deriv * 0.001).normalize();   // dérive à droite : impact à droite
+    const [vx, vz] = ventMonde();
     const f = makeFlight(W, undefined, { air: GAME_AIR, frame: 'world', y0: eye.y - SIGHT_HEIGHT });
     const s = { x: eye.x, y: eye.y - SIGHT_HEIGHT, z: eye.z, vx: dir.x * f.v0, vy: dir.y * f.v0, vz: dir.z * f.v0, t: 0 };
     const cibles = EMP.filter((e) => e.nom !== state.post && !couches.has(e.nom) && (!state.occupes || state.occupes.has(e.nom))).map((e) => ({ e, c: centre(e, new THREE.Vector3()) }));
     const visee = vise(0.06); let ecart = null, res = null;
     while (s.t < 10 && !res) {
       const px = s.x, py = s.y, pz = s.z;
-      stepFlight(s, 1 / 400, f, 0, 0, 0);
+      stepFlight(s, 1 / 400, f, vx, 0, vz);
       const dx = s.x - px, dy = s.y - py, dz = s.z - pz, l2 = dx * dx + dy * dy + dz * dz;
       for (const k of cibles) {
         if (Math.abs(k.c.x - s.x) > 40 || Math.abs(k.c.z - s.z) > 40) continue;
@@ -168,7 +176,9 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   window.addEventListener('keydown', (ev) => {
     if (ev.code === 'KeyR') regler(ev.shiftKey ? 1 : CLICK_MIL);
     else if (ev.code === 'KeyF') regler(ev.shiftKey ? -1 : -CLICK_MIL);
-    else if (ev.code === 'KeyG') { const e = vise(0.06), s = e && solution(e); if (s) t.elev = Math.round(s.dialMil * 10) / 10; }
+    else if (ev.code === 'KeyD' && !state.fly) t.deriv = Math.max(-10, Math.min(10, Math.round((t.deriv + (ev.shiftKey ? 1 : CLICK_MIL)) * 10) / 10));
+    else if (ev.code === 'KeyS' && !state.fly) t.deriv = Math.max(-10, Math.min(10, Math.round((t.deriv - (ev.shiftKey ? 1 : CLICK_MIL)) * 10) / 10));
+    else if (ev.code === 'KeyG') { const e = vise(0.06), s = e && solution(e); if (s) { t.elev = Math.round(s.dialMil * 10) / 10; t.deriv = s.deriv; } }
     else if (ev.code === 'Space' && !state.fly) { ev.preventDefault(); tirer(); }
   });
   let bas = null;
@@ -193,10 +203,10 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     }
     const e = state.scope ? vise() : null, s = e && solution(e);
     const attente = now < t.pret ? ' · culasse…' : '';
-    box.innerHTML = `<b>${W.name}</b> · ${W.caliber}<br>Tourelle <b>${fr(t.elev)}</b> mrad${attente}` +
+    box.innerHTML = `<b>${W.name}</b> · ${W.caliber}<br>Élévation <b>${fr(t.elev)}</b> mrad · dérive <b>${t.deriv ? (t.deriv > 0 ? 'D ' : 'G ') + fr(Math.abs(t.deriv)) : '0'}</b>${attente}` +
       (s ? `<br>Télémètre : ${e.nom} · ${Math.round(s.range)} m · ${texteCorrection(e)}` : '') +
       `<br>${t.touches} touche${t.touches > 1 ? 's' : ''} sur ${t.tirs} tir${t.tirs > 1 ? 's' : ''}<br><i>${t.msg}</i>` +
-      `<br><small>R / F : tourelle (Maj : 1 mrad) · G : régler sur la cible visée · espace ou clic : tirer</small>`;
+      `<br><small>R / F : élévation · S / D : dérive (Maj : 1 mrad) · G : régler sur la cible visée · espace ou clic : tirer</small>`;
   };
 
   /** Effet d'une touche confirmée par le serveur sur l'emplacement `nom` : gerbe, silhouette couchée 5 s. */
@@ -204,6 +214,6 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     const e = EMP.find((q) => q.nom === nom); if (!e || nom === state.post) return;
     centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); couches.set(nom, performance.now() + 5000);
   };
-  const changerPoste = () => { t.elev = 0; eteindreReflets(); for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
+  const changerPoste = () => { t.elev = 0; t.deriv = 0; eteindreReflets(); for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
   return { update, tirer, vise, solution, texteCorrection, changerPoste, effetTouche, reflet, eteindreReflets, reflets, dansBatiment, centre, etat: t, arme: W };
 }
