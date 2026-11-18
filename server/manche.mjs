@@ -9,6 +9,9 @@
 // suivie d'une minute de salon. Le classement de la manche qui s'achève est gardé (« partie précédente ») et versé
 // aux records de toujours (meilleurs et pires scores).
 //
+// Vie : chaque tireur a deux points de vie. Une balle dans le corps en retire un, une balle dans la tête abat d'un
+// coup. Abattu, il reparaît 5 secondes plus tard sur un autre emplacement, avec toute sa vie.
+//
 // Vote : pendant la minute de salon, les joueurs humains votent pour la manche suivante. Le niveau règle l'étalement
 // des tireurs (facile : les 15 emplacements les plus resserrés ; standard : les 25 ; avancé : toute la carte), et le
 // vent est coupé ou tiré au hasard jusqu'à 5 m/s. La majorité l'emporte ; à égalité, on garde le réglage en cours.
@@ -27,6 +30,10 @@ export const RECORDS_MAX = 20;          // lignes gardées dans chaque liste de 
 const V_MAX = 1000;                     // m/s : aucune balle du jeu ne va plus vite
 const TOL_DIST = 40;                    // m : écart admis entre la distance annoncée et celle des emplacements
 /** Nombre d'emplacements ouverts selon le niveau voté : plus il y en a, plus les tireurs sont loin les uns des autres. */
+/** Points de vie d'un tireur : une balle dans le corps en retire un, une balle dans la tête les retire tous. */
+export const VIE_MAX = 2;
+/** Un tir à la tête rapporte une fois et demie les points de la distance. */
+export const BONUS_TETE = 1.5;
 export const NIVEAUX = { facile: 15, standard: 25, avance: Infinity };
 export const VENT_MAX = 5;              // m/s
 export const ROBOT_ATTENTE_MS = [5000, 14000];   // délai entre deux tirs d'un robot : entre 5 et 14 s
@@ -73,7 +80,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const libres = (sauf) => { const pris = new Set([...joueurs.values()].map((j) => j.emp)), z = ZONES[reglages.niveau]; return emplacements.filter((e) => z.has(e.nom) && !pris.has(e.nom) && e.nom !== sauf); };
   const tirage = (sauf) => { const l = libres(sauf); return l.length ? l[Math.floor(rand() * l.length)].nom : null; };
   const lieu = (nom) => emplacements.find((e) => e.nom === nom);
-  const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, emp: j.emp, vivant: j.vivant, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
+  const vue = (j) => ({ id: j.id, pseudo: j.pseudo, robot: !!j.robot, emp: j.emp, vivant: j.vivant, vie: j.vie, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
   const ligne = (j) => ({ pseudo: j.pseudo, robot: !!j.robot, points: j.points, touches: j.touches, tirs: j.tirs, subies: j.subies });
   const diffuse = (msg, sauf) => { for (const j of joueurs.values()) if (j.id !== sauf) j.send(msg); for (const s of spectateurs.values()) s(msg); };
   const humains = () => [...joueurs.values()].filter((j) => !j.robot).length;
@@ -83,18 +90,21 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const pseudoLibre = (p) => { let q = p, n = 2; const pris = new Set([...joueurs.values()].map((j) => j.pseudo.toLowerCase())); while (pris.has(q.toLowerCase())) q = `${p.slice(0, 13)} ${n++}`; return q; };
 
   /** Applique à l'arrivée de la balle la touche de `tireur` sur `cible`, distants de `d` mètres. */
-  const engage = (tireur, cible, d, tof) => {
+  /** Applique à l'arrivée de la balle la touche de `tireur` sur `cible`, distants de `d` mètres. `tete` : balle dans la tête. */
+  const engage = (tireur, cible, d, tof, tete = false) => {
     const id = tireur.id, idc = cible.id, empTireur = tireur.emp, empCible = cible.emp, n = numero;
     later(() => {
       // même manche, la cible encore là et debout, le tireur toujours dans la salle
       const t = joueurs.get(id), c = joueurs.get(idc);
       if (n !== numero || phase !== 'jeu' || !t || !c || !c.vivant || c.emp !== empCible) return;
-      c.vivant = false; c.subies++; t.touches++; const pts = pointsPour(d); t.points += pts;
-      pointe(c, null); for (const q of joueurs.values()) if (q.vise === idc) pointe(q, null);
-      diffuse({ t: 'touche', tireur: id, cible: idc, emp: empCible, de: empTireur, dist: Math.round(d), points: pts, scores: [...joueurs.values()].map(vue) });
+      c.vie = tete ? 0 : c.vie - 1; c.subies++; t.touches++; const pts = tete ? Math.round(pointsPour(d) * BONUS_TETE) : pointsPour(d); t.points += pts;
+      const abattu = c.vie <= 0;
+      if (abattu) { c.vivant = false; pointe(c, null); for (const q of joueurs.values()) if (q.vise === idc) pointe(q, null); }
+      diffuse({ t: 'touche', tireur: id, cible: idc, emp: empCible, de: empTireur, dist: Math.round(d), points: pts, zone: tete ? 'tete' : 'corps', vie: Math.max(0, c.vie), abattu, scores: [...joueurs.values()].map(vue) });
+      if (!abattu) return;
       later(() => {
         const k = joueurs.get(idc); if (!k || k.vivant) return;
-        k.emp = tirage(k.emp) ?? k.emp; k.vivant = true;
+        k.emp = tirage(k.emp) ?? k.emp; k.vivant = true; k.vie = VIE_MAX;
         diffuse({ t: 'retour', id: k.id, emp: k.emp });
       }, RETOUR_MS);
     }, tof * 1000);
@@ -116,7 +126,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
   const entre = (pseudo, robot, send) => {
     const emp = tirage(); if (!emp) return null;
     const id = suivant++;
-    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, send };
+    const j = { id, pseudo: pseudoLibre(propre(pseudo, robot ? 24 : 16) || `Tireur ${id}`), robot, emp, vivant: true, vie: VIE_MAX, points: 0, touches: 0, tirs: 0, subies: 0, dernierTir: -1e9, send };
     joueurs.set(id, j); return j;
   };
   const tourRobot = (id) => later(() => {
@@ -125,13 +135,13 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       const enVue = [...joueurs.values()].filter((c) => c.id !== id && c.vivant && voit(j.emp, c.emp));
       if (enVue.length) {
         // il épaule, tient sa cible deux secondes (elle voit son reflet), puis tire
-        const c = enVue[Math.floor(rand() * enVue.length)], touche = rand() < adresseRobot(ecart(j, c)), n = numero;
+        const c = enVue[Math.floor(rand() * enVue.length)], touche = rand() < adresseRobot(ecart(j, c)), tete = rand() < 0.15, n = numero;      // un tir de robot sur sept arrive dans la tête
         pointe(j, c);
         later(() => {
           const moi = joueurs.get(id), cible = joueurs.get(c.id);
           if (moi && cible && n === numero && phase === 'jeu' && moi.vivant && cible.vivant && moi.vise === cible.id) {
             const d = ecart(moi, cible); moi.dernierTir = now(); moi.tirs++; diffuse({ t: 'tir', id, emp: moi.emp, vers: cible.emp, touche });
-            if (touche) engage(moi, cible, d, d / ROBOT_VITESSE);
+            if (touche) engage(moi, cible, d, d / ROBOT_VITESSE, tete);
           }
           if (moi) pointe(moi, null);
         }, ROBOT_VISEE_MS);
@@ -160,7 +170,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     reglages = { niveau, vent: venteux ? { vitesse: Math.round((2 + rand() * (VENT_MAX - 2)) * 10) / 10, de: Math.floor(rand() * 360) } : null };
     votes.clear();
     // nouvelle manche : tout le monde est replacé au hasard dans la zone du niveau
-    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; j.vise = null; j.emp = null; }
+    for (const j of joueurs.values()) { j.points = 0; j.touches = 0; j.tirs = 0; j.subies = 0; j.vivant = true; j.vie = VIE_MAX; j.vise = null; j.emp = null; }
     for (const j of joueurs.values()) j.emp = tirage();
     diffuse({ t: 'debut', ...temps(), reglages, joueurs: [...joueurs.values()].map(vue) });
   };
@@ -204,7 +214,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
     },
     leave(id) { if (spectateurs.delete(id)) return; votes.delete(id); const p = joueurs.get(id); if (p) pointe(p, null); for (const q of joueurs.values()) if (q.vise === id) q.vise = null; if (joueurs.delete(id)) { diffuse({ t: 'part', id }); equilibre(); } },
     /**
-     * Un tir. `annonce` : { cible?: id du joueur que la balle atteint, dist?: m, tof?: s }.
+     * Un tir. `annonce` : { cible?: id du joueur que la balle atteint, dist?: m, tof?: s, zone?: 'tete' | 'corps' }.
      * Renvoie 'ok', ou la raison du refus.
      */
     shot(id, annonce = {}) {
@@ -223,7 +233,7 @@ export function createManche({ emplacements, now = Date.now, later = (fn, ms) =>
       const dist = Number(annonce.dist), tof = Number(annonce.tof);
       if (!(Math.abs(dist - d) <= TOL_DIST)) return 'distance';
       if (!(tof >= d / V_MAX && tof <= 12)) return 'temps de vol';
-      engage(j, c, d, tof);
+      engage(j, c, d, tof, annonce.zone === 'tete');
       return 'ok';
     },
     /** Vote d'un joueur humain pendant la minute de salon : { vent?: booléen, niveau?: 'facile' | 'standard' | 'avance' }. */

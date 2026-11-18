@@ -6,6 +6,9 @@ import { installTir } from './tir.js';
 import { installReseau } from './reseau.js';
 import { installEffets } from './effets.js';
 import { installSons } from './sons.js';
+import { installArme } from './arme.js';
+import { Reticle, fovForZoom } from '../weapons/scope';
+import { weaponById } from '../config/weapons';
 import { installTactile } from './tactile.js';
 import { isTouchDevice } from '../core/device';
 
@@ -884,7 +887,7 @@ const state = { yaw: 0, pitch: -0.05, scope: false, mag: 8, fly: false, post: 't
 const TACTILE = isTouchDevice(new URLSearchParams(location.search));
 state.tactile = TACTILE; document.documentElement.classList.toggle('touch', TACTILE);
 const keys = new Set();
-const SCOPE_FOV = 24; // champ vertical apparent rapporté au grossissement
+const PLAGE_ZOOM = weaponById('375ct').scope;      // plage de grossissement de la lunette de l'arme, comme en solo
 const aim = (x, y, z) => { const d = new THREE.Vector3(x, y + bendY(x, z), z).sub(camera.position); state.yaw = Math.atan2(-d.x, -d.z); state.pitch = Math.atan2(d.y, Math.hypot(d.x, d.z)); };
 const goPost = (name) => { const p = meta.postes[name]; camera.position.set(p[0], p[1] + bendY(p[0], p[2]), p[2]); state.post = name; state.fly = false; for (const e of EMP) { if (e.figure) e.figure.visible = e.nom !== name && (!state.occupes || state.occupes.has(e.nom)); if (e.detail) e.detail.visible = Math.hypot(e.x - p[0], e.z - p[2]) < 450; } };
 const aimAt = (name) => {
@@ -947,7 +950,7 @@ const drawTags = () => {
     // tactile : la lunette peut être plus petite et décentrée (state.lunette) ; l'écart se mesure depuis son centre
     const lu = state.scope && state.lunette, ax = lu ? (lu.cx / w) * 2 - 1 : 0, ay = lu ? 1 - (lu.cy / h) * 2 : 0;
     const pres = state.spectateur || Math.hypot((tv.x - ax) * camera.aspect, tv.y - ay) < (state.scope ? 0.5 * (lu ? lu.R / (0.47 * h) : 1) : 0.16);
-    if (manche && !pres) { d.style.display = 'none'; return; }
+    if (manche && (!pres || (!state.scope && !state.spectateur))) { d.style.display = 'none'; return; }      // le pseudo ne s'affiche que lunette à l'œil (le spectateur, lui, voit tout le monde)
     d.style.display = 'block'; d.style.left = `${((tv.x + 1) / 2) * w}px`; d.style.top = `${((1 - tv.y) / 2) * h}px`;
     const qui = state.pseudoA ? state.pseudoA(e.nom) : '';
     d.className = manche ? 'tag nom' : pres ? 'tag pres' : 'tag';
@@ -968,7 +971,7 @@ document.addEventListener('mousemove', (e) => {
   state.yaw -= e.movementX * s; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch - e.movementY * s));
 });
 document.addEventListener('mousedown', (e) => { if (!capture) return; if (e.button === 0) tir.tirer(); else if (e.button === 2) state.scope = !state.scope; });
-view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(4, Math.min(25, state.mag * (e.deltaY < 0 ? 1.18 : 1 / 1.18))); }, { passive: false });
+view.addEventListener('wheel', (e) => { e.preventDefault(); if (state.scope) state.mag = Math.max(PLAGE_ZOOM[0], Math.min(PLAGE_ZOOM[1], state.mag * (e.deltaY < 0 ? 1.18 : 1 / 1.18))); }, { passive: false });
 document.addEventListener('contextmenu', (e) => e.preventDefault());
 window.addEventListener('keydown', (e) => { keys.add(e.code); if ((e.code === 'KeyF' || e.code === 'KeyE') && !state.salon) state.scope = !state.scope;   // F comme en solo (E gardé)
   if (OUTILS && e.code === 'KeyT') state.tags = !state.tags; if (OUTILS && e.code === 'KeyP') state.quad = !state.quad; if (!state.scope && e.code === 'ArrowRight' && e.shiftKey) voisin(1); if (!state.scope && e.code === 'ArrowLeft' && e.shiftKey) voisin(-1); });
@@ -982,25 +985,19 @@ const resize = () => {
 };
 window.addEventListener('resize', resize); resize();
 
+const reticule = new Reticle(document.body);
 const drawScope = () => {
   const w = sc.width, h = sc.height;
   sx.clearRect(0, 0, w, h);
-  if (!state.scope || state.fovOverride) return;
+  if (!state.scope || state.fovOverride) { reticule.draw(camera.fov, 0, { w: window.innerWidth, h: window.innerHeight, cx: window.innerWidth / 2, cy: window.innerHeight / 2, R: window.innerHeight * 0.462 }); return; }
   // tactile : centre et rayon réservés par tactile.js (en pixels CSS) ; sinon la lunette de toujours, au centre
   const lu = state.lunette, dpr = w / window.innerWidth;
-  const cx = lu ? lu.cx * dpr : w / 2, cy = lu ? lu.cy * dpr : h / 2, R = lu ? lu.R * dpr : h * 0.47;
+  const cx = lu ? lu.cx * dpr : w / 2, cy = lu ? lu.cy * dpr : h / 2, R = lu ? lu.R * dpr : h * 0.462;      // même rayon de champ que le solo
   sx.fillStyle = '#000'; sx.beginPath(); sx.rect(0, 0, w, h); sx.arc(cx, cy, R, 0, Math.PI * 2, true); sx.fill('evenodd');
   const g = sx.createRadialGradient(cx, cy, R * 0.86, cx, cy, R); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.75)');
   sx.fillStyle = g; sx.beginPath(); sx.arc(cx, cy, R, 0, Math.PI * 2); sx.fill();
-  const mrad = h / 2 / Math.tan((camera.fov * Math.PI) / 360) / 1000;   // pixels par mrad (réticule au premier plan focal)
-  sx.strokeStyle = 'rgba(0,0,0,0.9)'; sx.lineWidth = Math.max(1, devicePixelRatio);
-  sx.beginPath(); sx.moveTo(cx - R, cy); sx.lineTo(cx + R, cy); sx.moveTo(cx, cy - R); sx.lineTo(cx, cy + R); sx.stroke();
-  sx.beginPath();
-  for (let i = -30; i <= 30; i++) {
-    if (!i) continue; const d = i * mrad; if (Math.abs(d) > R * 0.92) continue; const t = (i % 5 === 0 ? 0.45 : 0.22) * mrad;
-    sx.moveTo(cx + d, cy - t); sx.lineTo(cx + d, cy + t); sx.moveTo(cx - t, cy + d); sx.lineTo(cx + t, cy + d);
-  }
-  sx.stroke();
+  // le réticule est celui du jeu solo (src/weapons/scope.ts), gravé en mrad au premier plan focal
+  reticule.draw(camera.fov, 1, { w: window.innerWidth, h: window.innerHeight, cx: cx / dpr, cy: cy / dpr, R: R / dpr });
 };
 
 const info = document.getElementById('info');
@@ -1023,10 +1020,10 @@ const draw = (now) => {
   // flèches : regarder à l'œil nu ; lunette à l'œil, elles tournent les tourelles (tir.js) et l'on vise à la souris
   { const k = (keys.has('ArrowLeft') ? 1 : 0) - (keys.has('ArrowRight') ? 1 : 0), kv = (keys.has('ArrowUp') ? 1 : 0) - (keys.has('ArrowDown') ? 1 : 0), v = dt * (state.scope ? 0.9 / state.mag : 0.9); if (!state.scope && !keys.has('ShiftLeft') && !keys.has('ShiftRight')) { state.yaw += k * v; state.pitch = Math.max(-1.4, Math.min(1.4, state.pitch + kv * v)); } }
   camera.rotation.set(state.pitch, state.yaw, 0);
-  camera.fov = state.fovOverride ?? (state.scope ? SCOPE_FOV / state.mag : 60);
+  camera.fov = state.fovOverride ?? (state.scope ? fovForZoom(state.mag) : 60);      // même champ que le solo à grossissement égal
   { // tactile : la lunette garde son champ réel quel que soit son rayon à l'écran, et la visée passe par son centre
     const lu = state.scope && !state.fovOverride && !state.quad ? state.lunette : null, w = window.innerWidth, h = window.innerHeight;
-    if (lu) camera.fov = (2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * ((0.47 * h) / lu.R)) * 180) / Math.PI;
+    if (lu) camera.fov = (2 * Math.atan(Math.tan((camera.fov * Math.PI) / 360) * ((0.462 * h) / lu.R)) * 180) / Math.PI;
     if (lu && (Math.abs(lu.cx - w / 2) > 0.5 || Math.abs(lu.cy - h / 2) > 0.5)) camera.setViewOffset(w, h, w / 2 - lu.cx, h / 2 - lu.cy, w, h);
     else if (camera.view && camera.view.enabled) camera.clearViewOffset();
   }
@@ -1037,7 +1034,11 @@ const draw = (now) => {
     renderer.setScissorTest(true);
     for (let k = 0; k < 4; k++) { camera.rotation.set(state.pitch, state.yaw - (k * Math.PI) / 2, 0); camera.updateMatrixWorld(); const x = (k % 2) * (w / 2), y = k < 2 ? h / 2 : 0; renderer.setViewport(x, y, w / 2, h / 2); renderer.setScissor(x, y, w / 2, h / 2); renderer.render(scene, camera); }
     renderer.setScissorTest(false); renderer.setViewport(0, 0, w, h);
-  } else renderer.render(scene, camera);
+  } else {
+    renderer.render(scene, camera);
+    // à l'œil nu, le tireur voit sa carabine (pas en lunette, pas en vol libre, pas en spectateur ni au salon)
+    if (armeVue && !state.scope && !state.fly && !state.spectateur && !state.salon && !state.fovOverride) armeVue.dessine();
+  }
   tir.update(now); effets?.update(now); tactile?.update(now);
   drawScope(); if (!state.quad) drawTags(); else tags.forEach((d) => (d.style.display = 'none'));
   fps.n++; fps.t += dt; fps.worst = Math.max(fps.worst, dt);
@@ -1052,6 +1053,7 @@ const draw = (now) => {
 };
 const frame = (now) => { draw(now); requestAnimationFrame(frame); };
 allerA(new URLSearchParams(location.search).get('poste') || 'La Médiathèque');
+const armeVue = installArme({ renderer, camera, soleil: SUN, centre: [BCX, BCZ] });
 const sons = installSons();
 tir.etat.surCran = () => sons.cran();
 const effets = installEffets({ scene, camera, state, EMP, meta, bendY, groundY, tir, sons });

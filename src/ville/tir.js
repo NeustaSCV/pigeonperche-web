@@ -143,7 +143,12 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
         const u = Math.max(0, Math.min(1, ((k.c.x - px) * dx + (k.c.y - py) * dy + (k.c.z - pz) * dz) / l2));
         q.set(px + dx * u - k.c.x, py + dy * u - k.c.y, pz + dz * u - k.c.z);
         const rad = Math.hypot(q.x, q.z);
-        if (rad < RAYON && Math.abs(q.y) < DEMI_HAUT) { res = { touche: k.e, x: k.c.x + q.x, y: k.c.y + q.y, z: k.c.z + q.z, tof: s.t, dist: k.c.distanceTo(eye) }; break; }
+        if (rad < RAYON && Math.abs(q.y) < DEMI_HAUT) {
+          // la tête : la balle passe à moins de 24 cm de son centre (1,62 m au-dessus des pieds, soit 62 cm au-dessus du centre de la zone)
+          const hy = k.c.y + 0.62, ut = Math.max(0, Math.min(1, ((k.c.x - px) * dx + (hy - py) * dy + (k.c.z - pz) * dz) / l2));
+          const tete = Math.hypot(px + dx * ut - k.c.x, py + dy * ut - hy, pz + dz * ut - k.c.z) < 0.24;
+          res = { touche: k.e, zone: tete ? 'tete' : 'corps', x: k.c.x + q.x, y: k.c.y + q.y, z: k.c.z + q.z, tof: s.t, dist: k.c.distanceTo(eye) }; break;
+        }
         if (k.e === visee && u > 0 && u < 1) ecart = { haut: q.y, droite: q.x * right.x + q.z * right.z, dist: k.c.distanceTo(eye), tof: s.t, nom: k.e.nom };
       }
       if (!res && dansBatiment(s.x, s.y, s.z)) {
@@ -298,9 +303,9 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
   };
 
   /** Effet d'une touche confirmée par le serveur sur l'emplacement `nom` : gerbe, silhouette couchée 5 s. */
-  const effetTouche = (nom, dist) => {
+  const effetTouche = (nom, dist, abattu = true) => {
     const e = EMP.find((q) => q.nom === nom); if (!e || nom === state.post) return;
-    centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); couches.set(nom, performance.now() + 5000);
+    centre(e, c); const d = c.distanceTo(camera.position); gerbe(c.x, c.y, c.z, d); if (abattu) couches.set(nom, performance.now() + 5000);      // touché au corps, il reste debout
   };
   const changerPoste = () => { t.elev = 0; t.deriv = 0; eteindreReflets(); for (const [nom] of couches) { EMP.find((q) => q.nom === nom).figure.rotation.x = 0; } couches.clear(); };
   return { update, tirer, cran, reglerSurCible, vise, solution, texteCorrection, changerPoste, effetTouche, reflet, eteindreReflets, reflets, dansBatiment, centre, etat: t, arme: W };

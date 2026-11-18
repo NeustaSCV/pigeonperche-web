@@ -4,7 +4,7 @@
 //   GET  /api/manche/etat             résumé pour le menu et le salon d'attente (connectés, manche, classements)
 //   GET  /api/manche/flux?pseudo=…   flux du joueur ; il est dans la salle tant que la connexion reste ouverte
 //   GET  /api/manche/flux?role=spectateur   flux d'un spectateur (refusé sans joueur humain dans la salle)
-//   POST /api/manche/tir             { id, jeton, cible?, dist?, tof? }
+//   POST /api/manche/tir             { id, jeton, cible?, dist?, tof?, zone?, dir? }
 //   POST /api/manche/vise            { id, jeton, cible }   qui le joueur tient dans sa lunette (null : personne)
 //   POST /api/manche/vote            { id, jeton, vent?, niveau? }   vote pour la manche suivante, pendant le salon
 import { randomBytes } from 'node:crypto';
@@ -63,7 +63,7 @@ export function createMancheApi({ fichier, records }) {
         let a; try { a = JSON.parse(corps); } catch { json(res, 400, { erreur: 'requête illisible' }); return true; }
         const id = Number(a?.id);
         if (!manche || jetons.get(id) !== a?.jeton) { json(res, 403, { erreur: 'joueur inconnu' }); return true; }
-        json(res, 200, { r: u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof, dir: a.dir }) });
+        json(res, 200, { r: u.pathname.endsWith('/vise') ? manche.aim(id, a.cible ?? null) : u.pathname.endsWith('/vote') ? manche.vote(id, { vent: a.vent, niveau: a.niveau }) : manche.shot(id, { cible: a.cible, dist: a.dist, tof: a.tof, dir: a.dir, zone: a.zone }) });
         return true;
       }
       json(res, 404, { erreur: 'introuvable' });

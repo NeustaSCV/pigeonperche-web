@@ -66,12 +66,14 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
 
   // ---------- éléments ----------
   const box = document.createElement('div'); box.id = 'manche'; box.style.display = 'none'; document.body.appendChild(box);
+  const jauge = document.createElement('div'); jauge.id = 'vie'; jauge.style.display = 'none'; document.body.appendChild(jauge);
   const voile = document.createElement('div'); voile.id = 'couche'; voile.style.display = 'none'; document.body.appendChild(voile);
   const salon = document.createElement('div'); salon.id = 'salon'; document.body.appendChild(salon);
   // même mise en page que l'accueil du jeu : titre en capitales, cadre d'entrée à gauche, panneau des classements à droite
   salon.innerHTML = `<canvas class="s-plan"></canvas><div class="s-gauche">
     <h1>Ville nouvelle</h1>
-    <div class="s-sub"><span>Multijoueur</span><i> · </i><span data-s="etat">Connexion au serveur…</span></div>
+    <div class="s-sub"><span>Multijoueur</span></div>
+    <div class="s-horloge" data-s="horloge"><div class="s-temps" data-s="temps">–:––</div><div class="s-quoi"><div class="s-phase" data-s="phase">Connexion au serveur…</div><div class="s-legende" data-s="etat"></div></div></div>
     <div class="s-cadre"><span class="s-cadre-t">Salon</span>
       <div class="s-opt"><span>Pseudo</span><input data-s="pseudo" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Votre nom de tireur" /></div>
       <div class="s-rang">
@@ -89,9 +91,9 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
   <div class="s-boards">
     <div class="s-boards-h"><span>Classements</span></div>
     <div class="s-boards-g">
-      <section><h3>Partie précédente</h3><h4>Les meilleurs</h4><ol data-s="pm"></ol><h4>Les pires</h4><ol data-s="pp"></ol></section>
-      <section><h3>Depuis toujours</h3><h4>Meilleurs scores</h4><ol data-s="tm"></ol><h4>Pires scores</h4><ol data-s="tp"></ol></section>
-      <section><h3>Dans la salle</h3><ol data-s="salle"></ol></section>
+      <section class="s-derniere"><h3>Dernière partie</h3><div class="s-entete"><span>Tireur</span><b>Points</b><i>Touches / tirs</i><u>Touché</u></div><ol data-s="pm"></ol></section>
+      <section class="s-salle"><h3 data-s="salleT">Dans la salle</h3><ol data-s="salle"></ol></section>
+      <section class="s-toujours"><h3>Classement global</h3><div><h4>Meilleurs scores</h4><ol data-s="tm"></ol></div><div><h4>Pires scores</h4><ol data-s="tp"></ol></div></section>
     </div>
   </div>
   <p class="s-avert">Avertissement : ce jeu vous est proposé à but ludique uniquement. Dans la vraie vie, ne tirez pas sur vos amis.</p>`;
@@ -107,8 +109,13 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
   const dessineSalon = () => {
     if (!salonVisible()) return;
     const reste = echeance - performance.now(), n = resume?.connectes ?? 0;
-    if (!serveur) S.etat.textContent = 'Serveur de manche indisponible pour l’instant.';
-    else S.etat.innerHTML = (phase === 'jeu' ? `Manche en cours, reste <b>${mmss(reste)}</b>` : `Prochaine manche dans <b>${mmss(reste)}</b>`) + ` · ${n} tireur${n > 1 ? 's' : ''}`;
+    // l'horloge : le temps en grand, et ce qu'il compte, pour qu'on voie tout de suite si une partie est en cours
+    const tireurs = `${n} tireur${n > 1 ? 's' : ''}`;
+    S.horloge.className = 's-horloge ' + (!serveur ? 'hors' : phase);
+    S.temps.textContent = serveur ? mmss(reste) : '–:––';
+    S.phase.textContent = !serveur ? 'Serveur de manche indisponible' : phase === 'jeu' ? 'Partie en cours' : 'Entre deux parties';
+    S.etat.textContent = !serveur ? '' : phase === 'jeu' ? `avant la fin de la partie · ${tireurs} en jeu` : `avant la prochaine partie · ${tireurs} dans la salle`;
+    S.salleT.textContent = phase === 'jeu' ? 'Partie en cours' : 'Dans la salle';
     const p = S.pseudo.value.trim();
     S.jouer.disabled = !serveur || role !== null || p.length < 2 || (resume && resume.places < 1);
     S.voir.disabled = !serveur || role !== null || !(resume?.humains >= 1);
@@ -128,8 +135,8 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
       S.vNote.textContent = `En cours : ${NOMS[reglages.niveau]}, ${texteVent(reglages.vent)}. La majorité l’emporte ; à égalité, rien ne change.`;
     }
     const c = dernierClassement ?? resume?.precedente?.classement ?? [];
-    const k = Math.min(3, Math.floor(c.length / 2));               // la moitié basse du classement, trois au plus
-    liste(S.pm, c.slice(0, Math.min(3, c.length - k)), 'Aucune partie jouée pour l’instant.'); liste(S.pp, k ? c.slice(-k).reverse() : [], c.length ? 'Il faut au moins deux tireurs.' : '—');
+    // la dernière partie : le tableau complet, du meilleur au pire, avec le nombre de fois où chacun a été touché
+    S.pm.innerHTML = c.length ? c.map((j) => `<li><span>${nom(j)}</span><b>${fr(j.points)}</b><i>${j.touches}/${j.tirs}</i><u>${j.subies ?? 0} fois</u></li>`).join('') : '<li class="vide">Aucune partie jouée pour l’instant.</li>';
     liste(S.tm, resume?.meilleurs, 'Aucun score enregistré.'); liste(S.tp, resume?.pires, '—');
     liste(S.salle, role ? [...joueurs.values()].sort((a, b) => b.points - a.points) : resume?.joueurs, 'Personne pour l’instant.');
   };
@@ -154,6 +161,10 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
     for (const e of EMP) if (e.figure) e.figure.visible = e.nom !== state.post && state.occupes.has(e.nom);
   };
   function tableau() {
+    // jauge de vie du joueur : deux points (corps : un point, tête : les deux)
+    const m0 = role === 'joueur' ? joueurs.get(moi) : null;
+    jauge.style.display = m0 && !state.salon ? 'flex' : 'none';
+    if (m0) jauge.innerHTML = '<span>Vie</span>' + [1, 2].map((k) => `<i class="${(m0.vivant ? m0.vie ?? 2 : 0) >= k ? 'on' : ''}"></i>`).join('');
     if (!role) { box.style.display = 'none'; return; }
     box.style.display = 'block';
     const l = [...joueurs.values()].sort((a, b) => b.points - a.points);
@@ -195,16 +206,19 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
     },
     touche(m) {
       for (const s of m.scores) { const j = joueurs.get(s.id); if (j) Object.assign(j, s); }
-      tir.effetTouche(m.emp, m.dist);
+      tir.effetTouche(m.emp, m.dist, m.abattu !== false);
       // la voix de celui qui encaisse : toute proche si c'est nous, au loin si c'est notre touche (rien pour les touches des autres)
       if (m.cible === moi) sons?.touche(); else if (m.tireur === moi) sons?.toucheAuLoin(m.dist);
-      if (m.cible === moi) { state.couche = true; state.scope = false; voile.style.display = 'grid'; voile.innerHTML = `<div>Touché par <b>${nom(joueurs.get(m.tireur))}</b><br>à ${fr(m.dist)} m<br><small>Retour dans 5 secondes, sur un autre emplacement.</small></div>`; }
-      annonce = m.tireur === moi ? `Touché : ${nomDe(m.cible)} à ${fr(m.dist)} m, +${m.points} points.` : `${nomDe(m.tireur)} touche ${nomDe(m.cible)} à ${fr(m.dist)} m.`;
-      if (m.tireur === moi) tir.etat.msg = `Touché · ${nomDe(m.cible)} · ${fr(m.dist)} m · +${m.points} points`;
+      const ou = m.zone === 'tete' ? 'à la tête' : 'au corps';
+      if (m.cible === moi && m.abattu !== false) { state.couche = true; state.scope = false; if (document.pointerLockElement) document.exitPointerLock(); voile.className = ''; voile.style.display = 'grid'; voile.innerHTML = `<div>Abattu par <b>${nom(joueurs.get(m.tireur))}</b><br>${ou}, à ${fr(m.dist)} m<br><small>Retour dans 5 secondes, sur un autre emplacement.</small></div>`; }
+      else if (m.cible === moi) { voile.className = 'eclair'; voile.style.display = 'grid'; voile.innerHTML = `<div>Touché ${ou} par <b>${nom(joueurs.get(m.tireur))}</b></div>`; setTimeout(() => { if (!state.couche) voile.style.display = 'none'; }, 900); }      // encore debout : un éclair rouge
+      const fait = m.abattu !== false ? 'abat' : 'touche';
+      annonce = m.tireur === moi ? `${m.abattu !== false ? 'Abattu' : 'Touché'} ${ou} : ${nomDe(m.cible)} à ${fr(m.dist)} m, +${m.points} points.` : `${nomDe(m.tireur)} ${fait} ${nomDe(m.cible)} à ${fr(m.dist)} m.`;
+      if (m.tireur === moi) tir.etat.msg = `${m.abattu !== false ? 'Abattu' : 'Touché'} ${ou} · ${nomDe(m.cible)} · ${fr(m.dist)} m · +${m.points} points`;
       majOccupes();
     },
     retour(m) {
-      const j = joueurs.get(m.id); if (!j) return; j.emp = m.emp; j.vivant = true;
+      const j = joueurs.get(m.id); if (!j) return; j.emp = m.emp; j.vivant = true; j.vie = 2;
       if (m.id === moi) { releve(); allerA(m.emp, true); }
       majOccupes();
     },
@@ -244,7 +258,7 @@ export function installReseau({ EMP, state, allerA, tir, sel, carte, effets, son
   const annonceTir = (res, dir) => {
     if (!state.enLigne) return;
     const c = res.touche ? joueurA(res.touche.nom) : null;
-    fetch('./api/manche/tir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, dir, ...(c ? { cible: c.id, dist: res.dist, tof: res.tof } : {}) }) }).catch(() => {});
+    fetch('./api/manche/tir', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: moi, jeton, dir, ...(c ? { cible: c.id, dist: res.dist, tof: res.tof, zone: res.zone } : {}) }) }).catch(() => {});
   };
   if (effets) effets.surTirReseau = annonceTir; else tir.etat.surTir = (res) => annonceTir(res);
   // on signale au serveur le joueur qu'on tient dans sa lunette : lui seul verra notre reflet

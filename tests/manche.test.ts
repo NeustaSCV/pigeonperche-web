@@ -1,7 +1,7 @@
 // Manche multijoueur de la Ville nouvelle : arbitrage du serveur (server/manche.mjs), sans réseau.
 import { describe, expect, it } from 'vitest';
 // @ts-ignore module JavaScript du serveur, sans déclarations de types
-import { createManche, pointsPour, adresseRobot, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, MANCHE_MS, PAUSE_MS, ROBOT_ATTENTE_MS, ROBOT_VISEE_MS } from '../server/manche.mjs';
+import { createManche, pointsPour, adresseRobot, VIE_MAX, MAX_JOUEURS, RETOUR_MS, CADENCE_MS, MANCHE_MS, PAUSE_MS, ROBOT_ATTENTE_MS, ROBOT_VISEE_MS } from '../server/manche.mjs';
 // @ts-ignore
 import { ROBOTS } from '../server/robots.mjs';
 
@@ -37,11 +37,11 @@ describe('manche multijoueur', () => {
   it('applique la touche à l’arrivée de la balle, compte les points à la distance, puis fait reparaître la cible ailleurs', () => {
     const { m, avance, entre, dist } = salle();
     const a = entre('Anna'), b = entre('Bob'); const d = dist(a.id!, b.id!), avant = m.etat().find((j: any) => j.id === b.id).emp;
-    expect(m.shot(a.id, { cible: b.id, dist: d + 5, tof: 1.5 })).toBe('ok');
+    expect(m.shot(a.id, { cible: b.id, dist: d + 5, tof: 1.5, zone: 'tete' })).toBe('ok');
     avance(1000); expect(m.etat().find((j: any) => j.id === b.id).vivant).toBe(true);
     avance(600);
     const eb = m.etat().find((j: any) => j.id === b.id), ea = m.etat().find((j: any) => j.id === a.id);
-    expect(eb.vivant).toBe(false); expect(ea.points).toBe(pointsPour(d)); expect(ea.touches).toBe(1);
+    expect(eb.vivant).toBe(false); expect(ea.points).toBe(Math.round(pointsPour(d) * 1.5)); expect(ea.touches).toBe(1);      // tir à la tête : 150 % des points
     expect(b.recu.at(-1)).toMatchObject({ t: 'touche', tireur: a.id, cible: b.id, dist: d });
     expect(m.shot(b.id, {})).toBe('couché');
     avance(RETOUR_MS);
@@ -131,7 +131,7 @@ describe('manche multijoueur', () => {
     expect(a.recu.at(-1)).toEqual({ t: 'vise', par: bot.id, actif: false });
     avance(2000);
     const t = a.recu.find((x: any) => x.t === 'touche');
-    expect(t).toMatchObject({ tireur: bot.id, cible: a.id, dist: 500, points: pointsPour(500) });
+    expect(t).toMatchObject({ tireur: bot.id, cible: a.id, dist: 500, zone: 'tete', points: Math.round(pointsPour(500) * 1.5) });      // rand = 0 : dans la tête
     expect(m.etat().find((j: any) => j.id === a.id).vivant).toBe(false);
     expect(adresseRobot(400)).toBeCloseTo(0.2); expect(adresseRobot(800)).toBeCloseTo(0.1); expect(adresseRobot(3000)).toBe(0.04);
   });
@@ -194,5 +194,26 @@ describe('manche multijoueur', () => {
     expect(a.recu.some((x: any) => x.t === 'tir')).toBe(false);          // le tireur ne reçoit pas son propre tir
     avance(CADENCE_MS); m.shot(a.id, { dir: [5, 'x', NaN] as any });
     expect(b.recu.at(-1)).toEqual({ t: 'tir', id: a.id, emp });
+  });
+  it('compte deux points de vie : le corps en retire un, la tête abat d’un coup, et la vie revient au retour', () => {
+    const { m, avance, entre, dist } = salle();
+    const a = entre('Anna'), b = entre('Bob'), c = entre('Chloé'); const dab = dist(a.id!, b.id!), dac = dist(a.id!, c.id!);
+    const de = (id: number) => m.etat().find((j: any) => j.id === id);
+    expect(de(b.id!).vie).toBe(VIE_MAX);
+    // première balle dans le corps : Bob perd un point, reste debout, peut encore tirer
+    m.shot(a.id, { cible: b.id, dist: dab, tof: 1, zone: 'corps' }); avance(1100);
+    expect(de(b.id!)).toMatchObject({ vie: 1, vivant: true });
+    expect(b.recu.at(-1)).toMatchObject({ t: 'touche', zone: 'corps', vie: 1, abattu: false, cible: b.id });
+    expect(m.shot(b.id, {})).toBe('ok');
+    // deuxième balle dans le corps : abattu
+    avance(CADENCE_MS); m.shot(a.id, { cible: b.id, dist: dab, tof: 1 }); avance(1100);
+    expect(de(b.id!)).toMatchObject({ vie: 0, vivant: false });
+    expect(b.recu.at(-1)).toMatchObject({ t: 'touche', abattu: true, vie: 0 });
+    // une balle dans la tête : Chloé, intacte, est abattue d'un coup
+    avance(CADENCE_MS); m.shot(a.id, { cible: c.id, dist: dac, tof: 1, zone: 'tete' }); avance(1100);
+    expect(de(c.id!)).toMatchObject({ vie: 0, vivant: false });
+    expect(de(a.id!)).toMatchObject({ touches: 3, points: pointsPour(dab) * 2 + Math.round(pointsPour(dac) * 1.5) });
+    avance(RETOUR_MS);
+    expect(de(b.id!)).toMatchObject({ vie: VIE_MAX, vivant: true }); expect(de(c.id!)).toMatchObject({ vie: VIE_MAX, vivant: true });
   });
 });

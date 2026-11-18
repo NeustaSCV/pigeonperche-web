@@ -36,7 +36,7 @@ export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY,
     return out.copy(los).addScaledVector(up, Math.tan(zero + elev * 0.001)).addScaledVector(right, deriv * 0.001).normalize();
   };
 
-  // ---------- balle traçante : une tête lumineuse qui suit la trajectoire, et sa traînée qui s'efface ----------
+  // ---------- balle traçante : une traînée qui suit la trajectoire puis s'efface (pas de bille au bout) ----------
   const matTete = new THREE.MeshBasicMaterial({ color: 0xffb060, transparent: true, opacity: 1, depthTest: true, blending: THREE.AdditiveBlending });
   const geoTete = new THREE.SphereGeometry(1, 8, 6);
   /** `local` : sa propre balle ; on ne la dessine qu'à partir de 25 m, pour ne pas s'éblouir dans la lunette. */
@@ -47,7 +47,7 @@ export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY,
     pts.forEach((p, i) => { pos[i * 3] = p[0]; pos[i * 3 + 1] = p[1] - bendY(p[0], p[2]); pos[i * 3 + 2] = p[2]; });      // la scène est à plat
     const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setDrawRange(0, 0);
     const trainee = new THREE.Line(g, new THREE.LineBasicMaterial({ color: 0xff9a4a, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
-    trainee.frustumCulled = false; const tete = new THREE.Mesh(geoTete, matTete); tete.frustumCulled = false;
+    trainee.frustumCulled = false; const tete = new THREE.Mesh(geoTete, matTete); tete.frustumCulled = false; tete.visible = false;
     scene.add(trainee, tete);
     actifs.push({ genre: 'balle', pts, debut, trainee, tete, t0: performance.now(), fin: pts[pts.length - 1][3] });
   };
@@ -105,7 +105,8 @@ export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY,
       if (a.genre === 'flamme') {
         if (age > 0.14) { scene.remove(a.m); a.m.material.dispose(); actifs.splice(i, 1); continue; }
         const d = a.m.position.distanceTo(camera.position);
-        a.m.scale.setScalar(Math.max(0.25, d * (state.scope ? 0.0022 : 0.0055)) * (1 - age / 0.14 * 0.5)); a.m.material.opacity = 1 - age / 0.14;
+        // taille réglée sur le champ : une quinzaine de pixels à l'écran, à l'œil nu comme en lunette
+        a.m.scale.setScalar(Math.max(0.12, d * Math.tan((camera.fov * Math.PI) / 360) * 0.016) * (1 - age / 0.14 * 0.5)); a.m.material.opacity = 1 - age / 0.14;
         continue;
       }
       const P = a.pts, DUREE_TRAINEE = 1.6;
@@ -117,8 +118,9 @@ export function installEffets({ scene, camera, state, EMP, meta, bendY, groundY,
         const p = P[k], q = P[Math.min(P.length - 1, k + 1)], u = q[3] > p[3] ? (age - p[3]) / (q[3] - p[3]) : 0;
         const x = p[0] + (q[0] - p[0]) * u, y = p[1] + (q[1] - p[1]) * u, z = p[2] + (q[2] - p[2]) * u;
         a.tete.position.set(x, y - bendY(x, z), z);
-        a.tete.scale.setScalar(Math.max(0.05, a.tete.position.distanceTo(camera.position) * (state.scope ? 0.0007 : 0.0018)));
-        a.tete.visible = k >= a.debut;
+        // tête de la traçante : un point de quelques pixels, quel que soit le grossissement (elle était énorme en lunette)
+        a.tete.scale.setScalar(Math.max(0.006, a.tete.position.distanceTo(camera.position) * Math.tan((camera.fov * Math.PI) / 360) * 0.0055));
+        a.tete.visible = false;               // pas de bille au bout : la traînée suffit
       } else a.tete.visible = false;
       a.trainee.material.opacity = 0.85 * (age < a.fin ? 1 : Math.max(0, 1 - (age - a.fin) / DUREE_TRAINEE));
     }
