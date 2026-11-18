@@ -214,11 +214,12 @@ export function buildPostes({ scene, EMP, groundY, bats, hash, centre, voirie = 
 
   // ---------- repères propres à certains lieux ----------
   const E = (nom) => EMP.find((e) => e.nom === nom);
-  { // restaurant La Fontaine : grand panneau publicitaire « TAXI » sur le toit, store blanc et enseigne au rez-de-chaussée
+  { // restaurant La Fontaine : bandeau publicitaire « TAXI » sur le toit, store blanc et enseigne au rez-de-chaussée
     const e = E('Restaurant La Fontaine'), g = e.groupe, pl = e.y - 1.6, dc = versRue(e.x, e.z), ux = Math.sin(dc), uz = Math.cos(dc), sol = groundY(e.x, e.z);
-    const p = enseigne(g, panneau('TAXI', '#f2c300', '#111111', 7, 3.2), 7, 3.2, -ux * 8 + uz * 3, pl - 1.5 + 1.8, -uz * 8 - ux * 3, dc + 0.5);
-    for (const sx of [-2.6, 0, 2.6]) rod(p, V(sx, 0, 0), V(sx, -1.8, -1.6), 0.05);
-    box(p, 7.2, 0.3, 0.3, L(0x111111), 0, 3.5, 0);
+    // bandeau bas posé sur le toit : son sommet (1,35 m) reste sous le plancher du tireur (1,5 m), il ne le masque donc
+    // pas aux autres et ne lui bouche pas la vue
+    const p = enseigne(g, panneau('TAXI', '#f2c300', '#111111', 7, 1.3), 7, 1.3, -ux * 8 + uz * 3, pl - 1.5 + 0.05, -uz * 8 - ux * 3, dc + 0.5, false);
+    for (const sx of [-3.3, 3.3]) rod(p, V(sx, 0, 0), V(sx, 1.3, 0), 0.05);
     enseigne(g, panneau('La Fontaine', '#fbfaf6', '#1f4a36', 8, 1.3, true), 8, 1.3, ux * 12, sol + 3.4, uz * 12, dc, false);
     box(g, 9, 0.12, 2.6, L(0xfbfaf6), ux * 13.2, sol + 3.2, uz * 13.2, dc);                                 // store-banne
     for (let i = -1; i <= 1; i++) box(g, 0.5, 2.6, 0.04, L(0x1f7a4a, { side: THREE.DoubleSide }), ux * 12 + uz * i * 3.2, sol + 5.6, uz * 12 - ux * i * 3.2, dc);   // oriflammes vertes

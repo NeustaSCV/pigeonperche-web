@@ -227,6 +227,16 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
       + `<div class="tr-regl"><div class="regle"><b>${valeur}</b><span>mrad</span></div><i>${touches.map(touche).join('')}</i></div>${bande}</div>`;
   };
   let htmlAffiche = null;
+  // Petit écran : l'encart rétrécit pour tenir dans la bande noire à gauche de la lunette, et descend s'il le faut pour
+  // ne jamais recouvrir le bloc de l'observateur, en haut à gauche.
+  const caleTourelles = () => {
+    const W0 = 336, H0 = tourelles.offsetHeight || 420, vw = window.innerWidth, vh = window.innerHeight;
+    const k = Math.max(0.68, Math.min(1, (vw / 2 - vh * 0.47 - 22) / W0));
+    const bas = viseur.getBoundingClientRect().bottom, haut = Math.max((vh - H0 * k) / 2, Math.max(bas, 190) + 14);
+    tourelles.style.transformOrigin = 'top right'; tourelles.style.transform = `scale(${k.toFixed(3)})`; tourelles.style.top = `${Math.round(haut)}px`;
+    tourelles.style.right = `${Math.round(Math.min(vw / 2 + vh * 0.47 + 12, vw - W0 * k - 6))}px`;      // bord droit contre la lunette, sans sortir de l'écran
+  };
+  window.addEventListener('resize', () => { if (htmlAffiche) caleTourelles(); });
   // L'encart ne montre que la lunette et son réglage (la vue du tireur) : il explique les tourelles, il ne dit jamais quoi afficher.
   // La correction à apporter est ailleurs, en haut à gauche avec le poste visé et sa distance (la vue de l'observateur) :
   // on ne la rappelle pas ici, ni l'écart qui reste, ni le sens dans lequel tourner.
@@ -258,7 +268,7 @@ export function installTir({ scene, camera, view, state, EMP, meta, bendY, groun
     const attente = now < t.pret ? 'Culasse…' : '';
     viseur.innerHTML = s ? `<div class="v-cible"><div class="v-lieu">${e.nom}</div><div class="v-ligne"><b>${Math.round(s.range)}</b><span>m</span></div><div class="v-ligne v-corr"><span>Correction</span>${texteCorrection(e)}</div></div>` : '';
     const h = state.scope ? htmlTourelles(now) : '';
-    if (h !== htmlAffiche) { tourelles.innerHTML = htmlAffiche = h; tourelles.style.display = h ? '' : 'none'; }
+    if (h !== htmlAffiche) { tourelles.innerHTML = htmlAffiche = h; tourelles.style.display = h ? '' : 'none'; if (h) caleTourelles(); }
     // en bas à droite : un simple rappel de l'arme à l'œil nu ; lunette à l'œil, le dernier résultat et la culasse
     box.className = state.scope ? 'epaule' : '';
     box.innerHTML = state.scope
